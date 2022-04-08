@@ -1,0 +1,11 @@
+{
+  "name": "express-ts-api",
+  "version": "0.0.1",
+  "description": "Experiment with express + ts",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "author": "Jamee Mikell",
+  "license": "MIT"
+}
