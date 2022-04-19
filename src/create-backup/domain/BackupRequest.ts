@@ -24,55 +24,55 @@ export interface IBackupRequestProps {
 
 export class BackupRequest extends Entity<IBackupRequestProps> {
    public get backupRequestId (): string {
-      return this.backupRequestId;
+      return this._id;
    }
 
    public get statusTypeCode (): RequestStatusType {
-      return this.statusTypeCode;
+      return this.props.statusTypeCode;
    }
 
    public get receivedTimestamp (): Date {
-      return this.receivedTimestamp;
+      return this.props.receivedTimestamp as Date;
    }
 
    public get checkedTimestamp (): Date {
-      return this.checkedTimestamp;
+      return this.props.checkedTimestamp as Date;
    }
 
    public get sentToInterfaceTimestamp (): Date {
-      return this. sentToInterfaceTimestamp;
+      return this.props.sentToInterfaceTimestamp as Date;
    }
 
    public get replyTimestamp (): Date {
-      return this.replyTimestamp;
+      return this.props.replyTimestamp as Date;
    }
 
    public get backupJobId (): string {
-      return this.backupJobId;
+      return this.props.backupJobId;
    }
 
    public get dataDate (): Date {
-      return this.dataDate;
+      return this.props.dataDate as Date;
    }
 
    public get preparedDataPathName (): string {
-      return this.preparedDataPathName;
+      return this.props.preparedDataPathName;
    }
 
    public get getOnStartFlag (): boolean {
-      return this.getOnStartFlag;
+      return this.props.getOnStartFlag;
    }
 
-   public get requesterId (): string {
-      return this.requesterId;
+   public get requesterId (): string | undefined {
+      return this.props.requesterId;
    }
 
    public get transportTypeCode (): RequestTransportType {
-      return this.transportTypeCode;
+      return this.props.transportTypeCode;
    }
    
    public get backupProviderCode() : BackupProviderType {
-      return this.backupProviderCode;
+      return this.props.backupProviderCode as BackupProviderType;
    }
 
    /**
@@ -156,10 +156,12 @@ export class BackupRequest extends Entity<IBackupRequestProps> {
          dataDate: dataDateAsDate, // override value from props with known-good value
          backupProviderCode: props.backupProviderCode ? props.backupProviderCode : '',
          storagePathName: props.storagePathName ? props.storagePathName : '',
-         checkedTimestamp: props.checkedTimestamp ? props.checkedTimestamp : null,
-         sentToInterfaceTimestamp: props.sentToInterfaceTimestamp ? props.sentToInterfaceTimestamp : null,
-         replyTimestamp: props.replyTimestamp ? props.replyTimestamp : null,
-         requesterId: props.requesterId ? props.requesterId : ''
+         requesterId: props.requesterId ? props.requesterId : '',
+         // timestamps below are only set by code, so are not checked for validity
+         checkedTimestamp: props.checkedTimestamp ? props.checkedTimestamp : undefined,
+         sentToInterfaceTimestamp: props.sentToInterfaceTimestamp ? props.sentToInterfaceTimestamp : undefined,
+         replyTimestamp: props.replyTimestamp ? props.replyTimestamp : undefined,
+
       };
       
       const backupRequest = new BackupRequest(defaultValues, id);

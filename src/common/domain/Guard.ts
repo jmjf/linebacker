@@ -3,7 +3,7 @@
  */
 export interface IGuardResult {
    isSuccess: boolean;
-   message?: string;
+   message: string;
 }
 
 /**
@@ -39,7 +39,7 @@ export class Guard {
       if (arg === null || arg === undefined) {
          return { isSuccess: false, message: `${argName} is null or undefined` };
       } else {
-         return { isSuccess: true };
+         return { isSuccess: true, message: '' };
       }
    }
 
@@ -57,7 +57,7 @@ export class Guard {
          if (!result.isSuccess) return result;
       }
 
-      return { isSuccess: true };
+      return { isSuccess: true, message: '' };
    }
 
    /**
@@ -75,7 +75,7 @@ export class Guard {
     */
    public static isOneOf (arg: any, validValues: any[], argName: string): IGuardResult {
       if (validValues.includes(arg)) {
-         return { isSuccess: true };
+         return { isSuccess: true, message: '' };
       } else {
          return { isSuccess: false, message: `${argName} is not one of ${JSON.stringify(validValues)}. Got |${arg}|`};
       } 
@@ -92,11 +92,11 @@ export class Guard {
     */
    public static isValidDate(arg: any, argName: string): IGuardResult {
       if (arg instanceof Date && !isNaN(arg as unknown as number)) {
-         return { isSuccess: true };
+         return { isSuccess: true, message: '' };
       }
 
       if (!isNaN(Date.parse(arg))) {
-         return { isSuccess: true };
+         return { isSuccess: true, message: '' };
       }
 
       return { isSuccess: false, message: `${argName} is not a valid date. Got |${(arg instanceof Object) ? JSON.stringify(arg) : arg}|` };

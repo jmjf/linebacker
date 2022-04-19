@@ -1,4 +1,4 @@
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Type guard for the Entity class
@@ -39,7 +39,7 @@ export abstract class Entity<T> {
 	 * 
 	 */
 	constructor(props: T, id?: string) {
-		this._id = id ? id : uuid.v4();
+		this._id = id ? id : uuidv4();
 		this.props = props;
 	}
 

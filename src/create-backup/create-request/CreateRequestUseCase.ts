@@ -4,8 +4,7 @@ import { Either, left, right } from '../../common/domain/Either';
 import { CreateRequestDTO } from './CreateRequestDTO';
 import { IBackupRequestRepo } from '../adapter/BackupRequestRepo';
 import { BackupRequest, IBackupRequestProps } from '../domain/BackupRequest';
-import { RequestTransportType, validRequestTransportTypes } from '../domain/RequestTransportType';
-import { Guard } from '../../common/domain/Guard';
+import { RequestTransportType } from '../domain/RequestTransportType';
 
 // add errors when you define them
 type Response = Either<Result<any>, Result<BackupRequest>>;
