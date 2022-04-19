@@ -1,4 +1,4 @@
-import uuid from "uuid";
+import uuid from 'uuid';
 
 /**
  * Type guard for the Entity class
@@ -14,8 +14,8 @@ import uuid from "uuid";
  * In the TS docs example, the type is either a Fish or a Bird, so if it isn't a Fish, TS
  * knows it must be a Bird.
  *
- * @param {any} v - value to be tested
- * @returns {boolean}
+ * @param v - value to be tested (type any)
+ * @returns boolean
  */
 const isEntity = (v: any): v is Entity<any> => {
 	return v instanceof Entity;
@@ -24,7 +24,7 @@ const isEntity = (v: any): v is Entity<any> => {
 /**
  * Abstract class representing a domain driven design entity.
  *
- * @typeParam T - type of the Entity's properties object (interface)
+ * @typeParam `T` type of the Entity's properties object (interface)
  */
 export abstract class Entity<T> {
 	protected readonly _id: string;
@@ -32,10 +32,11 @@ export abstract class Entity<T> {
 
 	/**
 	 *
-	 * @param {T} props - an object shaped like the entity's properties
-	 * @param {string} id - optional, must be a valid uuid (not validated)
+	 * @param props an object shaped like the entity's properties (<T>)
+	 * @param id optional string, must be a valid UUIDv4 (not validated)
 	 *
-	 * @remarks if id isn't provided, will generate a uuid
+	 * @remarks If `id` isn't provided, the constructor will generate a UUIDv4.
+	 * 
 	 */
 	constructor(props: T, id?: string) {
 		this._id = id ? id : uuid.v4();
@@ -44,8 +45,8 @@ export abstract class Entity<T> {
 
 	/**
 	 *
-	 * @param {Entity<T>} object - optional, object to test for equality to this
-	 * @returns {boolean}
+	 * @param object (optional) Entity of type T to test for equality to this entity
+	 * @returns `boolean`
 	 */
 	public equals(object?: Entity<T>): boolean {
 		if (object == null || object == undefined) {

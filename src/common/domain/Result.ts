@@ -1,10 +1,14 @@
 /**
  * A class that represents an operation's outcome
  *
- * @typeparam T - Type of the Result's value or error object (interface)
+ * @typeparam `T` Type of the Result's value or error object (interface)
+ * 
+ * @property `isSuccess` true if the result is successful
+ * @property `isFailure` true if the result is a failure
+ * @property `error` the error object or message (T | string)
  *
  * @remarks
- * Also provides factory functions to support working with Results
+ * Also provides factory functions `succeed()` and `fail()` -- prefer over the raw constructor
  */
 export class Result<T> {
 	public isSuccess: boolean;
@@ -14,9 +18,12 @@ export class Result<T> {
 
 	/**
 	 *
-	 * @param {boolean} isSuccess - identifies if the operation was successful
-	 * @param {T | string} error - optional, an error message or object returned by a failed operation
-	 * @param {T} value - optional, a value returned by an operation (successful or failed)
+	 * @param isSuccess identifies if the operation was successful
+	 * @param error (optional) an error message or object returned by a failed operation
+	 * @param value (optional) a value returned by an operation (successful or failed)
+	 * 
+	 * @remarks
+	 * Favor using `succeed()` or `fail()` to create an appropriate result.
 	 */
 	public constructor(isSuccess: boolean, error?: T | string | null, value?: T) {
 		if (isSuccess && error) {
@@ -41,13 +48,14 @@ export class Result<T> {
 
 	/**
 	 *
-	 * @returns {T} - the value of a successful operation
+	 * @returns the value of a successful result
+	 * @error throws an `Error` if called for an error result
 	 */
 	public getValue(): T {
 		if (!this.isSuccess) {
 			console.log(this.error);
 			throw new Error(
-				'Cannot get the value of an error result. Use `errorValue` instead.'
+				'Cannot get the value of an error result. Use errorValue instead.'
 			);
 		}
 
@@ -56,7 +64,8 @@ export class Result<T> {
 
 	/**
 	 *
-	 * @returns {T} - the value of an unsuccessful operation
+	 * @returns the value of an unsuccessful result cast as T 
+	 * @remarks use for non-string errors
 	 */
 	public errorValue(): T {
 		return this.error as T;
@@ -64,14 +73,14 @@ export class Result<T> {
 
 	/**
 	 * @remarks
-	 * Prefer using `Result.ok()` over the bare constructor
+	 * Prefer using `Result.succeed()` over the bare constructor
 	 *
-	 * @typeparam U - Type of the Result's value object (interface)
+	 * @typeparam `U` type of the Result's value object (interface)
 	 *
-	 * @param {U} value - optional, a value to use for the result
-	 * @returns {Result<U>} - a successful result
+	 * @param value (optional) a value to use for the result
+	 * @returns `Result<U>` a successful result
 	 */
-	public static ok<U>(value?: U): Result<U> {
+	public static succeed<U>(value?: U): Result<U> {
 		return new Result<U>(true, null, value);
 	}
 
@@ -79,10 +88,10 @@ export class Result<T> {
 	 * @remarks
 	 * Prefer using `Result.fail()` over the bare constructor
 	 *
-	 * @typeparam U - Type of the Result's error object (interface) [check this]
+	 * @typeparam `U` type of the Result's error object (interface) [check this]
 	 *
-	 * @param {U} error - a string representing the error message
-	 * @returns {Result<U>} - a failure result
+	 * @param error a string representing the error message
+	 * @returns `Result<U>` a failure result
 	 */
 	public static fail<U>(error: string): Result<U> {
 		return new Result<U>(false, error);
@@ -90,17 +99,17 @@ export class Result<T> {
 
 	/**
 	 *
-	 * @param {Result<any>[]} results - a list of results to summarize
-	 * @returns {Result<any>} - the net outcome of the list of results
+	 * @param results - a list of results to summarize
+	 * @returns `Result<any>` - the net outcome of the list of results
 	 *
 	 * @remarks
-	 * If any result fails, `Result.combine()` returns that result
-	 * If no result fails, `Result.combine()` returns Result.ok()
+	 * If any result fails, returns that result.
+	 * If no result fails, returns `Result.succeed()` with no value.
 	 */
 	public static combine(results: Result<any>[]): Result<any> {
 		for (const result of results) {
 			if (result.isFailure) return result;
 		}
-		return Result.ok();
+		return Result.succeed();
 	}
 }
