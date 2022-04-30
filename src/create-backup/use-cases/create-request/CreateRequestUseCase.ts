@@ -1,10 +1,10 @@
-import { UseCase } from '../../common/application/UseCase';
-import { Result } from '../../common/domain/Result';
-import { Either, left, right } from '../../common/domain/Either';
+import { UseCase } from '../../../common/application/UseCase';
+import { Result } from '../../../common/domain/Result';
+import { Either, left, right } from '../../../common/domain/Either';
 import { CreateRequestDTO } from './CreateRequestDTO';
-import { IBackupRequestRepo } from '../adapter/BackupRequestRepo';
-import { BackupRequest, IBackupRequestProps } from '../domain/BackupRequest';
-import { RequestTransportType } from '../domain/RequestTransportType';
+import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
+import { BackupRequest, IBackupRequestProps } from '../../domain/BackupRequest';
+import { RequestTransportType } from '../../domain/RequestTransportType';
 
 // add errors when you define them
 type Response = Either<Result<any>, Result<BackupRequest>>;

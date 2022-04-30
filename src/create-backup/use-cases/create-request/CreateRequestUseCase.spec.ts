@@ -1,6 +1,6 @@
 import { CreateRequestUseCase } from './CreateRequestUseCase';
 import { CreateRequestDTO } from './CreateRequestDTO';
-import { IBackupRequestRepo } from '../adapter/BackupRequestRepo';
+import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
 
 /**
  * See notes on testing with TypeORM in devnotes/3.1.1-RequestBackupUseCase
