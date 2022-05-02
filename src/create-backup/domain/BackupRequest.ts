@@ -23,51 +23,51 @@ export interface IBackupRequestProps {
 }
 
 export class BackupRequest extends Entity<IBackupRequestProps> {
-   public get backupRequestId (): string {
+   public get backupRequestId(): string {
       return this._id;
    }
 
-   public get statusTypeCode (): RequestStatusType {
+   public get statusTypeCode(): RequestStatusType {
       return this.props.statusTypeCode;
    }
 
-   public get receivedTimestamp (): Date {
+   public get receivedTimestamp(): Date {
       return this.props.receivedTimestamp as Date;
    }
 
-   public get checkedTimestamp (): Date {
+   public get checkedTimestamp(): Date {
       return this.props.checkedTimestamp as Date;
    }
 
-   public get sentToInterfaceTimestamp (): Date {
+   public get sentToInterfaceTimestamp(): Date {
       return this.props.sentToInterfaceTimestamp as Date;
    }
 
-   public get replyTimestamp (): Date {
+   public get replyTimestamp(): Date {
       return this.props.replyTimestamp as Date;
    }
 
-   public get backupJobId (): string {
+   public get backupJobId(): string {
       return this.props.backupJobId;
    }
 
-   public get dataDate (): Date {
+   public get dataDate(): Date {
       return this.props.dataDate as Date;
    }
 
-   public get preparedDataPathName (): string {
+   public get preparedDataPathName(): string {
       return this.props.preparedDataPathName;
    }
 
-   public get getOnStartFlag (): boolean {
+   public get getOnStartFlag(): boolean {
       return this.props.getOnStartFlag;
    }
 
-   public get requesterId (): string | undefined {
+   public get requesterId(): string | undefined {
       return this.props.requesterId;
    }
 
-   public get transportTypeCode (): RequestTransportType {
+   public get transportTypeCode(): RequestTransportType {
       return this.props.transportTypeCode;
    }
    
@@ -79,7 +79,7 @@ export class BackupRequest extends Entity<IBackupRequestProps> {
     * returns true if the `BackupRequest` has been checked to see if it is allowed
     * @returns `boolean`
     */
-   public isChecked (): boolean {
+   public isChecked(): boolean {
       return (this.statusTypeCode && ['Allowed', 'NotAllowed'].includes(this.statusTypeCode) && isDate(this.checkedTimestamp));
    }
 
@@ -87,7 +87,7 @@ export class BackupRequest extends Entity<IBackupRequestProps> {
     * returns true if the `BackupRequest` has been sent to the backup interface
     * @returns `boolean`
     */
-   public isSentToInterface (): boolean {
+   public isSentToInterface(): boolean {
       return (this.statusTypeCode && this.statusTypeCode === 'Sent' && isDate(this.sentToInterfaceTimestamp));
    }
 
@@ -95,16 +95,20 @@ export class BackupRequest extends Entity<IBackupRequestProps> {
     * returns true if the `BackupRequest` has received and processed a reply from the backup interface
     * @returns `boolean`
     */
-   public isReplied ():boolean {
+   public isReplied(): boolean {
       return (this.statusTypeCode && ['Succeeded', 'Failed'].includes(this.statusTypeCode) && isDate(this.replyTimestamp));
    }
 
-   // setStatus()
+   public setStatusSent(): void {
+      this.props.statusTypeCode = 'Sent';
+      this.props.sentToInterfaceTimestamp = new Date();
+   }
+   
    // setBackupJob()
    // setBackupProvider()
    // setStoragePath()
 
-   private constructor (props: IBackupRequestProps, id?: string) {
+   private constructor(props: IBackupRequestProps, id?: string) {
       super(props, id);
    }
 
@@ -118,7 +122,7 @@ export class BackupRequest extends Entity<IBackupRequestProps> {
     * If `create()` successfully creates the `BackupRequest` object, `result.isSuccess` is true and `result.getValue()` returns the new object.
     * If `create()` fails for any reason,  `result.isError` is true, `result.isSuccess is fales, and `result.getError()` returns the error
     */
-   public static create (props:IBackupRequestProps, id?: string): Result<BackupRequest> {
+   public static create(props:IBackupRequestProps, id?: string): Result<BackupRequest> {
       // check required props are not null or undefined
       // if result !succeeded return Result.fail<>()
 
