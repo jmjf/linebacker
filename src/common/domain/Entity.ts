@@ -44,6 +44,19 @@ export abstract class Entity<T> {
 	}
 
 	/**
+	 * 
+	 * @param indent number of spaces to indent for pretty printed output; if not provided, don't pretty print
+	 * @returns the entity's data as a JSON string with all values in one object (id and props values in the same object)
+	 * 
+	 * @remarks the default Object.prototype.toString() method returns a JSON string like {_id, props: {...} }. This method flattens it.
+	 */
+	public toJSON(indent?: number): string {
+		const props = JSON.parse(JSON.stringify(this.props));
+		props.id = this._id;
+		return JSON.stringify(props, null, indent);
+	}
+
+	/**
 	 *
 	 * @param object (optional) Entity of type T to test for equality to this entity
 	 * @returns `boolean`
