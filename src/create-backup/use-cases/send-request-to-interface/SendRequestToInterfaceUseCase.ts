@@ -26,11 +26,7 @@ export class SendRequestToInterfaceUseCase implements UseCase<SendRequestToInter
       try {
          backupRequest = await this.backupRequestRepo.getById(requestId);
       } catch(err) {
-         return left(Result.fail(`Get backup request by id failed for request id ${requestId}`));
-      }
-
-      if (backupRequest.backupRequestId === undefined || backupRequest.backupRequestId === null) {
-         return left(Result.fail(`Backup request not found for requestId ${requestId}`));
+         return left(Result.fail(`Backup request not found for request id ${requestId}`));
       }
 
       if (backupRequest.isSentToInterface()) {

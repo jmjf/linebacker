@@ -121,4 +121,25 @@ describe('Send Request To Interface Use Case', () => {
       // Assert
       expect(result.isLeft()).toBe(true);
    });
+
+   test('when backup request is not found, it returns failure with error message "not found"', async () => {
+      // Arrange
+      const resultBackupRequest = BackupRequest.create(
+         {
+            ...backupRequestProps,
+            backupJobId: 'sendMessage fails'
+         }
+      ).getValue();
+      const repo = backupRequestRepoFactory();
+      const adapter = backupInterfaceAdapterFactory({sendMessageResult: false});
+      const useCase = new SendRequestToInterfaceUseCase({backupRequestRepo: repo, backupInterfaceAdapater: adapter});
+      const dto = { ...baseDto };
+
+      // Act
+      const result = await useCase.execute(dto);
+
+      // Assert
+      expect(result.isLeft()).toBe(true);
+      expect(result.value.errorValue()).toMatch('not found');
+   });
 });

@@ -1,6 +1,5 @@
 import { CreateRequestUseCase } from './CreateRequestUseCase';
 import { CreateRequestDTO } from './CreateRequestDTO';
-import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
 import { backupRequestRepoFactory } from '../../test-utils/backupRequestRepoFactory';
 
 /**

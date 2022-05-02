@@ -1,12 +1,12 @@
 import { IBackupRequestRepo } from '../adapter/BackupRequestRepo';
 import { BackupRequest } from '../domain/BackupRequest';
 
-interface IBackupRepoFactoryParams {
+interface IBackupRequestRepoFactoryParams {
 	existsResult?: boolean;
 	getByIdResult?: BackupRequest;
 }
 export function backupRequestRepoFactory(
-	params?: IBackupRepoFactoryParams
+	params?: IBackupRequestRepoFactoryParams
 ): IBackupRequestRepo {
 	return <IBackupRequestRepo>{
 		exists(requestId: string): Promise<boolean> {
@@ -14,7 +14,10 @@ export function backupRequestRepoFactory(
 		},
 
 		async getById(requestId: string): Promise<BackupRequest> {
-			return Promise.resolve(params?.getByIdResult ? params.getByIdResult : {} as BackupRequest);
+			if (!params || !params.getByIdResult) {
+				throw new Error('BackupRequestRepo getByIdResult not defined');
+			}
+			return Promise.resolve(params.getByIdResult);
 		},
 
 		save(backupRequest: BackupRequest): Promise<void> {
