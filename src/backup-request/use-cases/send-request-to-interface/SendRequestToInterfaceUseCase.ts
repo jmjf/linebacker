@@ -21,7 +21,7 @@ export class SendRequestToInterfaceUseCase implements UseCase<SendRequestToInter
    public async execute(request: SendRequestToInterfaceDTO): Promise<Response> {
       // Get request from repository (returns a `BackupRequest`)
       let backupRequest: BackupRequest;
-      const { requestId } = request;
+      const requestId = request.requestId;
 
       try {
          backupRequest = await this.backupRequestRepo.getById(requestId);

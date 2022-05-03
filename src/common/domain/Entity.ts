@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { UniqueIdentifier } from './UniqueIdentifier';
 
 /**
  * Type guard for the Entity class
@@ -27,32 +27,32 @@ const isEntity = (v: any): v is Entity<any> => {
  * @typeParam `T` type of the Entity's properties object (interface)
  */
 export abstract class Entity<T> {
-	protected readonly _id: string;
+	protected readonly _id: UniqueIdentifier;
 	public readonly props: T;
 
 	/**
 	 *
 	 * @param props an object shaped like the entity's properties (<T>)
-	 * @param id optional string, must be a valid UUIDv4 (not validated)
+	 * @param id optional UniqueIdentifier, must be a valid UUIDv4 (not validated)
 	 *
-	 * @remarks If `id` isn't provided, the constructor will generate a UUIDv4.
+	 * @remarks If `id` isn't provided, the constructor will create a new UniqueIdentifier.
 	 * 
 	 */
-	constructor(props: T, id?: string) {
-		this._id = id ? id : uuidv4();
+	constructor(props: T, id?: UniqueIdentifier) {
+		this._id = (id ? id : new UniqueIdentifier());
 		this.props = props;
 	}
 
 	/**
 	 * 
-	 * @param indent number of spaces to indent for pretty printed output; if not provided, don't pretty print
+	 * @param indent number of spaces to indent for pretty printed output; if not provided, don't pretty print (prefer for logging)
 	 * @returns the entity's data as a JSON string with all values in one object (id and props values in the same object)
 	 * 
 	 * @remarks the default Object.prototype.toString() method returns a JSON string like {_id, props: {...} }. This method flattens it.
 	 */
 	public toJSON(indent?: number): string {
 		const props = JSON.parse(JSON.stringify(this.props));
-		props.id = this._id;
+		props.id = this._id.value;
 		return JSON.stringify(props, null, indent);
 	}
 
@@ -74,6 +74,6 @@ export abstract class Entity<T> {
 			return false;
 		}
 
-		return this._id === object._id;
+		return this._id.value === object._id.value;
 	}
 }

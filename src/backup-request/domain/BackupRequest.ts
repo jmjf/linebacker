@@ -1,8 +1,10 @@
 import { isDate } from 'util/types';
-import { Entity } from '../../common/domain/Entity';
+import { AggregateRoot } from '../../common/domain/AggregateRoot';
 import { Guard, GuardArgumentCollection } from '../../common/domain/Guard';
 import { Result } from '../../common/domain/Result';
+import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
 import { BackupProviderType } from './BackupProviderType';
+import { BackupRequestCreated } from './BackupRequestCreated';
 import { RequestStatusType } from './RequestStatusType';
 import { RequestTransportType, validRequestTransportTypes } from './RequestTransportType';
 
@@ -22,9 +24,44 @@ export interface IBackupRequestProps {
    requesterId?: string
 }
 
-export class BackupRequest extends Entity<IBackupRequestProps> {
-   public get backupRequestId(): string {
+export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
+   public get backupRequestId(): UniqueIdentifier {
       return this._id;
+   }
+
+   public get backupJobId(): string {
+      return this.props.backupJobId;
+   }
+
+   public get dataDate(): Date {
+      return this.props.dataDate as Date;
+   }
+
+
+   public get preparedDataPathName(): string {
+      return this.props.preparedDataPathName;
+   }
+
+   public get getOnStartFlag(): boolean {
+      return this.props.getOnStartFlag;
+   }
+
+   public get transportTypeCode(): RequestTransportType {
+      return this.props.transportTypeCode as RequestTransportType;
+   }
+
+   public get backupProviderCode() : BackupProviderType {
+      return this.props.backupProviderCode as BackupProviderType;
+   }
+   public set backupProviderCode(provider: BackupProviderType) {
+      this.props.backupProviderCode = provider;
+   }
+
+   public get storagePathName(): string {
+      return this.props.storagePathName as string;
+   }
+   public set storagePathName(path: string) {
+      this.props.storagePathName = path;
    }
 
    public get statusTypeCode(): RequestStatusType {
@@ -46,33 +83,9 @@ export class BackupRequest extends Entity<IBackupRequestProps> {
    public get replyTimestamp(): Date {
       return this.props.replyTimestamp as Date;
    }
-
-   public get backupJobId(): string {
-      return this.props.backupJobId;
-   }
-
-   public get dataDate(): Date {
-      return this.props.dataDate as Date;
-   }
-
-   public get preparedDataPathName(): string {
-      return this.props.preparedDataPathName;
-   }
-
-   public get getOnStartFlag(): boolean {
-      return this.props.getOnStartFlag;
-   }
-
-   public get requesterId(): string | undefined {
-      return this.props.requesterId;
-   }
-
-   public get transportTypeCode(): RequestTransportType {
-      return this.props.transportTypeCode;
-   }
    
-   public get backupProviderCode() : BackupProviderType {
-      return this.props.backupProviderCode as BackupProviderType;
+   public get requesterId(): string {
+      return this.props.requesterId as string;
    }
 
    /**
@@ -103,12 +116,13 @@ export class BackupRequest extends Entity<IBackupRequestProps> {
       this.props.statusTypeCode = 'Sent';
       this.props.sentToInterfaceTimestamp = new Date();
    }
-   
-   // setBackupJob()
-   // setBackupProvider()
-   // setStoragePath()
 
-   private constructor(props: IBackupRequestProps, id?: string) {
+   public setStatusChecked(isAllowed: boolean): void {
+      this.props.statusTypeCode = (isAllowed ? 'Allowed' : 'NotAllowed');
+      this.props.checkedTimestamp = new Date();
+   }
+
+   private constructor(props: IBackupRequestProps, id?: UniqueIdentifier) {
       super(props, id);
    }
 
@@ -122,7 +136,7 @@ export class BackupRequest extends Entity<IBackupRequestProps> {
     * If `create()` successfully creates the `BackupRequest` object, `result.isSuccess` is true and `result.getValue()` returns the new object.
     * If `create()` fails for any reason,  `result.isError` is true, `result.isSuccess is fales, and `result.getError()` returns the error
     */
-   public static create(props:IBackupRequestProps, id?: string): Result<BackupRequest> {
+   public static create(props:IBackupRequestProps, id?: UniqueIdentifier): Result<BackupRequest> {
       // check required props are not null or undefined
       // if result !succeeded return Result.fail<>()
 
@@ -170,11 +184,10 @@ export class BackupRequest extends Entity<IBackupRequestProps> {
       
       const backupRequest = new BackupRequest(defaultValues, id);
 
-      // new requests will not have an id parameter
-      // const isNewRequest = !!id === false;
-      // if (isNewRequest) {
-      //    // perform any special actions for new request
-      // }
+      // new requests will have an undefined id parameter from the function call
+      if (!!id === false) {
+         backupRequest.addDomainEvent(new BackupRequestCreated(backupRequest));
+      }
 
       return Result.succeed<BackupRequest>(backupRequest);
    }
