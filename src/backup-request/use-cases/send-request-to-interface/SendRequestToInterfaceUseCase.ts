@@ -13,15 +13,15 @@ export class SendRequestToInterfaceUseCase implements UseCase<SendRequestToInter
    private backupRequestRepo: IBackupRequestRepo;
    private backupInterfaceAdapter: IBackupRequestBackupInterfaceAdapter;
 
-   constructor (deps: {backupRequestRepo: IBackupRequestRepo, backupInterfaceAdapater: IBackupRequestBackupInterfaceAdapter}) {
+   constructor (deps: {backupRequestRepo: IBackupRequestRepo, backupInterfaceAdapter: IBackupRequestBackupInterfaceAdapter}) {
      this.backupRequestRepo = deps.backupRequestRepo;
-     this.backupInterfaceAdapter = deps.backupInterfaceAdapater;
+     this.backupInterfaceAdapter = deps.backupInterfaceAdapter;
    }
 
    public async execute(request: SendRequestToInterfaceDTO): Promise<Response> {
       // Get request from repository (returns a `BackupRequest`)
       let backupRequest: BackupRequest;
-      const requestId = request.requestId;
+      const requestId = request.backupRequestId;
 
       try {
          backupRequest = await this.backupRequestRepo.getById(requestId);

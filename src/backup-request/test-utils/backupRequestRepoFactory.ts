@@ -1,5 +1,6 @@
 import { IBackupRequestRepo } from '../adapter/BackupRequestRepo';
 import { BackupRequest } from '../domain/BackupRequest';
+import { DomainEventBus } from '../../common/domain/DomainEventBus';
 
 interface IBackupRequestRepoFactoryParams {
 	existsResult?: boolean;
@@ -21,6 +22,7 @@ export function backupRequestRepoFactory(
 		},
 
 		save(backupRequest: BackupRequest): Promise<void> {
+			DomainEventBus.publishEventsForAggregate(backupRequest.backupRequestId);
 			return Promise.resolve();
 		},
 	};

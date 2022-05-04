@@ -6,7 +6,7 @@ export interface IDomainEvent {
    getAggregateId (): UniqueIdentifier;
 }
 
-export interface IDomainEventHandler<IDomainEvent> {
+export interface IDomainEventSubscriber<IDomainEvent> {
    setupSubscriptions(): void;
 }
 
@@ -20,10 +20,6 @@ export class DomainEventBus {
       if (!aggregateFound) {
          this.markedAggregates.push(aggregate);
       }
-   }
-
-   private static publishAggregateEvents(aggregate: AggregateRoot<any>): void {
-      aggregate.domainEvents.forEach((event: IDomainEvent) => this.publishToSubscribers(event));
    }
 
    private static removeMarkedAggregate(aggregate: AggregateRoot<any>): void {
@@ -43,7 +39,7 @@ export class DomainEventBus {
       const aggregate = this.findMarkedAggregateById(id);
 
       if (aggregate) {
-         this.publishAggregateEvents(aggregate);
+         aggregate.domainEvents.forEach((event: IDomainEvent) => this.publishToSubscribers(event));
          aggregate.clearEvents();
          this.removeMarkedAggregate(aggregate);
       }

@@ -6,7 +6,7 @@ import { BackupRequest, IBackupRequestProps } from '../../domain/BackupRequest';
 
 describe('Send Request To Interface Use Case', () => {
    const baseDto = {
-      requestId: 'test'
+      backupRequestId: 'testRequest'
    } as SendRequestToInterfaceDTO;
 
    const backupRequestProps = {
@@ -30,7 +30,7 @@ describe('Send Request To Interface Use Case', () => {
          }).getValue();
       const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});
       const adapter = backupInterfaceAdapterFactory({sendMessageResult: true});
-      const useCase = new SendRequestToInterfaceUseCase({backupRequestRepo: repo, backupInterfaceAdapater: adapter});
+      const useCase = new SendRequestToInterfaceUseCase({backupRequestRepo: repo, backupInterfaceAdapter: adapter});
       const dto = { ...baseDto };
 
       // Act
@@ -55,7 +55,7 @@ describe('Send Request To Interface Use Case', () => {
       const sentTimestamp = new Date(resultBackupRequest.sentToInterfaceTimestamp); // ensure we have a separate instance
       const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});
       const adapter = backupInterfaceAdapterFactory({sendMessageResult: true});
-      const useCase = new SendRequestToInterfaceUseCase({backupRequestRepo: repo, backupInterfaceAdapater: adapter});
+      const useCase = new SendRequestToInterfaceUseCase({backupRequestRepo: repo, backupInterfaceAdapter: adapter});
       const dto = { ...baseDto };
 
       // Act
@@ -71,7 +71,7 @@ describe('Send Request To Interface Use Case', () => {
       // Arrange
       const repo = backupRequestRepoFactory();
       const adapter = backupInterfaceAdapterFactory({sendMessageResult: true});
-      const useCase = new SendRequestToInterfaceUseCase({backupRequestRepo: repo, backupInterfaceAdapater: adapter});
+      const useCase = new SendRequestToInterfaceUseCase({backupRequestRepo: repo, backupInterfaceAdapter: adapter});
       const dto = { ...baseDto };
 
       // Act
@@ -92,7 +92,7 @@ describe('Send Request To Interface Use Case', () => {
       ).getValue();
       const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});
       const adapter = backupInterfaceAdapterFactory({sendMessageResult: true});
-      const useCase = new SendRequestToInterfaceUseCase({backupRequestRepo: repo, backupInterfaceAdapater: adapter});
+      const useCase = new SendRequestToInterfaceUseCase({backupRequestRepo: repo, backupInterfaceAdapter: adapter});
       const dto = { ...baseDto };
 
       // Act
@@ -112,7 +112,7 @@ describe('Send Request To Interface Use Case', () => {
       ).getValue();
       const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});
       const adapter = backupInterfaceAdapterFactory({sendMessageResult: false});
-      const useCase = new SendRequestToInterfaceUseCase({backupRequestRepo: repo, backupInterfaceAdapater: adapter});
+      const useCase = new SendRequestToInterfaceUseCase({backupRequestRepo: repo, backupInterfaceAdapter: adapter});
       const dto = { ...baseDto };
 
       // Act
@@ -132,7 +132,7 @@ describe('Send Request To Interface Use Case', () => {
       ).getValue();
       const repo = backupRequestRepoFactory();
       const adapter = backupInterfaceAdapterFactory({sendMessageResult: false});
-      const useCase = new SendRequestToInterfaceUseCase({backupRequestRepo: repo, backupInterfaceAdapater: adapter});
+      const useCase = new SendRequestToInterfaceUseCase({backupRequestRepo: repo, backupInterfaceAdapter: adapter});
       const dto = { ...baseDto };
 
       // Act

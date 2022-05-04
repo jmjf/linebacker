@@ -1,3 +1,5 @@
+import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
+
 export interface SendRequestToInterfaceDTO {
-   requestId: string; // UUID
+   backupRequestId: string; // UUID
 }

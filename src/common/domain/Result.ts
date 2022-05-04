@@ -1,3 +1,5 @@
+import { log } from '../adapter/logger';
+
 /**
  * A class that represents an operation's outcome
  *
@@ -53,7 +55,7 @@ export class Result<T> {
 	 */
 	public getValue(): T {
 		if (!this.isSuccess) {
-			console.log(this.error);
+			log.error(` _time: '${(new Date()).toUTCString()}', error: '${JSON.stringify(this.error)}'}`);
 			throw new Error(
 				'Cannot get the value of an error result. Use errorValue instead.'
 			);

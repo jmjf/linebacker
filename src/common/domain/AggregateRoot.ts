@@ -1,6 +1,7 @@
 import { Entity } from './Entity';
 import { DomainEventBus, IDomainEvent } from './DomainEventBus';
 import { UniqueIdentifier } from './UniqueIdentifier';
+import { log } from '../adapter/logger';
 
 export abstract class AggregateRoot<T> extends Entity<T> {
    private _domainEvents: IDomainEvent[] = [];
@@ -31,7 +32,7 @@ export abstract class AggregateRoot<T> extends Entity<T> {
       const aggregateName = (aggregateClass ? aggregateClass.constructor.name : 'null');
       const domainEventClass = Reflect.getPrototypeOf(domainEvent);
       const domainEventName = (domainEventClass ? domainEventClass.constructor.name : 'null');
-      const now = new Date();
-      console.info(`{ _time: ${now.toUTCString()}, message: 'Domain event created', aggregateName: '${aggregateName}', domainEventName: '${domainEventName}'}`);
+
+      log.info(`{ _time: ${(new Date()).toUTCString()}, message: 'Domain event created', aggregateName: '${aggregateName}', domainEventName: '${domainEventName}'}`);
    }
 }

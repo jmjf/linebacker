@@ -1,10 +1,15 @@
 import { CreateRequestUseCase } from './CreateRequestUseCase';
 import { CreateRequestDTO } from './CreateRequestDTO';
 import { backupRequestRepoFactory } from '../../test-utils/backupRequestRepoFactory';
+import { BackupRequestCreatedSubscriber } from '../send-request-to-interface/BackupRequestCreatedSubscriber';
+import { SendRequestToInterfaceUseCase } from '../send-request-to-interface/SendRequestToInterfaceUseCase';
+import { backupInterfaceAdapterFactory } from '../../test-utils/backupInterfaceAdapterFactory';
 
 /**
  * See notes on testing with TypeORM in devnotes/3.1.1-RequestBackupUseCase
  */
+
+new BackupRequestCreatedSubscriber(new SendRequestToInterfaceUseCase({backupRequestRepo: backupRequestRepoFactory(), backupInterfaceAdapter: backupInterfaceAdapterFactory()}));
 
 describe('Create Request Use Case', () => {
 
