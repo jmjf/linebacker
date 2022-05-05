@@ -8,7 +8,10 @@ interface IBackupJobServiceAdapterFactoryParams {
 export function backupJobServiceAdapterFactory(params?: IBackupJobServiceAdapterFactoryParams): IBackupJobServiceAdapter {
    return <IBackupJobServiceAdapter> {
       getBackupJob(backupJobId: string): Promise<BackupJob> {
-         return Promise.resolve(params?.getBackupJobResult ? params.getBackupJobResult : {} as BackupJob );
+         if (!params || !params.getBackupJobResult) {
+            throw new Error('BackupJobServiceAdapter getBackupJobResult not defined');
+         }
+         return Promise.resolve(params.getBackupJobResult);
       }
    };
 }

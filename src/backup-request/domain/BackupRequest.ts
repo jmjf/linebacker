@@ -161,6 +161,10 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 			return Result.fail(transportGuardResult.message);
 		}
 
+      // I could do a similar test on status, but that would make certain tests fail before the test
+      // status should be controlled by the system, so humans shouldn't be able to muck it up if they
+      // don't try to meddle with the data in persistence.
+
 		// ensure dataDate is a date
       const dataDateGuardResult = Guard.isValidDate(props.dataDate, 'dataDate');
 		if (!dataDateGuardResult.isSuccess) {
