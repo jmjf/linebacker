@@ -2,7 +2,7 @@ import { IDomainEvent } from '../../common/domain/DomainEventBus';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
 import { BackupRequest } from './BackupRequest';
 
-export class BackupRequestCreated implements IDomainEvent {
+export class BackupRequestAllowed implements IDomainEvent {
    public eventTimestamp: Date;
    public backupRequest: BackupRequest;
 

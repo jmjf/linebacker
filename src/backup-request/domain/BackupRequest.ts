@@ -4,6 +4,7 @@ import { Guard, GuardArgumentCollection } from '../../common/domain/Guard';
 import { Result } from '../../common/domain/Result';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
 import { BackupProviderType } from './BackupProviderType';
+import { BackupRequestAllowed } from './BackupRequestAllowed';
 import { BackupRequestCreated } from './BackupRequestCreated';
 import { RequestStatusType } from './RequestStatusType';
 import { RequestTransportType, validRequestTransportTypes } from './RequestTransportType';
@@ -120,6 +121,9 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
    public setStatusChecked(isAllowed: boolean): void {
       this.props.statusTypeCode = (isAllowed ? 'Allowed' : 'NotAllowed');
       this.props.checkedTimestamp = new Date();
+      if (isAllowed) {
+         this.addDomainEvent(new BackupRequestAllowed(this));
+      }
    }
 
    private constructor(props: IBackupRequestProps, id?: UniqueIdentifier) {
