@@ -8,7 +8,8 @@ export interface IBackupJobProps {
    storagePathName: string,
    backupProviderCode: BackupProviderType,
    daysToKeep: number,
-   isActive: boolean
+   isActive: boolean,
+   holdFlag: boolean
 }
 
 export class BackupJob extends AggregateRoot<IBackupJobProps> {
@@ -24,8 +25,16 @@ export class BackupJob extends AggregateRoot<IBackupJobProps> {
       return this.props.storagePathName;
    }
 
+   public get daysToKeep(): number {
+      return this.props.daysToKeep;
+   }
+
    public get isActive(): boolean {
       return this.props.isActive;
+   }
+
+   public get holdFlag(): boolean {
+      return this.props.holdFlag;
    }
 
    // the backup controller gets backup jobs from the user interface service, so never gets a backup job without an id
@@ -51,7 +60,8 @@ export class BackupJob extends AggregateRoot<IBackupJobProps> {
          { arg: props.backupProviderCode, argName: 'backupProviderCode' },
          { arg: props.daysToKeep, argName: 'daysToKeep' },
          { arg: props.isActive, argName: 'isActive' },
-         { arg: props.storagePathName, argName: 'storagePathName' }
+         { arg: props.storagePathName, argName: 'storagePathName' },
+         { arg: props.holdFlag, argName: 'holdFlag' }
       ];
 
       const propsGuardResult = Guard.againstNullOrUndefinedBulk(guardArgs);

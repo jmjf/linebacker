@@ -8,27 +8,27 @@ import { CheckRequestAllowedDTO } from './CheckRequestAllowedDTO';
 import { CheckRequestAllowedUseCase } from './CheckRequestAllowedUseCase';
 
 describe('Check Request Allowed Use Case', () => {
-   const baseDto = {
+   const baseDto: CheckRequestAllowedDTO = {
       backupRequestId: 'job'
-   } as CheckRequestAllowedDTO;
+   };
 
-   const backupRequestProps = {
+   const backupRequestProps: IBackupRequestProps = {
       backupJobId: 'job',
       dataDate: new Date(),
       preparedDataPathName: 'path',
       getOnStartFlag: true,
       transportTypeCode: 'HTTP',
       statusTypeCode: 'Received',
-      receivedTimestamp: new Date(),
-   
-   } as IBackupRequestProps;
+      receivedTimestamp: new Date()
+   };
 
-   const backupJobProps = {
+   const backupJobProps: IBackupJobProps = {
       storagePathName: 'my/storage/path',
       backupProviderCode: 'CloudA',
       daysToKeep: 3650,
-      isActive: true
-   } as IBackupJobProps;
+      isActive: true,
+      holdFlag: false
+   };
 
    test('when backup job for request meets allowed rules, it returns a BackupRequest in Allowed status', async () => {
       // Arrange

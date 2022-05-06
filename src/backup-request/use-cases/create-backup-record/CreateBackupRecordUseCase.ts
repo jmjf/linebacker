@@ -4,8 +4,10 @@ import { Result } from '../../../common/domain/Result';
 import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
 import { IBackupRepo } from '../../adapter/BackupRepo';
 import { Backup, IBackupProps } from '../../domain/Backup';
-import { BackupResultType } from '../../domain/BackupResultType';
 import { BackupStatusReplyDTO } from './BackupStatusReplyDTO';
+import { BackupRequest } from '../../domain/BackupRequest';
+import { BackupJob } from '../../domain/BackupJob';
+import { IBackupJobServiceAdapter } from '../../adapter/BackupJobServiceAdapter';
 
 // add errors when you define them
 type Response = Either<Result<any>, Result<Backup>>;
@@ -18,40 +20,50 @@ export class CreateBackupRecordUseCase
 {
 	private backupRequestRepo: IBackupRequestRepo;
    private backupRepo: IBackupRepo;
+	private backupJobServiceAdapter: IBackupJobServiceAdapter;
 
-	constructor(inject: {backupRequestRepo: IBackupRequestRepo, backupRepo: IBackupRepo}) {
+	constructor(inject: {backupRequestRepo: IBackupRequestRepo, backupRepo: IBackupRepo, backupJobServiceAdapter: IBackupJobServiceAdapter}) {
 		this.backupRequestRepo = inject.backupRequestRepo;
 		this.backupRepo = inject.backupRepo;
+		this.backupJobServiceAdapter = inject.backupJobServiceAdapter;
 	}
 
 	async execute(reply: BackupStatusReplyDTO): Promise<Response> {
 
-      // if reply.backupRequestId doesn't exist, fail
+      // backup request must exist or we can't do anything
+		let backupRequest: BackupRequest;
+      try {
+         backupRequest = await this.backupRequestRepo.getById(reply.backupRequestId);
+      } catch(err) {
+         return left(Result.fail(`Backup request not found for request id ${reply.backupRequestId}`));
+      }
 
-		// initialize props
+		// backup job must exist or we can't do anything
+		let backupJob: BackupJob;
+		try {
+			backupJob = await this.backupJobServiceAdapter.getBackupJob(backupRequest.backupJobId);
+		} catch (err) {
+			return left(Result.fail(`Backup job not found for job id ${backupRequest.backupJobId}`));
+		}
+
+		const { resultTypeCode, ...restOfReply } = reply;
+
+		// create backup aggregate from data in request, reply, and job
 		const requestProps: IBackupProps = {
-			backupRequestId: reply.backupRequestId,
-			storagePathName: reply.backupStorageLocation,
-         resultTypeCode: reply.resultType as BackupResultType,
-         backupByteCount: reply.backupBytes,
-         copyStartTimestamp: reply.copyStartTimestamp,
-         copyEndTimestamp: reply.copyEndTimestamp,
-         verifyStartTimestamp: reply.verifyStartTimestamp,
-         verifyEndTimestamp: reply.verifyEndTimestamp,
-         verifyHashText: reply.verifiedHash
+			...restOfReply,
+			dataDate: backupRequest.dataDate,
+			backupProviderCode: backupRequest.backupProviderCode,
+			backupJobId: backupRequest.backupJobId,
+			daysToKeepCount: backupJob.daysToKeep,
+			holdFlag: backupJob.holdFlag
 		};
 		
-      // get a new Backup (or handle error)
 		const backupOrError = Backup.create(requestProps);
 		if (backupOrError.isFailure) {
 			return left(backupOrError);
 		}
 
 		const backup = backupOrError.getValue();
-
-      // get backup job for request
-
-      // create backup aggregate from data in request, reply, and job
 
       // save backup aggregate
 
