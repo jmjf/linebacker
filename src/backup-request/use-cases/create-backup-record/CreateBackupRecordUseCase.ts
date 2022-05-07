@@ -37,7 +37,7 @@ export class CreateBackupRecordUseCase
       } catch(err) {
          return left(Result.fail(`Backup request not found for request id ${reply.backupRequestId}`));
       }
-
+//console.log('cbruc 1');
 		// backup job must exist or we can't do anything
 		let backupJob: BackupJob;
 		try {
@@ -45,7 +45,7 @@ export class CreateBackupRecordUseCase
 		} catch (err) {
 			return left(Result.fail(`Backup job not found for job id ${backupRequest.backupJobId}`));
 		}
-
+//console.log('cbruc 2');
 		const { resultTypeCode, ...restOfReply } = reply;
 
 		// create backup aggregate from data in request, reply, and job
@@ -53,18 +53,18 @@ export class CreateBackupRecordUseCase
 			...restOfReply,
 			dataDate: backupRequest.dataDate,
 			backupProviderCode: backupRequest.backupProviderCode,
-			backupJobId: backupRequest.backupJobId,
+			backupJobId: backupJob.backupJobId.value,
 			daysToKeepCount: backupJob.daysToKeep,
 			holdFlag: backupJob.holdFlag
 		};
-		
+//console.log('cbruc 3');
 		const backupOrError = Backup.create(requestProps);
 		if (backupOrError.isFailure) {
 			return left(backupOrError);
 		}
-
+//console.log('cbruc 4');
 		const backup = backupOrError.getValue();
-
+//console.log('cbruc 5', JSON.stringify(backup));
       // save backup aggregate
 
 		return right(Result.succeed<Backup>(backup));

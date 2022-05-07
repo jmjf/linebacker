@@ -1,4 +1,6 @@
-import { BackupRequest } from '../../domain/BackupRequest';
+import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
+import { BackupJob, IBackupJobProps } from '../../domain/BackupJob';
+import { BackupRequest, IBackupRequestProps } from '../../domain/BackupRequest';
 import { backupJobServiceAdapterFactory } from '../../test-utils/backupJobServiceAdapterFactory';
 import { backupRepoFactory } from '../../test-utils/backupRepoFactory';
 import { backupRequestRepoFactory } from '../../test-utils/backupRequestRepoFactory';
@@ -6,7 +8,7 @@ import { BackupStatusReplyDTO } from './BackupStatusReplyDTO';
 import { CreateBackupRecordUseCase } from './CreateBackupRecordUseCase';
 
 describe('Create Backup Record Use Case', () => {
-   const backupStatusDTO = {
+   const backupStatusDTO: BackupStatusReplyDTO = {
       apiVersion: '2022-01-01',
       backupRequestId: 'backup request',
       storagePathName: '/path/to/backup/storage',
@@ -14,7 +16,25 @@ describe('Create Backup Record Use Case', () => {
       backupByteCount: 1000000,
       copyStartTimestamp: '2022-05-06T00:20:03.111Z',
       copyEndTimestamp: '2022-05-06T00:32:23.888Z'
-   } as BackupStatusReplyDTO;
+   };
+
+   const backupJobDTO: IBackupJobProps = {
+      storagePathName: 'storage path',
+      backupProviderCode: 'CloudA',
+      daysToKeep: 100,
+      isActive: true,
+      holdFlag: false
+   };
+
+   const backupRequestDTO: IBackupRequestProps = {
+      backupJobId: 'backup job',
+      dataDate: new Date(),
+      preparedDataPathName: 'prepared/path',
+      getOnStartFlag: true,
+      transportTypeCode: 'HTTP',
+      statusTypeCode: 'Sent',
+      receivedTimestamp: new Date()
+   };
 
    test(`when the backup request doesn't exist, it returns failure`, async () => {
       // Arrange
@@ -47,4 +67,35 @@ describe('Create Backup Record Use Case', () => {
       expect(result.isLeft()).toBe(true);
       expect(result.value.errorValue()).toMatch('Backup job not found');
    });
+
+   // Can test attributes in BackupRequestReplyDTO because other values are set from retrieved data in the use case
+   test.each( [
+      { propName: 'backupRequestId' },
+      { propName: 'storagePathName' },
+      { propName: 'backupByteCount' },
+      { propName: 'copyStartTimestamp' },
+      { propName: 'copyEndTimestamp' }
+   ])('when required reply attribute $propName is missing, it returns failure', async ({propName}) => {
+      // Arrange
+      const backupRequest = BackupRequest.create(backupRequestDTO).getValue();
+      const backupRequestRepo = backupRequestRepoFactory({ getByIdResult: backupRequest });
+      const backupRepo = backupRepoFactory();
+      const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).getValue();
+      const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
+      const useCase = new CreateBackupRecordUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
+      const dto = { ...backupStatusDTO };
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      dto[propName] = undefined;
+
+      // Act
+      const result = await useCase.execute(dto);
+      console.log(`result for ${propName}`, JSON.stringify(result, null, 4));
+
+      // Assert
+      expect(result.isLeft()).toBe(true);
+      expect(result.value.errorValue()).toMatch('is null or undefined');
+      expect(result.value.errorValue()).toMatch(propName);
+   });
+
 });

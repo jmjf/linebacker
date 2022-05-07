@@ -128,15 +128,17 @@ export class Backup extends Entity<IBackupProps> {
 
       const guardArgs: GuardArgumentCollection = [
          { arg: props.backupRequestId, argName: 'backupRequestId' },
+         { arg: props.storagePathName, argName: 'storagePathName' },
+         { arg: props.backupByteCount, argName: 'backupByteCount' },
+         { arg: props.copyStartTimestamp, argName: 'copyStartTimestamp' },
+         { arg: props.copyEndTimestamp, argName: 'copyEndTimestamp' },
+         // for CreateBackupRecordUseCase, the following values are set based on data in the retrieved results
+         // difficult to test because they'll fail BackupRequest or BackupJob create and can't set after create
          { arg: props.backupJobId, argName: 'backupJobId' },
          { arg: props.dataDate, argName: 'dataDate' },
          { arg: props.backupProviderCode, argName: 'backupProviderCode' },
          { arg: props.daysToKeepCount, argName: 'daysToKeepCount' },
-         { arg: props.holdFlag, argName: 'holdFlag' },
-         { arg: props.storagePathName, argName: 'storagePathName' },
-         { arg: props.backupByteCount, argName: 'backupByteCount' },
-         { arg: props.copyStartTimestamp, argName: 'copyStartTimestamp' },
-         { arg: props.copyEndTimestamp, argName: 'copyEndTimestamp' }
+         { arg: props.holdFlag, argName: 'holdFlag' }
       ];
 
       const propsGuardResult = Guard.againstNullOrUndefinedBulk(guardArgs);
