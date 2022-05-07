@@ -6,6 +6,7 @@ import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
 import { BackupProviderType } from './BackupProviderType';
 import { BackupRequestAllowed } from './BackupRequestAllowed';
 import { BackupRequestCreated } from './BackupRequestCreated';
+import { BackupResultType } from './BackupResultType';
 import { RequestStatusType } from './RequestStatusType';
 import { RequestTransportType, validRequestTransportTypes } from './RequestTransportType';
 
@@ -23,6 +24,7 @@ export interface IBackupRequestProps {
    sentToInterfaceTimestamp?: string | Date,
    replyTimestamp?: string | Date,
    requesterId?: string
+   replyMessageText?: string
 }
 
 export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
@@ -37,7 +39,6 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
    public get dataDate(): Date {
       return this.props.dataDate as Date;
    }
-
 
    public get preparedDataPathName(): string {
       return this.props.preparedDataPathName;
@@ -89,6 +90,10 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
       return this.props.requesterId as string;
    }
 
+   public get replyMessageText(): string {
+      return this.props.replyMessageText as string;
+   }
+
    /**
     * returns true if the `BackupRequest` has been checked to see if it is allowed
     * @returns `boolean`
@@ -124,6 +129,12 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
       if (isAllowed) {
          this.addDomainEvent(new BackupRequestAllowed(this));
       }
+   }
+
+   public setStatusReplied(status: BackupResultType, message?: string): void {
+      this.props.statusTypeCode = status;
+      this.props.replyMessageText = (message ? message: '');
+      this.props.replyTimestamp = new Date();
    }
 
    private constructor(props: IBackupRequestProps, id?: UniqueIdentifier) {

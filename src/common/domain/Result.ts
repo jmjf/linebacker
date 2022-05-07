@@ -95,7 +95,7 @@ export class Result<T> {
 	 * @param error a string representing the error message
 	 * @returns `Result<U>` a failure result
 	 */
-	public static fail<U>(error: string): Result<U> {
+		public static fail<U>(error: string): Result<U> {
 		return new Result<U>(false, error);
 	}
 

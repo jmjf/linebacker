@@ -98,4 +98,78 @@ describe('Create Backup Record Use Case', () => {
       expect(result.value.errorValue()).toMatch(propName);
    });
 
+   test('when result type is invalid, it returns failure', async () => {
+      // Arrange
+      const backupRequest = BackupRequest.create(backupRequestDTO).getValue();
+      const backupRequestRepo = backupRequestRepoFactory({ getByIdResult: backupRequest });
+      const backupRepo = backupRepoFactory();
+      const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).getValue();
+      const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
+      const useCase = new CreateBackupRecordUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
+      const dto = { ...backupStatusDTO };
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      dto.resultTypeCode = 'invalid';
+
+      // Act
+      const result = await useCase.execute(dto);
+
+      // Assert
+      expect(result.isLeft()).toBe(true);
+      expect(result.value.errorValue()).toMatch('resultTypeCode is invalid');
+   });
+
+   test('when result type is Failed, it saves the request but not the backup record', async () => {
+      // Arrange
+      const backupRequest = BackupRequest.create(backupRequestDTO).getValue();
+      const backupRequestRepo = backupRequestRepoFactory({ getByIdResult: backupRequest });
+      const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
+
+      const backupRepo = backupRepoFactory();
+      const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
+      
+      const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).getValue();
+      const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
+      
+      const useCase = new CreateBackupRecordUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
+      const dto = { ...backupStatusDTO };
+      dto.resultTypeCode = 'Failed';
+      dto.messageText = 'test failure';
+
+      // Act
+      const result = await useCase.execute(dto);
+
+      // Assert
+      expect(result.isRight()).toBe(true);
+      expect(result.value.getValue().constructor.name).toBe('BackupRequest');
+      expect(result.value.getValue().replyMessageText).toBe(dto.messageText);
+      expect(backupRequestSaveSpy).toBeCalledTimes(1);
+      expect(backupRepoSaveSpy).not.toBeCalled();
+   });
+
+   test('when result type is Succeeded, it saves the request and the backup record', async () => {
+      // Arrange
+      const backupRequest = BackupRequest.create(backupRequestDTO).getValue();
+      const backupRequestRepo = backupRequestRepoFactory({ getByIdResult: backupRequest });
+      const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
+
+      const backupRepo = backupRepoFactory();
+      const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
+      
+      const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).getValue();
+      const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
+      
+      const useCase = new CreateBackupRecordUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
+      const dto = { ...backupStatusDTO };
+      dto.resultTypeCode = 'Succeeded';
+
+      // Act
+      const result = await useCase.execute(dto);
+
+      // Assert
+      expect(result.isRight()).toBe(true);
+      expect(result.value.getValue().constructor.name).toBe('Backup');
+      expect(backupRequestSaveSpy).toBeCalledTimes(1);
+      expect(backupRepoSaveSpy).toBeCalledTimes(1);
+   });
 });
