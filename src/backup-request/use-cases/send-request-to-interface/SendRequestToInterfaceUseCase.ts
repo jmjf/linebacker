@@ -4,6 +4,7 @@ import { Result } from '../../../common/domain/Result';
 import { IBackupRequestBackupInterfaceAdapter } from '../../adapter/BackupRequestBackupInterfaceAdapter';
 import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
 import { BackupRequest } from '../../domain/BackupRequest';
+import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { SendRequestToInterfaceDTO } from './SendRequestToInterfaceDTO';
 
 type Response = Either<Result<any>, Result<BackupRequest>>;
@@ -34,7 +35,7 @@ export class SendRequestToInterfaceUseCase implements UseCase<SendRequestToInter
          return right(Result.succeed<BackupRequest>(backupRequest));
       }
 
-      if (backupRequest.statusTypeCode !== 'Allowed') {
+      if (backupRequest.statusTypeCode !== RequestStatusTypeValues.Allowed) {
          return left(Result.fail(`Backup request is not in Allowed status requestId: ${requestId} statusTypeCode: ${backupRequest.statusTypeCode}`));
       }
       

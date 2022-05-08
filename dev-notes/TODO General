@@ -1,4 +1,3 @@
-[] Places where I convert a date to a string may get an invalid date string. What to do about that?
-[] Make date getters consistent everywhere.
-[] Does the use case need to know about API versions? Can I remove API version from DTOs and let controllers decide to accept/reject based on API version?
-[] Add error types and expand `Response` left options to include them for all domain entities/aggregates.
+* Does the use case need to know about API versions? 
+  * Can I remove API version from DTOs and let controllers decide to accept/reject based on API version?
+  * Controller would need to deal with any API version differences that might cause issues.

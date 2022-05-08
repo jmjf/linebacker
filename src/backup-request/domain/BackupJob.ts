@@ -2,7 +2,7 @@ import { AggregateRoot } from '../../common/domain/AggregateRoot';
 import { Guard, GuardArgumentCollection } from '../../common/domain/Guard';
 import { Result } from '../../common/domain/Result';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
-import { BackupProviderType, validBackupProvidersTypes } from './BackupProviderType';
+import { BackupProviderType, validBackupProviderTypes } from './BackupProviderType';
 
 export interface IBackupJobProps {
    storagePathName: string,
@@ -70,7 +70,7 @@ export class BackupJob extends AggregateRoot<IBackupJobProps> {
       }
 
       // ensure provider type is valid
-		const providerGuardResult = Guard.isOneOf(props.backupProviderCode, validBackupProvidersTypes, 'backupProviderType');
+		const providerGuardResult = Guard.isOneOf(props.backupProviderCode, validBackupProviderTypes, 'backupProviderType');
 		if (!providerGuardResult.isSuccess){
 			return Result.fail(providerGuardResult.message);
 		}

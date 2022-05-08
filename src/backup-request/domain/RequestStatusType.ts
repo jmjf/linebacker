@@ -1,4 +1,4 @@
-const RequestStatuses = {
+export const RequestStatusTypeValues = {
    Received: 'Received',
    Allowed: 'Allowed',
    NotAllowed: 'NotAllowed',
@@ -8,6 +8,6 @@ const RequestStatuses = {
 } as const;
 // as const prevents changing or adding values;
 
-export type RequestStatusType = typeof RequestStatuses[keyof typeof RequestStatuses];
+export type RequestStatusType = typeof RequestStatusTypeValues[keyof typeof RequestStatusTypeValues];
 
-export const validRequestStatusTypes = Object.values(RequestStatuses);
+export const validRequestStatusTypes = Object.values(RequestStatusTypeValues);

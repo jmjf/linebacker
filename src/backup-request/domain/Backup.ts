@@ -1,9 +1,8 @@
-import { isDate } from 'util/types';
 import { Entity } from '../../common/domain/Entity';
 import { Guard, GuardArgumentCollection } from '../../common/domain/Guard';
 import { Result } from '../../common/domain/Result';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
-import { BackupResultType } from './BackupResultType';
+import { dateOrUndefinedAsDate } from '../../utils/utils';
 
 export interface IBackupProps {
    backupRequestId: string,
@@ -37,7 +36,7 @@ export class Backup extends Entity<IBackupProps> {
    }
 
    public get dataDate(): Date {
-      return new Date(this.props.dataDate);
+      return dateOrUndefinedAsDate(this.props.dataDate);
    }
    public set dataDate(date: Date) {
       this.props.dataDate = date;
@@ -55,9 +54,7 @@ export class Backup extends Entity<IBackupProps> {
    }
 
    public get deleteDate(): Date {
-      return (typeof this.props.deleteDate === 'undefined') 
-         ? undefined as unknown as Date
-         : new Date(this.props.deleteDate);
+      return dateOrUndefinedAsDate(this.props.deleteDate);
    }
    public set deleteDate(date: Date) {
       this.props.deleteDate = date;
@@ -90,15 +87,11 @@ export class Backup extends Entity<IBackupProps> {
    }
 
    public get verifyStartTimestamp(): Date | undefined {
-      return typeof this.props.verifyStartTimestamp === 'undefined'
-         ? undefined
-         : new Date(this.props.verifyStartTimestamp);
+      return dateOrUndefinedAsDate(this.props.verifyStartTimestamp);
    }
 
    public get verifyEndTimestamp(): Date |undefined {
-      return typeof this.props.verifyEndTimestamp === 'undefined'
-         ? undefined
-         : new Date(this.props.verifyEndTimestamp);
+      return dateOrUndefinedAsDate(this.props.verifyEndTimestamp);
    }
    
    public get verifyHashText(): string {
@@ -106,9 +99,7 @@ export class Backup extends Entity<IBackupProps> {
    }
 
    public get deletedTimestamp(): Date | undefined {
-      return typeof this.props.deletedTimestamp === 'undefined'
-      ? undefined
-      : new Date(this.props.deletedTimestamp);
+      return dateOrUndefinedAsDate(this.props.deletedTimestamp);
    }
 
    private constructor(props: IBackupProps, id?: UniqueIdentifier) {

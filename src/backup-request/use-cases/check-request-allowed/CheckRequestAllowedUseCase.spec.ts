@@ -1,7 +1,9 @@
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 import { BackupJob, IBackupJobProps } from '../../domain/BackupJob';
+import { BackupProviderTypeValues } from '../../domain/BackupProviderType';
 import { BackupRequest, IBackupRequestProps } from '../../domain/BackupRequest';
-import { RequestStatusType } from '../../domain/RequestStatusType';
+import { RequestStatusType, RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 import { backupJobServiceAdapterFactory } from '../../test-utils/backupJobServiceAdapterFactory';
 import { backupRequestRepoFactory } from '../../test-utils/backupRequestRepoFactory';
 import { CheckRequestAllowedDTO } from './CheckRequestAllowedDTO';
@@ -17,14 +19,14 @@ describe('Check Request Allowed Use Case', () => {
       dataDate: new Date(),
       preparedDataPathName: 'path',
       getOnStartFlag: true,
-      transportTypeCode: 'HTTP',
-      statusTypeCode: 'Received',
+      transportTypeCode: RequestTransportTypeValues.HTTP,
+      statusTypeCode: RequestStatusTypeValues.Received,
       receivedTimestamp: new Date()
    };
 
    const backupJobProps: IBackupJobProps = {
       storagePathName: 'my/storage/path',
-      backupProviderCode: 'CloudA',
+      backupProviderCode: BackupProviderTypeValues.CloudA,
       daysToKeep: 3650,
       isActive: true,
       holdFlag: false
@@ -50,7 +52,7 @@ describe('Check Request Allowed Use Case', () => {
 
       // Assert
       expect(result.isRight()).toBe(true);
-      expect(result.value.getValue().statusTypeCode).toBe('Allowed');
+      expect(result.value.getValue().statusTypeCode).toBe(RequestStatusTypeValues.Allowed);
       expect(result.value.getValue().checkedTimestamp.valueOf()).toBeGreaterThanOrEqual(startTimestamp.valueOf());
    });
 
@@ -114,11 +116,11 @@ describe('Check Request Allowed Use Case', () => {
    // test.each(statusTestCases) runs the same test with different data (defined in statusTestCases)
    // I had to coerce several types to get the test to behave, but now this one block of code tests all the cases
    const statusTestCases = [
-      {status: 'Allowed', timestamp: 'checkedTimestamp'},
-      {status: 'NotAllowed', timestamp: 'checkedTimestamp'},
-      {status: 'Sent', timestamp: 'sentToInterfaceTimestamp'},
-      {status: 'Succeeded', timestamp: 'replyTimestamp'},
-      {status: 'Failed', timestamp: 'replyTimestamp'}
+      {status: RequestStatusTypeValues.Allowed, timestamp: 'checkedTimestamp'},
+      {status: RequestStatusTypeValues.NotAllowed, timestamp: 'checkedTimestamp'},
+      {status: RequestStatusTypeValues.Sent, timestamp: 'sentToInterfaceTimestamp'},
+      {status: RequestStatusTypeValues.Succeeded, timestamp: 'replyTimestamp'},
+      {status: RequestStatusTypeValues.Failed, timestamp: 'replyTimestamp'}
    ];
    test.each(statusTestCases)('when backup request is in $status status, it returns an unchanged BackupRequest', async ({status, timestamp}) => {
       // Arrange
@@ -149,6 +151,4 @@ describe('Check Request Allowed Use Case', () => {
       expect(result.value.getValue().statusTypeCode).toBe(status);
       expect(result.value.getValue()[timestamp].valueOf()).toBeLessThanOrEqual(startTimestamp.valueOf());
    });
-
-
 });

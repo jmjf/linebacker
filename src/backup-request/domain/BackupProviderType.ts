@@ -1,4 +1,4 @@
-const BackupProviders = {
+export const BackupProviderTypeValues = {
    None: '',
    Local: 'Local',
    CloudA: 'CloudA',
@@ -6,6 +6,6 @@ const BackupProviders = {
 } as const;
 // as const prevents changing or adding values;
 
-export type BackupProviderType = typeof BackupProviders[keyof typeof BackupProviders];
+export type BackupProviderType = typeof BackupProviderTypeValues[keyof typeof BackupProviderTypeValues];
 
-export const validBackupProvidersTypes = Object.values(BackupProviders);
+export const validBackupProviderTypes = Object.values(BackupProviderTypeValues);

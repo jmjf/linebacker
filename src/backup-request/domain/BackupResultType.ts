@@ -1,9 +1,9 @@
-const BackupResults = {
+export const BackupResultTypeValues = {
    Succeeded: 'Succeeded',
    Failed: 'Failed'
 } as const;
 // as const prevents changing or adding values;
 
-export type BackupResultType = typeof BackupResults[keyof typeof BackupResults];
+export type BackupResultType = typeof BackupResultTypeValues[keyof typeof BackupResultTypeValues];
 
-export const validBackupResultTypes = Object.values(BackupResults);
+export const validBackupResultTypes = Object.values(BackupResultTypeValues);

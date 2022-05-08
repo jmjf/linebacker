@@ -1,6 +1,10 @@
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 import { BackupJob, IBackupJobProps } from '../../domain/BackupJob';
+import { BackupProviderTypeValues } from '../../domain/BackupProviderType';
 import { BackupRequest, IBackupRequestProps } from '../../domain/BackupRequest';
+import { BackupResultTypeValues } from '../../domain/BackupResultType';
+import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 import { backupJobServiceAdapterFactory } from '../../test-utils/backupJobServiceAdapterFactory';
 import { backupRepoFactory } from '../../test-utils/backupRepoFactory';
 import { backupRequestRepoFactory } from '../../test-utils/backupRequestRepoFactory';
@@ -12,7 +16,7 @@ describe('Create Backup Record Use Case', () => {
       apiVersion: '2022-01-01',
       backupRequestId: 'backup request',
       storagePathName: '/path/to/backup/storage',
-      resultTypeCode: 'Succeeded',
+      resultTypeCode: BackupResultTypeValues.Succeeded,
       backupByteCount: 1000000,
       copyStartTimestamp: '2022-05-06T00:20:03.111Z',
       copyEndTimestamp: '2022-05-06T00:32:23.888Z'
@@ -20,7 +24,7 @@ describe('Create Backup Record Use Case', () => {
 
    const backupJobDTO: IBackupJobProps = {
       storagePathName: 'storage path',
-      backupProviderCode: 'CloudA',
+      backupProviderCode: BackupProviderTypeValues.CloudB,
       daysToKeep: 100,
       isActive: true,
       holdFlag: false
@@ -31,8 +35,8 @@ describe('Create Backup Record Use Case', () => {
       dataDate: new Date(),
       preparedDataPathName: 'prepared/path',
       getOnStartFlag: true,
-      transportTypeCode: 'HTTP',
-      statusTypeCode: 'Sent',
+      transportTypeCode: RequestTransportTypeValues.HTTP,
+      statusTypeCode: RequestStatusTypeValues.Sent,
       receivedTimestamp: new Date()
    };
 
@@ -90,7 +94,6 @@ describe('Create Backup Record Use Case', () => {
 
       // Act
       const result = await useCase.execute(dto);
-      console.log(`result for ${propName}`, JSON.stringify(result, null, 4));
 
       // Assert
       expect(result.isLeft()).toBe(true);
@@ -109,7 +112,7 @@ describe('Create Backup Record Use Case', () => {
       const dto = { ...backupStatusDTO };
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
-      dto.resultTypeCode = 'invalid';
+      dto.resultTypeCode = 'INVALID';
 
       // Act
       const result = await useCase.execute(dto);
@@ -133,7 +136,7 @@ describe('Create Backup Record Use Case', () => {
       
       const useCase = new CreateBackupRecordUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
       const dto = { ...backupStatusDTO };
-      dto.resultTypeCode = 'Failed';
+      dto.resultTypeCode = BackupResultTypeValues.Failed;
       dto.messageText = 'test failure';
 
       // Act
@@ -161,7 +164,7 @@ describe('Create Backup Record Use Case', () => {
       
       const useCase = new CreateBackupRecordUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
       const dto = { ...backupStatusDTO };
-      dto.resultTypeCode = 'Succeeded';
+      dto.resultTypeCode = BackupResultTypeValues.Succeeded;
 
       // Act
       const result = await useCase.execute(dto);

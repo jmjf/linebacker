@@ -9,7 +9,7 @@ import { BackupRequest } from '../../domain/BackupRequest';
 import { BackupJob } from '../../domain/BackupJob';
 import { IBackupJobServiceAdapter } from '../../adapter/BackupJobServiceAdapter';
 import { Guard } from '../../../common/domain/Guard';
-import { BackupResultType, validBackupResultTypes } from '../../domain/BackupResultType';
+import { BackupResultType, BackupResultTypeValues, validBackupResultTypes } from '../../domain/BackupResultType';
 
 // add errors when you define them
 type Response = Either<Result<any>, Result<Backup | BackupRequest>>;
@@ -31,10 +31,11 @@ export class CreateBackupRecordUseCase
 	}
 
 	async execute(reply: BackupStatusReplyDTO): Promise<Response> {
+		const { resultTypeCode, ...restOfReply } = reply;
 
-		const resultTypeCodeGuardResult = Guard.isOneOf(reply.resultTypeCode, validBackupResultTypes, 'resultTypeCode');
+		const resultTypeCodeGuardResult = Guard.isOneOf(resultTypeCode, validBackupResultTypes, 'resultTypeCode');
 		if (!resultTypeCodeGuardResult.isSuccess) {
-			return left(Result.fail(`Backup result resultTypeCode is invalid ${reply.resultTypeCode}`));
+			return left(Result.fail(`Backup result resultTypeCode is invalid ${resultTypeCode}`));
 		}
 
       // backup request must exist or we can't do anything
@@ -44,11 +45,9 @@ export class CreateBackupRecordUseCase
       } catch(err) {
          return left(Result.fail(`Backup request not found for request id ${reply.backupRequestId}`));
       }
-//console.log('cbruc 1');
 
 		let backup: Backup = {} as Backup;
-		let resultRight = false;
-		if (reply.resultTypeCode === 'Succeeded') {
+		if (resultTypeCode === BackupResultTypeValues.Succeeded) {
 			// backup job must exist or we can't do anything
 			let backupJob: BackupJob;
 			try {
@@ -56,8 +55,8 @@ export class CreateBackupRecordUseCase
 			} catch (err) {
 				return left(Result.fail(`Backup job not found for job id ${backupRequest.backupJobId}`));
 			}
-//console.log('cbruc 2');
-			const { resultTypeCode, ...restOfReply } = reply;
+
+			
 
 			// create backup aggregate from data in request, reply, and job
 			const requestProps: IBackupProps = {
@@ -68,25 +67,23 @@ export class CreateBackupRecordUseCase
 				daysToKeepCount: backupJob.daysToKeep,
 				holdFlag: backupJob.holdFlag
 			};
-//console.log('cbruc 3');
+
 			const backupOrError = Backup.create(requestProps);
 			if (backupOrError.isFailure) {
 				return left(backupOrError);
 			}
-//console.log('cbruc 4');
+
 			backup = backupOrError.getValue();
-//console.log('cbruc 5', JSON.stringify(backup));
+
       	// save backup aggregate
 			await this.backupRepo.save(backup);
-			
-			resultRight = true;
 		}
 
 		// eliminated invalid values at the top, so this is safe
-		backupRequest.setStatusReplied(reply.resultTypeCode as BackupResultType, reply.messageText);
+		backupRequest.setStatusReplied(resultTypeCode as BackupResultType, reply.messageText);
 		await this.backupRequestRepo.save(backupRequest);
 
-		return right(resultRight 
+		return right(resultTypeCode === BackupResultTypeValues.Succeeded
 			? Result.succeed<Backup>(backup)
 			: Result.succeed<BackupRequest>(backupRequest)
 		);

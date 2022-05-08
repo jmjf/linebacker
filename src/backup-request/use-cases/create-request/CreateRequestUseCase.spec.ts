@@ -1,6 +1,7 @@
 import { CreateRequestUseCase } from './CreateRequestUseCase';
 import { CreateRequestDTO } from './CreateRequestDTO';
 import { backupRequestRepoFactory } from '../../test-utils/backupRequestRepoFactory';
+import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 
 /**
  * See notes on testing with TypeORM in devnotes/3.1.1-RequestBackupUseCase
@@ -13,7 +14,7 @@ describe('Create Request Use Case', () => {
       backupJobId: 'b753d695-c9e1-4fa1-99f0-9fc025fca24c',
       dataDate: '2022-01-31',
       backupDataLocation: '/path/to/data',
-      transportType: 'HTTP',
+      transportType: RequestTransportTypeValues.HTTP,
       getOnStartFlag: true
    } as CreateRequestDTO;
 
@@ -21,6 +22,7 @@ describe('Create Request Use Case', () => {
       // Arrange
       const repo = backupRequestRepoFactory();
       const saveSpy = jest.spyOn(repo, 'save');
+
       const useCase = new CreateRequestUseCase(repo);
       const dto = { ...baseDto };
       
@@ -38,6 +40,7 @@ describe('Create Request Use Case', () => {
       // Arrange
       const repo = backupRequestRepoFactory();
       const saveSpy = jest.spyOn(repo, 'save');
+
       const useCase = new CreateRequestUseCase(repo);
       const dto = { ...baseDto, transportType: 'BadTransport'};
       
@@ -54,6 +57,7 @@ describe('Create Request Use Case', () => {
       // Arrange
       const repo = backupRequestRepoFactory();
       const saveSpy = jest.spyOn(repo, 'save');
+
       const useCase = new CreateRequestUseCase(repo);
       // TypeScript won't let me delete dto.createOnStartFlag, so build a dto without it
       const dto = { 
@@ -61,7 +65,7 @@ describe('Create Request Use Case', () => {
          backupJobId: 'b753d695-c9e1-4fa1-99f0-9fc025fca24c',
          dataDate: '2022-01-31',
          backupDataLocation: '/path/to/data',
-         transportType: 'HTTP'
+         transportType: RequestTransportTypeValues.HTTP
       } as CreateRequestDTO;
       
       // Act
@@ -77,6 +81,7 @@ describe('Create Request Use Case', () => {
       // Arrange
       const repo = backupRequestRepoFactory();
       const saveSpy = jest.spyOn(repo, 'save');
+      
       const useCase = new CreateRequestUseCase(repo);
       const dto = { ...baseDto, dataDate: 'invalid date'};
       

@@ -5,6 +5,7 @@ import { IBackupJobServiceAdapter } from '../../adapter/BackupJobServiceAdapter'
 import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
 import { BackupJob } from '../../domain/BackupJob';
 import { BackupRequest } from '../../domain/BackupRequest';
+import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { CheckRequestAllowedDTO } from './CheckRequestAllowedDTO';
 
 type Response = Either<Result<any>, Result<BackupRequest>>;
@@ -40,7 +41,7 @@ export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDT
          return right(Result.succeed<BackupRequest>(backupRequest));
       }
 
-      if (backupRequest.statusTypeCode !== 'Received') {
+      if (backupRequest.statusTypeCode !== RequestStatusTypeValues.Received) {
          return left(Result.fail(`Backup request is not in Received status backupRequestId: ${backupRequestId} statusTypeCode: ${backupRequest.statusTypeCode}`));
       }
       

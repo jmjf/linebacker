@@ -3,11 +3,12 @@ import { AggregateRoot } from '../../common/domain/AggregateRoot';
 import { Guard, GuardArgumentCollection } from '../../common/domain/Guard';
 import { Result } from '../../common/domain/Result';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
+import { dateOrUndefinedAsDate } from '../../utils/utils';
 import { BackupProviderType } from './BackupProviderType';
 import { BackupRequestAllowed } from './BackupRequestAllowed';
 import { BackupRequestCreated } from './BackupRequestCreated';
 import { BackupResultType } from './BackupResultType';
-import { RequestStatusType } from './RequestStatusType';
+import { RequestStatusType, RequestStatusTypeValues } from './RequestStatusType';
 import { RequestTransportType, validRequestTransportTypes } from './RequestTransportType';
 
 export interface IBackupRequestProps {
@@ -37,7 +38,7 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
    }
 
    public get dataDate(): Date {
-      return this.props.dataDate as Date;
+      return dateOrUndefinedAsDate(this.props.dataDate);
    }
 
    public get preparedDataPathName(): string {
@@ -71,19 +72,19 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
    }
 
    public get receivedTimestamp(): Date {
-      return this.props.receivedTimestamp as Date;
+      return dateOrUndefinedAsDate(this.props.receivedTimestamp);
    }
 
    public get checkedTimestamp(): Date {
-      return this.props.checkedTimestamp as Date;
+      return dateOrUndefinedAsDate(this.props.checkedTimestamp);
    }
 
    public get sentToInterfaceTimestamp(): Date {
-      return this.props.sentToInterfaceTimestamp as Date;
+      return dateOrUndefinedAsDate(this.props.sentToInterfaceTimestamp);
    }
 
    public get replyTimestamp(): Date {
-      return this.props.replyTimestamp as Date;
+      return dateOrUndefinedAsDate(this.props.replyTimestamp);
    }
    
    public get requesterId(): string {
@@ -99,7 +100,9 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
     * @returns `boolean`
     */
    public isChecked(): boolean {
-      return (this.statusTypeCode && ['Allowed', 'NotAllowed'].includes(this.statusTypeCode) && isDate(this.checkedTimestamp));
+      return (this.statusTypeCode
+         && (RequestStatusTypeValues.Allowed + '| ' + RequestStatusTypeValues.NotAllowed).includes(this.statusTypeCode)
+         && isDate(this.checkedTimestamp));
    }
 
    /**
@@ -107,7 +110,9 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
     * @returns `boolean`
     */
    public isSentToInterface(): boolean {
-      return (this.statusTypeCode && this.statusTypeCode === 'Sent' && isDate(this.sentToInterfaceTimestamp));
+      return (this.statusTypeCode 
+         && this.statusTypeCode === RequestStatusTypeValues.Sent
+         && isDate(this.sentToInterfaceTimestamp));
    }
 
    /**
@@ -115,16 +120,18 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
     * @returns `boolean`
     */
    public isReplied(): boolean {
-      return (this.statusTypeCode && ['Succeeded', 'Failed'].includes(this.statusTypeCode) && isDate(this.replyTimestamp));
+      return (this.statusTypeCode 
+         && (RequestStatusTypeValues.Succeeded + '|' + RequestStatusTypeValues.Failed).includes(this.statusTypeCode)
+         && isDate(this.replyTimestamp));
    }
 
    public setStatusSent(): void {
-      this.props.statusTypeCode = 'Sent';
+      this.props.statusTypeCode = RequestStatusTypeValues.Sent;
       this.props.sentToInterfaceTimestamp = new Date();
    }
 
    public setStatusChecked(isAllowed: boolean): void {
-      this.props.statusTypeCode = (isAllowed ? 'Allowed' : 'NotAllowed');
+      this.props.statusTypeCode = (isAllowed ? RequestStatusTypeValues.Allowed : RequestStatusTypeValues.NotAllowed);
       this.props.checkedTimestamp = new Date();
       if (isAllowed) {
          this.addDomainEvent(new BackupRequestAllowed(this));

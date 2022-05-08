@@ -5,6 +5,7 @@ import { CreateRequestDTO } from './CreateRequestDTO';
 import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
 import { BackupRequest, IBackupRequestProps } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
+import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 
 // add errors when you define them
 type Response = Either<Result<any>, Result<BackupRequest>>;
@@ -30,7 +31,7 @@ export class CreateRequestUseCase
 			preparedDataPathName: request.backupDataLocation,
 			getOnStartFlag: request.getOnStartFlag,
 			transportTypeCode: request.transportType as RequestTransportType,
-			statusTypeCode: 'Received',
+			statusTypeCode: RequestStatusTypeValues.Received,
 			receivedTimestamp: (new Date())
 		};
 		
