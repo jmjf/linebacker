@@ -37,14 +37,21 @@ export class CreateBackupRecordUseCase
 		if (!resultTypeCodeGuardResult.isSuccess) {
 			return left(Result.fail(`Backup result resultTypeCode is invalid ${resultTypeCode}`));
 		}
-
+//console.log('CBRUC 0', JSON.stringify(reply, null, 4));
       // backup request must exist or we can't do anything
 		let backupRequest: BackupRequest;
       try {
          backupRequest = await this.backupRequestRepo.getById(reply.backupRequestId);
+//console.log('CBRUC in try');
       } catch(err) {
+//console.log('CBRUC in catch');
          return left(Result.fail(`Backup request not found for request id ${reply.backupRequestId}`));
       }
+//console.log('CBRUC1', JSON.stringify(backupRequest, null, 4));
+		// don't change already replied values
+		if (backupRequest.isReplied()) {
+			return right(Result.succeed(backupRequest));
+		}
 
 		let backup: Backup = {} as Backup;
 		if (resultTypeCode === BackupResultTypeValues.Succeeded) {
@@ -55,8 +62,6 @@ export class CreateBackupRecordUseCase
 			} catch (err) {
 				return left(Result.fail(`Backup job not found for job id ${backupRequest.backupJobId}`));
 			}
-
-			
 
 			// create backup aggregate from data in request, reply, and job
 			const requestProps: IBackupProps = {

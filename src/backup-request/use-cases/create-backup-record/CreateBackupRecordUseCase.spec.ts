@@ -43,10 +43,13 @@ describe('Create Backup Record Use Case', () => {
    test(`when the backup request doesn't exist, it returns failure`, async () => {
       // Arrange
       const backupRequestRepo = backupRequestRepoFactory();
+
       const backupRepo = backupRepoFactory();
+
       const backupJobServiceAdapter = backupJobServiceAdapterFactory();
+
       const useCase = new CreateBackupRecordUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
-      const dto = { ...backupStatusDTO };
+      const dto = { ...backupStatusDTO, backupRequestId: `request doesn't exist` };
 
       // Act
       const result = await useCase.execute(dto);
@@ -58,11 +61,12 @@ describe('Create Backup Record Use Case', () => {
 
    test(`when the backup job doesn't exist, it returns failure`, async () => {
       // Arrange
-      const backupRequestRepo = backupRequestRepoFactory({ getByIdResult: {} as BackupRequest });
+      const resultBackupRequest = BackupRequest.create(backupRequestDTO).getValue();
+      const backupRequestRepo = backupRequestRepoFactory({ getByIdResult: resultBackupRequest });
       const backupRepo = backupRepoFactory();
       const backupJobServiceAdapter = backupJobServiceAdapterFactory();
       const useCase = new CreateBackupRecordUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
-      const dto = { ...backupStatusDTO };
+      const dto = { ...backupStatusDTO, backupRequestId: `job doesn't exist`  };
 
       // Act
       const result = await useCase.execute(dto);
@@ -99,6 +103,37 @@ describe('Create Backup Record Use Case', () => {
       expect(result.isLeft()).toBe(true);
       expect(result.value.errorValue()).toMatch('is null or undefined');
       expect(result.value.errorValue()).toMatch(propName);
+   });
+
+   test.each([
+      RequestStatusTypeValues.Succeeded,
+      RequestStatusTypeValues.Failed
+   ])('when request is %p, it returns ok with unchanged status and timestamp', async (status) => {
+      // Arrange
+      const backupRequest = BackupRequest.create({
+         ...backupRequestDTO,
+         statusTypeCode: status,
+         replyTimestamp: new Date()
+      }).getValue();
+      
+      const backupRequestRepo = backupRequestRepoFactory({ getByIdResult: backupRequest });
+      const expectedTimestamp = backupRequest.replyTimestamp;
+
+      const backupRepo = backupRepoFactory();
+
+      const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).getValue();
+      const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
+
+      const useCase = new CreateBackupRecordUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
+      const dto = { ...backupStatusDTO };
+
+      // Act
+      const result = await useCase.execute(dto);
+
+      // Assert
+      expect(result.isRight()).toBe(true);
+      expect(result.value.getValue().statusTypeCode).toMatch(status);
+      expect(result.value.getValue().replyTimestamp.valueOf()).toBe(expectedTimestamp.valueOf());
    });
 
    test('when result type is invalid, it returns failure', async () => {

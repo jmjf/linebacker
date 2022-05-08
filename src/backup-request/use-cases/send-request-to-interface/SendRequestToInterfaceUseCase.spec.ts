@@ -43,21 +43,26 @@ describe('Send Request To Interface Use Case', () => {
 
       // Assert
       expect(result.isRight()).toBe(true);
-      expect(result.value.getValue().statusTypeCode).toBe(RequestStatusTypeValues['Sent']);
+      expect(result.value.getValue().statusTypeCode).toBe(RequestStatusTypeValues.Sent);
       expect(result.value.getValue().sentToInterfaceTimestamp.valueOf()).toBeGreaterThan(startTimestamp.valueOf());
    });
 
-   test('when request is Sent, it returns a BackupRequest in Sent status with sent timestamp unchanged', async () => {
+   test.each([
+      { status: RequestStatusTypeValues.Sent, timestampName: 'sentToInterfaceTimestamp' },
+      { status: RequestStatusTypeValues.Failed, timestampName: 'replyTimestamp' },
+      { status: RequestStatusTypeValues.Succeeded, timestampName: 'replyTimestamp' }
+   ])('when request is $status, it returns a BackupRequest in $status status with $timestampName unchanged', async ({status, timestampName}) => {
       // Arrange
       const resultBackupRequest = BackupRequest.create(
          {
             ...backupRequestProps,
             backupJobId: 'request is Sent',
-            statusTypeCode: RequestStatusTypeValues.Sent,
-            sentToInterfaceTimestamp: new Date()    
+            statusTypeCode: status,
+            sentToInterfaceTimestamp: new Date('2001-01-01'),
+            replyTimestamp: new Date('2002-02-02')
          }
       ).getValue();
-      const sentTimestamp = new Date(resultBackupRequest.sentToInterfaceTimestamp); // ensure we have a separate instance
+      const expectedTimestamp = new Date((resultBackupRequest as {[index: string]:any})[timestampName]); // ensure we have a separate instance
       const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});
 
       const adapter = backupInterfaceAdapterFactory({sendMessageResult: true});
@@ -70,8 +75,8 @@ describe('Send Request To Interface Use Case', () => {
 
       // Assert
       expect(result.isRight()).toBe(true);
-      expect(result.value.getValue().statusTypeCode).toBe(RequestStatusTypeValues.Sent);
-      expect(result.value.getValue().sentToInterfaceTimestamp.valueOf()).toBe(sentTimestamp.valueOf());
+      expect(result.value.getValue().statusTypeCode).toBe(status);
+      expect(result.value.getValue()[timestampName].valueOf()).toBe(expectedTimestamp.valueOf());
    });
 
    test('when request does not exist, it returns failure', async () => {

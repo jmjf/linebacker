@@ -30,7 +30,7 @@ export class SendRequestToInterfaceUseCase implements UseCase<SendRequestToInter
          return left(Result.fail(`Backup request not found for request id ${requestId}`));
       }
 
-      if (backupRequest.isSentToInterface()) {
+      if (backupRequest.isSentToInterface() || backupRequest.isReplied()) {
          // NEED TO LOG
          return right(Result.succeed<BackupRequest>(backupRequest));
       }
