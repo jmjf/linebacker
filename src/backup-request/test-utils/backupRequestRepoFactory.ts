@@ -15,8 +15,8 @@ export function backupRequestRepoFactory(
 		},
 
 		async getById(requestId: string): Promise<BackupRequest> {
-			if (!params || !params.getByIdResult) {
-				throw new Error('BackupRequestRepo getByIdResult not defined');
+			if (!params || !params.getByIdResult || !requestId) {
+				throw new Error('BackupRequestRepo getByIdResult not found');
 			}
 			return Promise.resolve(params.getByIdResult);
 		},

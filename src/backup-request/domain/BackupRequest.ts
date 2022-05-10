@@ -1,10 +1,13 @@
+import { dateOrUndefinedAsDate } from '../../utils/utils';
+
 import { isDate } from 'util/types';
 import { AggregateRoot } from '../../common/domain/AggregateRoot';
 import { Guard, GuardArgumentCollection } from '../../common/domain/Guard';
 import { Result } from '../../common/domain/Result';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
-import { dateOrUndefinedAsDate } from '../../utils/utils';
-import { BackupProviderType } from './BackupProviderType';
+
+import { BackupProviderType } from '../../backup/domain/BackupProviderType';
+
 import { BackupRequestAllowed } from './BackupRequestAllowed';
 import { BackupRequestCreated } from './BackupRequestCreated';
 import { BackupResultType } from './BackupResultType';
@@ -12,7 +15,7 @@ import { RequestStatusType, RequestStatusTypeValues } from './RequestStatusType'
 import { RequestTransportType, validRequestTransportTypes } from './RequestTransportType';
 
 export interface IBackupRequestProps {
-   backupJobId: string,
+   backupJobId: UniqueIdentifier,
    dataDate: string | Date,
    preparedDataPathName: string,
    getOnStartFlag: boolean,
@@ -33,7 +36,7 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
       return this._id;
    }
 
-   public get backupJobId(): string {
+   public get backupJobId(): UniqueIdentifier {
       return this.props.backupJobId;
    }
 

@@ -32,7 +32,7 @@ describe('Create Request Use Case', () => {
       // Assert
       expect(result.isRight()).toBe(true);
       expect(saveSpy).toHaveBeenCalledTimes(1);
-      expect(result.value.getValue().backupJobId).toMatch(baseDto.backupJobId);
+      expect(result.value.getValue().backupJobId.value).toMatch(baseDto.backupJobId);
       expect(result.value.getValue().backupRequestId).toBeTruthy();
    });
 

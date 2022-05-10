@@ -1,12 +1,13 @@
 import { UseCase } from '../../../common/application/UseCase';
 import { Either, left, right } from '../../../common/domain/Either';
 import { Result } from '../../../common/domain/Result';
-import { IBackupJobServiceAdapter } from '../../adapter/BackupJobServiceAdapter';
+import { IBackupJobServiceAdapter } from '../../../backup/adapter/BackupJobServiceAdapter';
+import { BackupJob } from '../../../backup/domain/BackupJob';
 import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
-import { BackupJob } from '../../domain/BackupJob';
 import { BackupRequest } from '../../domain/BackupRequest';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { CheckRequestAllowedDTO } from './CheckRequestAllowedDTO';
+
 
 type Response = Either<Result<any>, Result<BackupRequest>>;
 
@@ -18,11 +19,6 @@ export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDT
    constructor (injected: {backupRequestRepo: IBackupRequestRepo, backupJobServiceAdapter: IBackupJobServiceAdapter}) {
      this.backupRequestRepo = injected.backupRequestRepo;
      this.backupJobServiceAdapter = injected.backupJobServiceAdapter;
-   }
-
-   private isBackupJobAllowed(backupJob: BackupJob): boolean {
-      // simple criteria for now
-      return backupJob.isActive;
    }
 
    public async execute(request: CheckRequestAllowedDTO): Promise<Response> {
@@ -48,13 +44,13 @@ export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDT
       // Get backup job data
       let backupJob: BackupJob;
       try {
-         backupJob = await this.backupJobServiceAdapter.getBackupJob(backupRequest.backupJobId);
+         backupJob = await this.backupJobServiceAdapter.getBackupJob(backupRequest.backupJobId.value);
       } catch(err) {
          return left(Result.fail(`Backup job not found for backupRequestId: ${backupRequestId} backupJobId: ${backupRequest.backupJobId}`));
       }
 
       // set status based on allowed rules
-      const isAllowed = this.isBackupJobAllowed(backupJob);
+      const isAllowed = backupJob.isAllowed();
       backupRequest.setStatusChecked(isAllowed);
       if (isAllowed) {
          backupRequest.backupProviderCode = backupJob.backupProviderCode;

@@ -1,20 +1,24 @@
+import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
+
+import { BackupJob, IBackupJobProps } from '../../backup/domain/BackupJob';
+import { backupJobServiceAdapterFactory } from '../../backup/test-utils/backupJobServiceAdapterFactory';
+
 import { BackupRequest, IBackupRequestProps } from '../domain/BackupRequest';
 import { SendRequestToInterfaceUseCase } from '../use-cases/send-request-to-interface/SendRequestToInterfaceUseCase';
 import { BackupRequestAllowedSubscriber } from '../use-cases/send-request-to-interface/BackupRequestAllowedSubscriber';
 import { BackupRequestCreatedSubscriber } from '../use-cases/check-request-allowed/BackupRequestCreatedSubscriber';
 import { CheckRequestAllowedUseCase } from '../use-cases/check-request-allowed/CheckRequestAllowedUseCase';
-import { backupJobServiceAdapterFactory } from './backupJobServiceAdapterFactory';
+import { CreateRequestUseCase } from '../use-cases/create-request/CreateRequestUseCase';
 import { backupInterfaceAdapterFactory } from './backupInterfaceAdapterFactory';
 import { backupRequestRepoFactory } from './backupRequestRepoFactory';
-import { CreateRequestUseCase } from '../use-cases/create-request/CreateRequestUseCase';
-import { BackupJob, IBackupJobProps } from '../domain/BackupJob';
-import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
+
+
 
 const TEST_EVENTS = false;
 
 if (TEST_EVENTS) {
    const backupRequestProps = {
-      backupJobId: 'job',
+      backupJobId: new UniqueIdentifier('job'),
       dataDate: new Date(),
       preparedDataPathName: 'source',
       getOnStartFlag: true,

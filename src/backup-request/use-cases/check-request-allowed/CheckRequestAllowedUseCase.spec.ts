@@ -1,11 +1,14 @@
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
-import { BackupJob, IBackupJobProps } from '../../domain/BackupJob';
-import { BackupProviderTypeValues } from '../../domain/BackupProviderType';
+
+import { BackupJob, IBackupJobProps } from '../../../backup/domain/BackupJob';
+import { BackupProviderTypeValues } from '../../../backup/domain/BackupProviderType';
+import { backupJobServiceAdapterFactory } from '../../../backup/test-utils/backupJobServiceAdapterFactory';
+
 import { BackupRequest, IBackupRequestProps } from '../../domain/BackupRequest';
 import { RequestStatusType, RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
-import { backupJobServiceAdapterFactory } from '../../test-utils/backupJobServiceAdapterFactory';
 import { backupRequestRepoFactory } from '../../test-utils/backupRequestRepoFactory';
+
 import { CheckRequestAllowedDTO } from './CheckRequestAllowedDTO';
 import { CheckRequestAllowedUseCase } from './CheckRequestAllowedUseCase';
 
@@ -15,7 +18,7 @@ describe('Check Request Allowed Use Case', () => {
    };
 
    const backupRequestProps: IBackupRequestProps = {
-      backupJobId: 'job',
+      backupJobId: new UniqueIdentifier('job'),
       dataDate: new Date(),
       preparedDataPathName: 'path',
       getOnStartFlag: true,

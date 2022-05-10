@@ -1,14 +1,17 @@
+import { dateOrUndefinedAsDate } from '../../utils/utils';
+
 import { Entity } from '../../common/domain/Entity';
 import { Guard, GuardArgumentCollection } from '../../common/domain/Guard';
 import { Result } from '../../common/domain/Result';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
-import { dateOrUndefinedAsDate } from '../../utils/utils';
+
+import { BackupProviderType } from './BackupProviderType';
 
 export interface IBackupProps {
-   backupRequestId: string,
-   backupJobId: string,
+   backupRequestId: UniqueIdentifier,
+   backupJobId: UniqueIdentifier,
    dataDate: string | Date,
-   backupProviderCode: string,
+   backupProviderCode: BackupProviderType,
    daysToKeepCount: number,
    deleteDate?: string | Date,
    holdFlag: boolean,
@@ -27,11 +30,11 @@ export class Backup extends Entity<IBackupProps> {
       return this._id;
    }
 
-   public get backupRequestId(): string {
+   public get backupRequestId(): UniqueIdentifier {
       return this.props.backupRequestId;
    }
 
-   public get backupJobId(): string {
+   public get backupJobId(): UniqueIdentifier {
       return this.props.backupJobId;
    }
 
@@ -42,7 +45,7 @@ export class Backup extends Entity<IBackupProps> {
       this.props.dataDate = date;
    }
 
-   public get backupProviderCode(): string {
+   public get backupProviderCode(): BackupProviderType {
       return this.props.backupProviderCode;
    }
 

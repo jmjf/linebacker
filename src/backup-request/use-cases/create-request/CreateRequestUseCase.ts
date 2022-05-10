@@ -6,6 +6,7 @@ import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
 import { BackupRequest, IBackupRequestProps } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 
 // add errors when you define them
 type Response = Either<Result<any>, Result<BackupRequest>>;
@@ -26,7 +27,7 @@ export class CreateRequestUseCase
 
 		// initialize props
 		const requestProps: IBackupRequestProps = {
-			backupJobId: request.backupJobId,
+			backupJobId: new UniqueIdentifier(request.backupJobId),
 			dataDate: request.dataDate,
 			preparedDataPathName: request.backupDataLocation,
 			getOnStartFlag: request.getOnStartFlag,

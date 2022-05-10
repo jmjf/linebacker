@@ -1,18 +1,21 @@
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
-import { BackupJob, IBackupJobProps } from '../../domain/BackupJob';
-import { BackupProviderTypeValues } from '../../domain/BackupProviderType';
+
+import { BackupJob, IBackupJobProps } from '../../../backup/domain/BackupJob';
+import { backupJobServiceAdapterFactory } from '../../../backup/test-utils/backupJobServiceAdapterFactory';
+import { BackupProviderTypeValues } from '../../../backup/domain/BackupProviderType';
+import { backupRepoFactory } from '../../../backup/test-utils/backupRepoFactory';
+
 import { BackupRequest, IBackupRequestProps } from '../../domain/BackupRequest';
 import { BackupResultTypeValues } from '../../domain/BackupResultType';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
-import { backupJobServiceAdapterFactory } from '../../test-utils/backupJobServiceAdapterFactory';
-import { backupRepoFactory } from '../../test-utils/backupRepoFactory';
 import { backupRequestRepoFactory } from '../../test-utils/backupRequestRepoFactory';
-import { BackupStatusReplyDTO } from './BackupStatusReplyDTO';
-import { CreateBackupRecordUseCase } from './CreateBackupRecordUseCase';
 
-describe('Create Backup Record Use Case', () => {
-   const backupStatusDTO: BackupStatusReplyDTO = {
+import { CreateBackupReplyDTO } from './CreateBackupReplyDTO';
+import { ReceiveCreateBackupReplyUseCase } from './ReceiveCreateBackupReplyUseCase';
+
+describe('Receive Create Backup Reply Use Case', () => {
+   const createBackupReply: CreateBackupReplyDTO = {
       apiVersion: '2022-01-01',
       backupRequestId: 'backup request',
       storagePathName: '/path/to/backup/storage',
@@ -31,7 +34,7 @@ describe('Create Backup Record Use Case', () => {
    };
 
    const backupRequestDTO: IBackupRequestProps = {
-      backupJobId: 'backup job',
+      backupJobId: new UniqueIdentifier('backup job'),
       dataDate: new Date(),
       preparedDataPathName: 'prepared/path',
       getOnStartFlag: true,
@@ -48,8 +51,8 @@ describe('Create Backup Record Use Case', () => {
 
       const backupJobServiceAdapter = backupJobServiceAdapterFactory();
 
-      const useCase = new CreateBackupRecordUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
-      const dto = { ...backupStatusDTO, backupRequestId: `request doesn't exist` };
+      const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
+      const dto = { ...createBackupReply, backupRequestId: `request doesn't exist` };
 
       // Act
       const result = await useCase.execute(dto);
@@ -65,8 +68,8 @@ describe('Create Backup Record Use Case', () => {
       const backupRequestRepo = backupRequestRepoFactory({ getByIdResult: resultBackupRequest });
       const backupRepo = backupRepoFactory();
       const backupJobServiceAdapter = backupJobServiceAdapterFactory();
-      const useCase = new CreateBackupRecordUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
-      const dto = { ...backupStatusDTO, backupRequestId: `job doesn't exist`  };
+      const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
+      const dto = { ...createBackupReply, backupRequestId: `job doesn't exist`  };
 
       // Act
       const result = await useCase.execute(dto);
@@ -87,11 +90,14 @@ describe('Create Backup Record Use Case', () => {
       // Arrange
       const backupRequest = BackupRequest.create(backupRequestDTO).getValue();
       const backupRequestRepo = backupRequestRepoFactory({ getByIdResult: backupRequest });
+
       const backupRepo = backupRepoFactory();
+
       const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).getValue();
       const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
-      const useCase = new CreateBackupRecordUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
-      const dto = { ...backupStatusDTO };
+
+      const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
+      const dto = { ...createBackupReply };
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       dto[propName] = undefined;
@@ -124,8 +130,8 @@ describe('Create Backup Record Use Case', () => {
       const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).getValue();
       const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
 
-      const useCase = new CreateBackupRecordUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
-      const dto = { ...backupStatusDTO };
+      const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
+      const dto = { ...createBackupReply };
 
       // Act
       const result = await useCase.execute(dto);
@@ -143,8 +149,8 @@ describe('Create Backup Record Use Case', () => {
       const backupRepo = backupRepoFactory();
       const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).getValue();
       const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
-      const useCase = new CreateBackupRecordUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
-      const dto = { ...backupStatusDTO };
+      const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
+      const dto = { ...createBackupReply };
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       dto.resultTypeCode = 'INVALID';
@@ -169,8 +175,8 @@ describe('Create Backup Record Use Case', () => {
       const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).getValue();
       const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
       
-      const useCase = new CreateBackupRecordUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
-      const dto = { ...backupStatusDTO };
+      const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
+      const dto = { ...createBackupReply };
       dto.resultTypeCode = BackupResultTypeValues.Failed;
       dto.messageText = 'test failure';
 
@@ -197,8 +203,8 @@ describe('Create Backup Record Use Case', () => {
       const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).getValue();
       const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
       
-      const useCase = new CreateBackupRecordUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
-      const dto = { ...backupStatusDTO };
+      const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
+      const dto = { ...createBackupReply };
       dto.resultTypeCode = BackupResultTypeValues.Succeeded;
 
       // Act

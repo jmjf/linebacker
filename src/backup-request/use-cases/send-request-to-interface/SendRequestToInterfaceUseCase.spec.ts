@@ -1,10 +1,14 @@
-import { SendRequestToInterfaceUseCase } from './SendRequestToInterfaceUseCase';
-import { SendRequestToInterfaceDTO } from './SendRequestToInterfaceDTO';
-import { backupInterfaceAdapterFactory } from '../../test-utils/backupInterfaceAdapterFactory';
-import { backupRequestRepoFactory } from '../../test-utils/backupRequestRepoFactory';
+import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
+
 import { BackupRequest, IBackupRequestProps } from '../../domain/BackupRequest';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { backupInterfaceAdapterFactory } from '../../test-utils/backupInterfaceAdapterFactory';
+import { backupRequestRepoFactory } from '../../test-utils/backupRequestRepoFactory';
+
+import { SendRequestToInterfaceUseCase } from './SendRequestToInterfaceUseCase';
+import { SendRequestToInterfaceDTO } from './SendRequestToInterfaceDTO';
+
 
 describe('Send Request To Interface Use Case', () => {
    const baseDto = {
@@ -12,7 +16,7 @@ describe('Send Request To Interface Use Case', () => {
    } as SendRequestToInterfaceDTO;
 
    const backupRequestProps = {
-      backupJobId: 'job', // set in test Arrange phase to support logging if needed
+      backupJobId: new UniqueIdentifier('job'), // set in test Arrange phase to support logging if needed
       dataDate: new Date(),
       preparedDataPathName: 'path',
       getOnStartFlag: true,
@@ -29,7 +33,7 @@ describe('Send Request To Interface Use Case', () => {
       const resultBackupRequest = BackupRequest.create(
          {
             ...backupRequestProps,
-            backupJobId: 'request Allowed'
+            backupJobId: new UniqueIdentifier('request Allowed')
          }).getValue();
       const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});
 
@@ -56,7 +60,7 @@ describe('Send Request To Interface Use Case', () => {
       const resultBackupRequest = BackupRequest.create(
          {
             ...backupRequestProps,
-            backupJobId: 'request is Sent',
+            backupJobId: new UniqueIdentifier('request is Sent'),
             statusTypeCode: status,
             sentToInterfaceTimestamp: new Date('2001-01-01'),
             replyTimestamp: new Date('2002-02-02')
@@ -100,7 +104,7 @@ describe('Send Request To Interface Use Case', () => {
       const resultBackupRequest = BackupRequest.create(
          {
             ...backupRequestProps,
-            backupJobId: 'request NotAllowed',
+            backupJobId: new UniqueIdentifier('request NotAllowed'),
             statusTypeCode: 'NotAllowed'
          }
       ).getValue();
@@ -123,7 +127,7 @@ describe('Send Request To Interface Use Case', () => {
       const resultBackupRequest = BackupRequest.create(
          {
             ...backupRequestProps,
-            backupJobId: 'sendMessage fails'
+            backupJobId: new UniqueIdentifier('sendMessage fails')
          }
       ).getValue();
       const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});

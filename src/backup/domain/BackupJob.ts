@@ -1,4 +1,4 @@
-import { AggregateRoot } from '../../common/domain/AggregateRoot';
+import { Entity } from '../../common/domain/Entity';
 import { Guard, GuardArgumentCollection } from '../../common/domain/Guard';
 import { Result } from '../../common/domain/Result';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
@@ -12,7 +12,7 @@ export interface IBackupJobProps {
    holdFlag: boolean
 }
 
-export class BackupJob extends AggregateRoot<IBackupJobProps> {
+export class BackupJob extends Entity<IBackupJobProps> {
    public get backupJobId(): UniqueIdentifier {
       return this._id;
    }
@@ -35,6 +35,11 @@ export class BackupJob extends AggregateRoot<IBackupJobProps> {
 
    public get holdFlag(): boolean {
       return this.props.holdFlag;
+   }
+
+   public isAllowed(): boolean {
+      // using a simple rule for now, will be more complex when we have other data here
+      return this.props.isActive;
    }
 
    // the backup controller gets backup jobs from the user interface service, so never gets a backup job without an id
