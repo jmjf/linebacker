@@ -1,9 +1,10 @@
 import { dateOrUndefinedAsDate } from '../../utils/utils';
 
+import { Guard, GuardArgumentCollection } from '../../common/core/Guard';
+import { Result, ok, err } from '../../common/core/Result';
 import { Entity } from '../../common/domain/Entity';
-import { Guard, GuardArgumentCollection } from '../../common/domain/Guard';
-import { Result } from '../../common/domain/Result';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
+import * as DomainErrors from '../../common/domain/DomainErrors';
 
 import { BackupProviderType } from './BackupProviderType';
 
@@ -116,7 +117,7 @@ export class Backup extends Entity<IBackupProps> {
       return deleteDate;
    }
 
-   public static create(props: IBackupProps, id?: UniqueIdentifier): Result<Backup> {
+   public static create(props: IBackupProps, id?: UniqueIdentifier): Result<Backup, DomainErrors.InvalidPropsError> {
       // check required props are not null or undefined
       // if result !succeeded return Result.fail<>()
 
@@ -137,7 +138,7 @@ export class Backup extends Entity<IBackupProps> {
 
       const propsGuardResult = Guard.againstNullOrUndefinedBulk(guardArgs);
       if (!propsGuardResult.isSuccess) {
-         return Result.fail<Backup>(propsGuardResult.message);
+         return err(new DomainErrors.InvalidPropsError(`{ message: '${propsGuardResult.message}'}`));;
       }
 
       // Guard: resultTypeCode is in the list of RequestStatusTypes
@@ -164,6 +165,6 @@ export class Backup extends Entity<IBackupProps> {
 
       // No events for this entity -- entities don't have events
 
-      return Result.succeed<Backup>(backupResult);
+      return ok(backupResult);
    }
 }

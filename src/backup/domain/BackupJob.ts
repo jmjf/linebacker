@@ -1,7 +1,9 @@
+import { Guard, GuardArgumentCollection } from '../../common/core/Guard';
+import { Result, ok, err } from '../../common/core/Result';
 import { Entity } from '../../common/domain/Entity';
-import { Guard, GuardArgumentCollection } from '../../common/domain/Guard';
-import { Result } from '../../common/domain/Result';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
+import * as DomainErrors from '../../common/domain/DomainErrors';
+
 import { BackupProviderType, validBackupProviderTypes } from './BackupProviderType';
 
 export interface IBackupJobProps {
@@ -57,7 +59,7 @@ export class BackupJob extends Entity<IBackupJobProps> {
     * If `create()` successfully creates the `BackupJob` object, `result.isSuccess` is true and `result.getValue()` returns the new object.
     * If `create()` fails for any reason,  `result.isError` is true, `result.isSuccess is fales, and `result.getError()` returns the error
     */
-   public static create(props:IBackupJobProps, id: UniqueIdentifier): Result<BackupJob> {
+   public static create(props:IBackupJobProps, id: UniqueIdentifier): Result<BackupJob, DomainErrors.InvalidPropsError> {
       // check required props are not null or undefined
       // if result !succeeded return Result.fail<>()
 
@@ -71,13 +73,13 @@ export class BackupJob extends Entity<IBackupJobProps> {
 
       const propsGuardResult = Guard.againstNullOrUndefinedBulk(guardArgs);
       if (!propsGuardResult.isSuccess) {
-         return Result.fail<BackupJob>(propsGuardResult.message);
+         return err(new DomainErrors.InvalidPropsError(`{ message: '${propsGuardResult.message}'}`));
       }
 
       // ensure provider type is valid
 		const providerGuardResult = Guard.isOneOf(props.backupProviderCode, validBackupProviderTypes, 'backupProviderType');
 		if (!providerGuardResult.isSuccess){
-			return Result.fail(providerGuardResult.message);
+			return err(new DomainErrors.InvalidPropsError(`{ message: '${providerGuardResult.message}'}`));
 		}
 
       // initialize props data
@@ -85,6 +87,6 @@ export class BackupJob extends Entity<IBackupJobProps> {
       
       const backupJob = new BackupJob(defaultValues, id);
 
-      return Result.succeed<BackupJob>(backupJob);
+      return ok(backupJob);
    }
 }

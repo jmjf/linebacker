@@ -14,7 +14,7 @@ import { backupRequestRepoFactory } from '../../test-utils/backupRequestRepoFact
 import { CreateBackupReplyDTO } from './CreateBackupReplyDTO';
 import { ReceiveCreateBackupReplyUseCase } from './ReceiveCreateBackupReplyUseCase';
 
-describe('Receive Create Backup Reply Use Case', () => {
+describe('ReceiveCreateBackupReplyUseCase', () => {
    const createBackupReply: CreateBackupReplyDTO = {
       apiVersion: '2022-01-01',
       backupRequestId: 'backup request',
@@ -58,16 +58,21 @@ describe('Receive Create Backup Reply Use Case', () => {
       const result = await useCase.execute(dto);
 
       // Assert
-      expect(result.isLeft()).toBe(true);
-      expect(result.value.errorValue()).toMatch('Backup request not found');
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) { // type guard
+         expect(result.error.message).toMatch('BackupRequestRepo');
+         expect(result.error.message).toMatch('not found');
+      }
    });
 
    test(`when the backup job doesn't exist, it returns failure`, async () => {
       // Arrange
-      const resultBackupRequest = BackupRequest.create(backupRequestDTO).getValue();
+      const resultBackupRequest = BackupRequest.create(backupRequestDTO).unwrapOr({} as BackupRequest);
       const backupRequestRepo = backupRequestRepoFactory({ getByIdResult: resultBackupRequest });
+
       const backupRepo = backupRepoFactory();
       const backupJobServiceAdapter = backupJobServiceAdapterFactory();
+
       const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
       const dto = { ...createBackupReply, backupRequestId: `job doesn't exist`  };
 
@@ -75,8 +80,11 @@ describe('Receive Create Backup Reply Use Case', () => {
       const result = await useCase.execute(dto);
 
       // Assert
-      expect(result.isLeft()).toBe(true);
-      expect(result.value.errorValue()).toMatch('Backup job not found');
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) { // type guard
+         expect(result.error.message).toMatch('BackupJobServiceAdapter');
+         expect(result.error.message).toMatch('not defined');
+      }
    });
 
    // Can test attributes in BackupRequestReplyDTO because other values are set from retrieved data in the use case
@@ -88,12 +96,12 @@ describe('Receive Create Backup Reply Use Case', () => {
       { propName: 'copyEndTimestamp' }
    ])('when required reply attribute $propName is missing, it returns failure', async ({propName}) => {
       // Arrange
-      const backupRequest = BackupRequest.create(backupRequestDTO).getValue();
+      const backupRequest = BackupRequest.create(backupRequestDTO).unwrapOr({} as BackupRequest);
       const backupRequestRepo = backupRequestRepoFactory({ getByIdResult: backupRequest });
 
       const backupRepo = backupRepoFactory();
 
-      const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).getValue();
+      const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).unwrapOr({} as BackupJob);
       const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
 
       const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
@@ -106,9 +114,11 @@ describe('Receive Create Backup Reply Use Case', () => {
       const result = await useCase.execute(dto);
 
       // Assert
-      expect(result.isLeft()).toBe(true);
-      expect(result.value.errorValue()).toMatch('is null or undefined');
-      expect(result.value.errorValue()).toMatch(propName);
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) { // type guard
+         expect(result.error.message).toMatch('is null or undefined');
+         expect(result.error.message).toMatch(propName);
+      }
    });
 
    test.each([
@@ -120,14 +130,14 @@ describe('Receive Create Backup Reply Use Case', () => {
          ...backupRequestDTO,
          statusTypeCode: status,
          replyTimestamp: new Date()
-      }).getValue();
+      }).unwrapOr({} as BackupRequest);
       
       const backupRequestRepo = backupRequestRepoFactory({ getByIdResult: backupRequest });
       const expectedTimestamp = backupRequest.replyTimestamp;
 
       const backupRepo = backupRepoFactory();
 
-      const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).getValue();
+      const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).unwrapOr({} as BackupJob);
       const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
 
       const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
@@ -137,18 +147,24 @@ describe('Receive Create Backup Reply Use Case', () => {
       const result = await useCase.execute(dto);
 
       // Assert
-      expect(result.isRight()).toBe(true);
-      expect(result.value.getValue().statusTypeCode).toMatch(status);
-      expect(result.value.getValue().replyTimestamp.valueOf()).toBe(expectedTimestamp.valueOf());
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) { // type guard
+         const value = result.value as BackupRequest;
+         expect(value.statusTypeCode).toMatch(status);
+         expect(value.replyTimestamp.valueOf()).toBe(expectedTimestamp.valueOf());
+      }
    });
 
    test('when result type is invalid, it returns failure', async () => {
       // Arrange
-      const backupRequest = BackupRequest.create(backupRequestDTO).getValue();
+      const backupRequest = BackupRequest.create(backupRequestDTO).unwrapOr({} as BackupRequest);
       const backupRequestRepo = backupRequestRepoFactory({ getByIdResult: backupRequest });
+
       const backupRepo = backupRepoFactory();
-      const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).getValue();
+      const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).unwrapOr({} as BackupJob);
+
       const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
+
       const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
       const dto = { ...createBackupReply };
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -159,20 +175,22 @@ describe('Receive Create Backup Reply Use Case', () => {
       const result = await useCase.execute(dto);
 
       // Assert
-      expect(result.isLeft()).toBe(true);
-      expect(result.value.errorValue()).toMatch('resultTypeCode is invalid');
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) { // type guard
+         expect(result.error.message).toMatch('resultTypeCode is invalid');
+      }
    });
 
    test('when result type is Failed, it saves the request but not the backup record', async () => {
       // Arrange
-      const backupRequest = BackupRequest.create(backupRequestDTO).getValue();
+      const backupRequest = BackupRequest.create(backupRequestDTO).unwrapOr({} as BackupRequest);
       const backupRequestRepo = backupRequestRepoFactory({ getByIdResult: backupRequest });
       const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
       const backupRepo = backupRepoFactory();
       const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
       
-      const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).getValue();
+      const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).unwrapOr({} as BackupJob);
       const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
       
       const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
@@ -184,23 +202,26 @@ describe('Receive Create Backup Reply Use Case', () => {
       const result = await useCase.execute(dto);
 
       // Assert
-      expect(result.isRight()).toBe(true);
-      expect(result.value.getValue().constructor.name).toBe('BackupRequest');
-      expect(result.value.getValue().replyMessageText).toBe(dto.messageText);
+      expect(result.isOk()).toBe(true);
       expect(backupRequestSaveSpy).toBeCalledTimes(1);
       expect(backupRepoSaveSpy).not.toBeCalled();
+      if (result.isOk()) { // type guard
+         expect(result.value.constructor.name).toBe('BackupRequest');
+         expect((result.value as BackupRequest).replyMessageText).toBe(dto.messageText);
+      }
+
    });
 
    test('when result type is Succeeded, it saves the request and the backup record', async () => {
       // Arrange
-      const backupRequest = BackupRequest.create(backupRequestDTO).getValue();
+      const backupRequest = BackupRequest.create(backupRequestDTO).unwrapOr({} as BackupRequest);
       const backupRequestRepo = backupRequestRepoFactory({ getByIdResult: backupRequest });
       const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
       const backupRepo = backupRepoFactory();
       const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
       
-      const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).getValue();
+      const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).unwrapOr({} as BackupJob);
       const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
       
       const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
@@ -211,9 +232,12 @@ describe('Receive Create Backup Reply Use Case', () => {
       const result = await useCase.execute(dto);
 
       // Assert
-      expect(result.isRight()).toBe(true);
-      expect(result.value.getValue().constructor.name).toBe('Backup');
+      expect(result.isOk()).toBe(true);
       expect(backupRequestSaveSpy).toBeCalledTimes(1);
       expect(backupRepoSaveSpy).toBeCalledTimes(1);
+      if (result.isOk()) {// type guard
+         expect(result.value.constructor.name).toBe('Backup');
+      }
+
    });
 });

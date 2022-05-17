@@ -37,13 +37,13 @@ describe('Check Request Allowed Use Case', () => {
 
    test('when backup job for request meets allowed rules, it returns a BackupRequest in Allowed status', async () => {
       // Arrange
-      const resultBackupRequest = BackupRequest.create(backupRequestProps).getValue();
+      const resultBackupRequest = BackupRequest.create(backupRequestProps).unwrapOr({} as BackupRequest);
       const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});
 
       const resultBackupJob = BackupJob.create(
          {
             ...backupJobProps,
-         }, new UniqueIdentifier('backup-job-01')).getValue();
+         }, new UniqueIdentifier('backup-job-01')).unwrapOr({} as BackupJob);
       const adapter = backupJobServiceAdapterFactory({getBackupJobResult: resultBackupJob});
       
       const useCase = new CheckRequestAllowedUseCase({backupRequestRepo: repo, backupJobServiceAdapter: adapter});
@@ -54,9 +54,11 @@ describe('Check Request Allowed Use Case', () => {
       const result = await useCase.execute(dto);
 
       // Assert
-      expect(result.isRight()).toBe(true);
-      expect(result.value.getValue().statusTypeCode).toBe(RequestStatusTypeValues.Allowed);
-      expect(result.value.getValue().checkedTimestamp.valueOf()).toBeGreaterThanOrEqual(startTimestamp.valueOf());
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) { // type guard makes the rest easier
+         expect(result.value.statusTypeCode).toBe(RequestStatusTypeValues.Allowed);
+         expect(result.value.checkedTimestamp.valueOf()).toBeGreaterThanOrEqual(startTimestamp.valueOf());
+      }
    });
 
    test('when backup request is not found by id, it returns failure', async () => {
@@ -65,7 +67,7 @@ describe('Check Request Allowed Use Case', () => {
       const resultBackupJob = BackupJob.create(
          {
             ...backupJobProps,
-         }, new UniqueIdentifier('backup-job-01')).getValue();
+         }, new UniqueIdentifier('backup-job-01')).unwrapOr({} as BackupJob);
       const adapter = backupJobServiceAdapterFactory({getBackupJobResult: resultBackupJob});
       const useCase = new CheckRequestAllowedUseCase({backupRequestRepo: repo, backupJobServiceAdapter: adapter});
       const dto = { ...baseDto };
@@ -74,14 +76,16 @@ describe('Check Request Allowed Use Case', () => {
       const result = await useCase.execute(dto);
 
       // Assert
-      expect(result.isLeft()).toBe(true);
+      expect(result.isErr()).toBe(true);
    });
 
    test('when backup job is not found, it returns failure', async () => {
       // Arrange
-      const resultBackupRequest = BackupRequest.create(backupRequestProps).getValue();
+      const resultBackupRequest = BackupRequest.create(backupRequestProps).unwrapOr({} as BackupRequest);
       const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});
+
       const adapter = backupJobServiceAdapterFactory();
+      
       const useCase = new CheckRequestAllowedUseCase({backupRequestRepo: repo, backupJobServiceAdapter: adapter});
       const dto = { ...baseDto };
 
@@ -89,7 +93,7 @@ describe('Check Request Allowed Use Case', () => {
       const result = await useCase.execute(dto);
 
       // Assert
-      expect(result.isLeft()).toBe(true);
+      expect(result.isErr()).toBe(true);
    });
 
    test('when request status type is not post-received value and not Received, it returns failure', async () => {
@@ -98,13 +102,13 @@ describe('Check Request Allowed Use Case', () => {
          ...backupRequestProps,
          statusTypeCode: 'INVALID' as RequestStatusType  // force it
          // BackupRequest doesn't check status is a valid value, if it did, this test would fail here
-      }).getValue();
+      }).unwrapOr({} as BackupRequest);
       const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});
 
       const resultBackupJob = BackupJob.create(
          {
             ...backupJobProps,
-         }, new UniqueIdentifier('backup-job-01')).getValue();
+         }, new UniqueIdentifier('backup-job-01')).unwrapOr({} as BackupJob);
       const adapter = backupJobServiceAdapterFactory({getBackupJobResult: resultBackupJob});
       const useCase = new CheckRequestAllowedUseCase({backupRequestRepo: repo, backupJobServiceAdapter: adapter});
       const dto = { ...baseDto };
@@ -113,7 +117,7 @@ describe('Check Request Allowed Use Case', () => {
       const result = await useCase.execute(dto);
 
       // Assert
-      expect(result.isLeft()).toBe(true);
+      expect(result.isErr()).toBe(true);
    });
 
    // test.each(statusTestCases) runs the same test with different data (defined in statusTestCases)
@@ -133,13 +137,13 @@ describe('Check Request Allowed Use Case', () => {
          statusTypeCode: status as RequestStatusType
       };
       reqProps[timestamp] = new Date();
-      const resultBackupRequest = BackupRequest.create(reqProps as IBackupRequestProps).getValue();
+      const resultBackupRequest = BackupRequest.create(reqProps as IBackupRequestProps).unwrapOr({} as BackupRequest);
       const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});
 
       const resultBackupJob = BackupJob.create(
          {
             ...backupJobProps,
-         }, new UniqueIdentifier('backup-job-01')).getValue();
+         }, new UniqueIdentifier('backup-job-01')).unwrapOr({} as BackupJob);
       const adapter = backupJobServiceAdapterFactory({getBackupJobResult: resultBackupJob});
 
       const useCase = new CheckRequestAllowedUseCase({backupRequestRepo: repo, backupJobServiceAdapter: adapter});
@@ -150,8 +154,11 @@ describe('Check Request Allowed Use Case', () => {
       const result = await useCase.execute(dto);
 
       // Assert
-      expect(result.isRight()).toBe(true);
-      expect(result.value.getValue().statusTypeCode).toBe(status);
-      expect(result.value.getValue()[timestamp].valueOf()).toBeLessThanOrEqual(startTimestamp.valueOf());
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) { // type guard
+         const value = result.value as {[index: string]: any}; // required for value[timestamp]
+         expect(value.statusTypeCode).toBe(status);
+         expect((value[timestamp] as Date).valueOf()).toBeLessThanOrEqual(startTimestamp.valueOf());
+      }
    });
 });

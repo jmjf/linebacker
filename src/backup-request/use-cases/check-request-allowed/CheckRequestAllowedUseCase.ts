@@ -1,15 +1,17 @@
 import { UseCase } from '../../../common/application/UseCase';
-import { Either, left, right } from '../../../common/domain/Either';
-import { Result } from '../../../common/domain/Result';
+import { Result, ok, err } from '../../../common/core/Result';
 import { IBackupJobServiceAdapter } from '../../../backup/adapter/BackupJobServiceAdapter';
 import { BackupJob } from '../../../backup/domain/BackupJob';
 import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
 import { BackupRequest } from '../../domain/BackupRequest';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { CheckRequestAllowedDTO } from './CheckRequestAllowedDTO';
+import * as CheckRequestAllowedErrors from './CheckRequestAllowedErrors';
 
 
-type Response = Either<Result<any>, Result<BackupRequest>>;
+type Response = Result<BackupRequest, 
+   CheckRequestAllowedErrors.NotInReceivedStatusError
+   | Error>
 
 export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDTO, Promise<Response>> {
 
@@ -28,25 +30,25 @@ export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDT
       let backupRequest: BackupRequest;
       try {
          backupRequest = await this.backupRequestRepo.getById(backupRequestId);
-      } catch(err) {
-         return left(Result.fail(`Backup request not found for request id ${backupRequestId}`));
+      } catch(e) {
+         return err(e as Error);
       }
 
       // Already past this state
       if (backupRequest.isChecked() || backupRequest.isSentToInterface() || backupRequest.isReplied()) {
-         return right(Result.succeed<BackupRequest>(backupRequest));
+         return ok(backupRequest);
       }
 
       if (backupRequest.statusTypeCode !== RequestStatusTypeValues.Received) {
-         return left(Result.fail(`Backup request is not in Received status backupRequestId: ${backupRequestId} statusTypeCode: ${backupRequest.statusTypeCode}`));
+         return err(new CheckRequestAllowedErrors.NotInReceivedStatusError(`{ message: 'BackupRequest not in received status', backupRequestId: '${backupRequestId}', statusTypeCode: '${backupRequest.statusTypeCode}'`));
       }
       
       // Get backup job data
       let backupJob: BackupJob;
       try {
          backupJob = await this.backupJobServiceAdapter.getBackupJob(backupRequest.backupJobId.value);
-      } catch(err) {
-         return left(Result.fail(`Backup job not found for backupRequestId: ${backupRequestId} backupJobId: ${backupRequest.backupJobId}`));
+      } catch(e) {
+         return err(e as Error);
       }
 
       // set status based on allowed rules
@@ -61,6 +63,6 @@ export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDT
       // Update request in repo
       await this.backupRequestRepo.save(backupRequest);
       // return left(Result.fail(backupRequest.toJSON())); // force fail for initial test
-      return right(Result.succeed(backupRequest));
+      return ok(backupRequest);
    }
 }

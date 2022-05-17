@@ -1,13 +1,16 @@
 import { UseCase } from '../../../common/application/UseCase';
-import { Either, left, right } from '../../../common/domain/Either';
-import { Result } from '../../../common/domain/Result';
+import { Result, ok, err } from '../../../common/core/Result';
 import { IBackupRequestBackupInterfaceAdapter } from '../../adapter/BackupRequestBackupInterfaceAdapter';
 import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
 import { BackupRequest } from '../../domain/BackupRequest';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { SendRequestToInterfaceDTO } from './SendRequestToInterfaceDTO';
+import * as SendRequestToInterfaceErrors from './SendRequestToInterfaceErrors';
 
-type Response = Either<Result<any>, Result<BackupRequest>>;
+type Response = Result<BackupRequest, 
+   SendRequestToInterfaceErrors.NotInAllowedStatusError
+   | SendRequestToInterfaceErrors.SendToInterfaceFailedError
+   | Error>;
 
 export class SendRequestToInterfaceUseCase implements UseCase<SendRequestToInterfaceDTO, Promise<Response>> {
 
@@ -26,24 +29,24 @@ export class SendRequestToInterfaceUseCase implements UseCase<SendRequestToInter
 
       try {
          backupRequest = await this.backupRequestRepo.getById(requestId);
-      } catch(err) {
-         return left(Result.fail(`Backup request not found for request id ${requestId}`));
+      } catch(e) {
+         return err(e as Error);
       }
 
       if (backupRequest.isSentToInterface() || backupRequest.isReplied()) {
          // NEED TO LOG
-         return right(Result.succeed<BackupRequest>(backupRequest));
+         return ok(backupRequest);
       }
 
       if (backupRequest.statusTypeCode !== RequestStatusTypeValues.Allowed) {
-         return left(Result.fail(`Backup request is not in Allowed status requestId: ${requestId} statusTypeCode: ${backupRequest.statusTypeCode}`));
+         return err(new SendRequestToInterfaceErrors.NotInAllowedStatusError(`{ message: 'Not in allowed status', requestId: '${requestId}', statusTypeCode: '${backupRequest.statusTypeCode}'`));
       }
       
       // Send request to backup store interface -- need to handle this better
       const sendOk = await this.backupInterfaceAdapter.sendMessage(backupRequest);
       if (!sendOk) {
          // LOG
-         return left(Result.fail(`Could not send backup request to backup interface requestId: ${requestId}`));
+         return err(new SendRequestToInterfaceErrors.SendToInterfaceFailedError(`{ message: 'Send to backup interface ${this.backupInterfaceAdapter.constructor.name} failed', requestId: '${requestId}'`));
       }
 
       // Set request status, status timestamp, etc.
@@ -51,6 +54,6 @@ export class SendRequestToInterfaceUseCase implements UseCase<SendRequestToInter
             
       // Update request in repo
       await this.backupRequestRepo.save(backupRequest);
-      return right(Result.succeed(backupRequest));
+      return ok(backupRequest);
    }
 }

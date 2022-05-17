@@ -1,15 +1,20 @@
 import { UseCase } from '../../../common/application/UseCase';
-import { Result } from '../../../common/domain/Result';
-import { Either, left, right } from '../../../common/domain/Either';
+import { Result, ok, err } from '../../../common/core/Result';
+import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
+import * as DomainErrors from '../../../common/domain/DomainErrors';
+
 import { CreateRequestDTO } from './CreateRequestDTO';
 import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
 import { BackupRequest, IBackupRequestProps } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
-import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
+
 
 // add errors when you define them
-type Response = Either<Result<any>, Result<BackupRequest>>;
+type Response = Result<BackupRequest, 
+	DomainErrors.InvalidPropsError 
+	| Error
+>;
 
 /**
  * Class representing a use case to create a new backup request and store it in the request log
@@ -38,13 +43,14 @@ export class CreateRequestUseCase
 		
 		// get a new BackupRequest (or handle error)
 		const backupRequestOrError = BackupRequest.create(requestProps);
-		if (backupRequestOrError.isFailure) {
-			return left(backupRequestOrError);
+		if (backupRequestOrError.isErr()) {
+			return backupRequestOrError; // already an Err, so don't need err() wrapper
 		}
 
-		const backupRequest = backupRequestOrError.getValue();
+		// type guarded by isErr() above
+		const backupRequest = backupRequestOrError.value;
 		await this.backupRequestRepo.save(backupRequest);
 
-		return right(Result.succeed<BackupRequest>(backupRequest));
+		return ok(backupRequest);
 	}
 }

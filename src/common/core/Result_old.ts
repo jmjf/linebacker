@@ -12,10 +12,10 @@ import { log } from '../adapter/logger';
  * @remarks
  * Also provides factory functions `succeed()` and `fail()` -- prefer over the raw constructor
  */
-export class Result<T> {
+export class Result<T, E> {
 	public isSuccess: boolean;
 	public isFailure: boolean;
-	public error: T | string;
+	public error: E | string;
 	private _value: T;
 
 	/**
@@ -27,7 +27,7 @@ export class Result<T> {
 	 * @remarks
 	 * Favor using `succeed()` or `fail()` to create an appropriate result.
 	 */
-	public constructor(isSuccess: boolean, error?: T | string | null, value?: T) {
+	public constructor(isSuccess: boolean, error?: E | string, value?: T) {
 		if (isSuccess && error) {
 			throw new Error(
 				'InvalidOperation: A result cannot be successful and contain an error'
@@ -41,7 +41,7 @@ export class Result<T> {
 
 		this.isSuccess = isSuccess;
 		this.isFailure = !isSuccess;
-		this.error = error as T;
+		this.error = error as E;
 		this._value = value as T;
 
 		// do not allow any changes
@@ -80,10 +80,10 @@ export class Result<T> {
 	 * @typeparam `U` type of the Result's value object (interface)
 	 *
 	 * @param value (optional) a value to use for the result
-	 * @returns `Result<U>` a successful result
+	 * @returns `Result<U, never>` a successful result
 	 */
-	public static succeed<U>(value?: U): Result<U> {
-		return new Result<U>(true, null, value);
+	public static succeed<U>(value?: U): Result<U, never> {
+		return new Result<U, never>(true, null, value);
 	}
 
 	/**
@@ -93,10 +93,10 @@ export class Result<T> {
 	 * @typeparam `U` type of the Result's error object (interface) [check this]
 	 *
 	 * @param error a string representing the error message
-	 * @returns `Result<U>` a failure result
+	 * @returns `Result<never, U>` a failure result
 	 */
-		public static fail<U>(error: string): Result<U> {
-		return new Result<U>(false, error);
+		public static fail<U>(error: any): Result<never, U> {
+		return new Result<never, U>(false, error);
 	}
 
 	/**
@@ -108,7 +108,7 @@ export class Result<T> {
 	 * If any result fails, returns that result.
 	 * If no result fails, returns `Result.succeed()` with no value.
 	 */
-	public static combine(results: Result<any>[]): Result<any> {
+	public static combine(results: Result<any, any>[]): Result<any, any> {
 		for (const result of results) {
 			if (result.isFailure) return result;
 		}

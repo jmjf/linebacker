@@ -30,10 +30,12 @@ describe('Create Request Use Case', () => {
       const result = await useCase.execute(dto);
 
       // Assert
-      expect(result.isRight()).toBe(true);
+      expect(result.isOk()).toBe(true);
       expect(saveSpy).toHaveBeenCalledTimes(1);
-      expect(result.value.getValue().backupJobId.value).toMatch(baseDto.backupJobId);
-      expect(result.value.getValue().backupRequestId).toBeTruthy();
+      if (result.isOk()) {  // type guard so TS knows value is valid
+         expect(result.value.backupJobId.value).toMatch(baseDto.backupJobId);
+         expect(result.value.backupRequestId).toBeTruthy();
+      };
    });
 
    test('when executed with an invalid transport type, it returns the expected error', async() => {
@@ -48,9 +50,11 @@ describe('Create Request Use Case', () => {
       const result = await useCase.execute(dto);
 
       // Assert
-      expect(result.isLeft()).toBe(true);
-      expect(result.value.error).toContain('transportType is not one of');
+      expect(result.isErr()).toBe(true);
       expect(saveSpy).toHaveBeenCalledTimes(0);
+      if (result.isErr()) { // type guard
+         expect(result.error.message).toContain('transportType is not one of');
+      };
    });
 
    test('when executed with an undefined required value, it returns the expected error', async() => {
@@ -72,9 +76,11 @@ describe('Create Request Use Case', () => {
       const result = await useCase.execute(dto);
 
       // Assert
-      expect(result.isLeft()).toBe(true);
-      expect(result.value.error).toContain('getOnStartFlag is null or undefined');
+      expect(result.isErr()).toBe(true);
       expect(saveSpy).toHaveBeenCalledTimes(0);
+      if (result.isErr()) { // type guard
+         expect(result.error.message).toContain('getOnStartFlag is null or undefined');
+      };
    });
 
    test('when executed with an invalid dataDate, it returns the expected error', async() => {
@@ -89,8 +95,10 @@ describe('Create Request Use Case', () => {
       const result = await useCase.execute(dto);
 
       // Assert
-      expect(result.isLeft()).toBe(true);
-      expect(result.value.error).toContain('dataDate is not a valid date');
+      expect(result.isErr()).toBe(true);
       expect(saveSpy).toHaveBeenCalledTimes(0);
+      if (result.isErr()) { // type guard
+         expect(result.error.message).toContain('dataDate is not a valid date');
+      }
    });
 });

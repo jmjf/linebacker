@@ -1,22 +1,26 @@
 import { UseCase } from '../../../common/application/UseCase';
-import { Either, left, right } from '../../../common/domain/Either';
-import { Result } from '../../../common/domain/Result';
-import { Guard } from '../../../common/domain/Guard';
+import { Result, ok, err } from '../../../common/core/Result';
+import { Guard } from '../../../common/core/Guard';
 
 import { Backup, IBackupProps } from '../../../backup/domain/Backup';
 import { IBackupRepo } from '../../../backup/adapter/BackupRepo';
 import { IBackupJobServiceAdapter } from '../../../backup/adapter/BackupJobServiceAdapter';
 import { BackupJob } from '../../../backup/domain/BackupJob';
+import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
+import * as DomainErrors from '../../../common/domain/DomainErrors';
 
 import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
 import { BackupRequest } from '../../domain/BackupRequest';
 import { BackupResultType, BackupResultTypeValues, validBackupResultTypes } from '../../domain/BackupResultType';
 import { CreateBackupReplyDTO } from './CreateBackupReplyDTO';
-import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
+
 
 
 // add errors when you define them
-type Response = Either<Result<any>, Result<Backup | BackupRequest>>;
+type Response = Result<Backup | BackupRequest, 
+	DomainErrors.InvalidPropsError 
+	| Error
+>;
 
 /**
  * Class representing a use case to create a new backup request and store it in the request log
@@ -39,25 +43,25 @@ export class ReceiveCreateBackupReplyUseCase
 
 		const resultTypeCodeGuardResult = Guard.isOneOf(resultTypeCode, validBackupResultTypes, 'resultTypeCode');
 		if (!resultTypeCodeGuardResult.isSuccess) {
-			return left(Result.fail(`Backup result resultTypeCode is invalid ${resultTypeCode}`));
+			return err(new DomainErrors.InvalidPropsError(`{ message: 'Backup result resultTypeCode is invalid', resultTypeCode: '${resultTypeCode}'}`));
 		}
 
 		const backupRequestIdGuardResult = Guard.againstNullOrUndefined(backupRequestId, 'backupRequestId');
 		if (!backupRequestIdGuardResult.isSuccess) {
-			return left(Result.fail('backupRequestId is null or undefined.'));
+			return err(new DomainErrors.InvalidPropsError(`{ message: 'backupRequestId is null or undefined.'}`));
 		}
 
       // backup request must exist or we can't do anything
 		let backupRequest: BackupRequest;
       try {
          backupRequest = await this.backupRequestRepo.getById(backupRequestId);
-      } catch(err) {
-         return left(Result.fail(`Backup request not found for request id ${backupRequestId}`));
+      } catch(e) {
+         return err(e as Error);
       }
 
 		// don't change already replied values
 		if (backupRequest.isReplied()) {
-			return right(Result.succeed(backupRequest));
+			return ok(backupRequest);
 		}
 
 		// wait to save changes until the end in case Backup create fails
@@ -69,8 +73,8 @@ export class ReceiveCreateBackupReplyUseCase
 			let backupJob: BackupJob;
 			try {
 				backupJob = await this.backupJobServiceAdapter.getBackupJob(backupRequest.backupJobId.value);
-			} catch (err) {
-				return left(Result.fail(`Backup job not found for job id ${backupRequest.backupJobId}`));
+			} catch (e) {
+				return err(e as Error);
 			}
 
 			// create backup aggregate from data in request, reply, and job
@@ -85,11 +89,11 @@ export class ReceiveCreateBackupReplyUseCase
 			};
 
 			const backupOrError = Backup.create(requestProps);
-			if (backupOrError.isFailure) {
-				return left(backupOrError);
+			if (backupOrError.isErr()) {
+				return backupOrError;
 			}
 
-			backup = backupOrError.getValue();
+			backup = backupOrError.value;
 
 			// save backup aggregate
 			await this.backupRepo.save(backup);
@@ -98,9 +102,9 @@ export class ReceiveCreateBackupReplyUseCase
 		// save backup request aggregate -- keep this save adjacent to backup aggregate save
 		await this.backupRequestRepo.save(backupRequest);
 
-		return right(resultTypeCode === BackupResultTypeValues.Succeeded
-			? Result.succeed<Backup>(backup)
-			: Result.succeed<BackupRequest>(backupRequest)
+		return ok(resultTypeCode === BackupResultTypeValues.Succeeded
+			? backup
+			: backupRequest
 		);
 
 	}

@@ -34,7 +34,7 @@ describe('Send Request To Interface Use Case', () => {
          {
             ...backupRequestProps,
             backupJobId: new UniqueIdentifier('request Allowed')
-         }).getValue();
+         }).unwrapOr({} as BackupRequest);
       const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});
 
       const adapter = backupInterfaceAdapterFactory({sendMessageResult: true});
@@ -46,9 +46,11 @@ describe('Send Request To Interface Use Case', () => {
       const result = await useCase.execute(dto);
 
       // Assert
-      expect(result.isRight()).toBe(true);
-      expect(result.value.getValue().statusTypeCode).toBe(RequestStatusTypeValues.Sent);
-      expect(result.value.getValue().sentToInterfaceTimestamp.valueOf()).toBeGreaterThan(startTimestamp.valueOf());
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) { // type guard makes the rest easier
+         expect(result.value.statusTypeCode).toBe(RequestStatusTypeValues.Sent);
+         expect(result.value.sentToInterfaceTimestamp.valueOf()).toBeGreaterThan(startTimestamp.valueOf());
+      }
    });
 
    test.each([
@@ -65,7 +67,7 @@ describe('Send Request To Interface Use Case', () => {
             sentToInterfaceTimestamp: new Date('2001-01-01'),
             replyTimestamp: new Date('2002-02-02')
          }
-      ).getValue();
+      ).unwrapOr({} as BackupRequest);
       const expectedTimestamp = new Date((resultBackupRequest as {[index: string]:any})[timestampName]); // ensure we have a separate instance
       const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});
 
@@ -78,9 +80,12 @@ describe('Send Request To Interface Use Case', () => {
       const result = await useCase.execute(dto);
 
       // Assert
-      expect(result.isRight()).toBe(true);
-      expect(result.value.getValue().statusTypeCode).toBe(status);
-      expect(result.value.getValue()[timestampName].valueOf()).toBe(expectedTimestamp.valueOf());
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) { // type guard
+         const value: {[index: string]: any} = result.value;
+         expect(value.statusTypeCode).toBe(status);
+         expect(value[timestampName].valueOf()).toBe(expectedTimestamp.valueOf());
+      }
    });
 
    test('when request does not exist, it returns failure', async () => {
@@ -96,7 +101,7 @@ describe('Send Request To Interface Use Case', () => {
       const result = await useCase.execute(dto);
 
       // Assert
-      expect(result.isLeft()).toBe(true);
+      expect(result.isErr()).toBe(true);
    });
 
    test('when request is in NotAllowed status, it returns failure', async () => {
@@ -107,7 +112,7 @@ describe('Send Request To Interface Use Case', () => {
             backupJobId: new UniqueIdentifier('request NotAllowed'),
             statusTypeCode: 'NotAllowed'
          }
-      ).getValue();
+      ).unwrapOr({} as BackupRequest);
       const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});
 
       const adapter = backupInterfaceAdapterFactory({sendMessageResult: true});
@@ -119,7 +124,7 @@ describe('Send Request To Interface Use Case', () => {
       const result = await useCase.execute(dto);
 
       // Assert
-      expect(result.isLeft()).toBe(true);
+      expect(result.isErr()).toBe(true);
    });
 
    test('when send message fails, it returns failure', async () => {
@@ -129,7 +134,7 @@ describe('Send Request To Interface Use Case', () => {
             ...backupRequestProps,
             backupJobId: new UniqueIdentifier('sendMessage fails')
          }
-      ).getValue();
+      ).unwrapOr({} as BackupRequest);
       const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});
 
       const adapter = backupInterfaceAdapterFactory({sendMessageResult: false});
@@ -141,7 +146,7 @@ describe('Send Request To Interface Use Case', () => {
       const result = await useCase.execute(dto);
 
       // Assert
-      expect(result.isLeft()).toBe(true);
+      expect(result.isErr()).toBe(true);
    });
 
    test('when backup request is not found, it returns failure with error message "not found"', async () => {
@@ -157,7 +162,9 @@ describe('Send Request To Interface Use Case', () => {
       const result = await useCase.execute(dto);
 
       // Assert
-      expect(result.isLeft()).toBe(true);
-      expect(result.value.errorValue()).toMatch('not found');
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) { // type guard
+         expect(result.error.message).toMatch('not found');
+      };
    });
 });

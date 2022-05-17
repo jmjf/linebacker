@@ -2,9 +2,10 @@ import { dateOrUndefinedAsDate } from '../../utils/utils';
 
 import { isDate } from 'util/types';
 import { AggregateRoot } from '../../common/domain/AggregateRoot';
-import { Guard, GuardArgumentCollection } from '../../common/domain/Guard';
-import { Result } from '../../common/domain/Result';
+import { Guard, GuardArgumentCollection } from '../../common/core/Guard';
+import { err, ok, Result } from '../../common/core/Result';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
+import * as DomainErrors from '../../common/domain/DomainErrors';
 
 import { BackupProviderType } from '../../backup/domain/BackupProviderType';
 
@@ -161,7 +162,7 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
     * If `create()` successfully creates the `BackupRequest` object, `result.isSuccess` is true and `result.getValue()` returns the new object.
     * If `create()` fails for any reason,  `result.isError` is true, `result.isSuccess is fales, and `result.getError()` returns the error
     */
-   public static create(props:IBackupRequestProps, id?: UniqueIdentifier): Result<BackupRequest> {
+   public static create(props:IBackupRequestProps, id?: UniqueIdentifier): Result<BackupRequest, DomainErrors.InvalidPropsError> {
       // check required props are not null or undefined
       // if result !succeeded return Result.fail<>()
 
@@ -177,13 +178,13 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 
       const propsGuardResult = Guard.againstNullOrUndefinedBulk(guardArgs);
       if (!propsGuardResult.isSuccess) {
-         return Result.fail<BackupRequest>(propsGuardResult.message);
+         return err(new DomainErrors.InvalidPropsError(`{ message: '${propsGuardResult.message}'}`));
       }
 
       // ensure transport type is valid
 		const transportGuardResult = Guard.isOneOf(props.transportTypeCode, validRequestTransportTypes, 'transportType');
 		if (!transportGuardResult.isSuccess){
-			return Result.fail(transportGuardResult.message);
+			return err(new DomainErrors.InvalidPropsError(`{ message: '${transportGuardResult.message}'}`));
 		}
 
       // I could do a similar test on status, but that would make certain tests fail before the test
@@ -193,7 +194,7 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 		// ensure dataDate is a date
       const dataDateGuardResult = Guard.isValidDate(props.dataDate, 'dataDate');
 		if (!dataDateGuardResult.isSuccess) {
-   	   return Result.fail(dataDateGuardResult.message);
+   	   return err(new DomainErrors.InvalidPropsError(`{ message: '${dataDateGuardResult.message}'}`));
 		}
       const dataDateAsDate = new Date(props.dataDate);
 
@@ -218,6 +219,6 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
          backupRequest.addDomainEvent(new BackupRequestCreated(backupRequest));
       }
 
-      return Result.succeed<BackupRequest>(backupRequest);
+      return ok(backupRequest);
    }
 }

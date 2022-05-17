@@ -4,11 +4,15 @@ import { BackupJob, IBackupJobProps } from '../../backup/domain/BackupJob';
 import { backupJobServiceAdapterFactory } from '../../backup/test-utils/backupJobServiceAdapterFactory';
 
 import { BackupRequest, IBackupRequestProps } from '../domain/BackupRequest';
+
 import { SendRequestToInterfaceUseCase } from '../use-cases/send-request-to-interface/SendRequestToInterfaceUseCase';
 import { BackupRequestAllowedSubscriber } from '../use-cases/send-request-to-interface/BackupRequestAllowedSubscriber';
+
 import { BackupRequestCreatedSubscriber } from '../use-cases/check-request-allowed/BackupRequestCreatedSubscriber';
 import { CheckRequestAllowedUseCase } from '../use-cases/check-request-allowed/CheckRequestAllowedUseCase';
+
 import { CreateRequestUseCase } from '../use-cases/create-request/CreateRequestUseCase';
+
 import { backupInterfaceAdapterFactory } from './backupInterfaceAdapterFactory';
 import { backupRequestRepoFactory } from './backupRequestRepoFactory';
 
@@ -28,7 +32,7 @@ if (TEST_EVENTS) {
    } as IBackupRequestProps;
 
    const eventBackupRequestRepo = backupRequestRepoFactory({
-      getByIdResult: BackupRequest.create(backupRequestProps).getValue()
+      getByIdResult: BackupRequest.create(backupRequestProps).unwrapOr({} as BackupRequest)
    });
 
    const backupJobProps = {
@@ -39,7 +43,7 @@ if (TEST_EVENTS) {
    } as IBackupJobProps;
 
    const backupJobServiceAdapter = backupJobServiceAdapterFactory({
-      getBackupJobResult: BackupJob.create(backupJobProps, new UniqueIdentifier()).getValue()
+      getBackupJobResult: BackupJob.create(backupJobProps, new UniqueIdentifier()).unwrapOr({} as BackupJob)
    });
 
    new BackupRequestCreatedSubscriber(new CheckRequestAllowedUseCase({backupRequestRepo: eventBackupRequestRepo, backupJobServiceAdapter: backupJobServiceAdapter }));
@@ -59,7 +63,7 @@ if (TEST_EVENTS) {
             getOnStartFlag: true
          };
          const result = await useCase.execute(dto);
-         expect(result.isRight()).toBe(true);
+         expect(result.isOk()).toBe(true);
          expect(saveSpy).toBeCalled();
       });
    });
