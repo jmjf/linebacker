@@ -60,7 +60,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
       // Assert
       expect(result.isErr()).toBe(true);
       if (result.isErr()) { // type guard
-         expect(result.error.name).toBe('UnexpectedError');
+         expect(result.error.name).toBe('DatabaseError');
       }
    });
 
