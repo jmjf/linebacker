@@ -88,7 +88,7 @@ describe('Send Request To Interface Use Case', () => {
       }
    });
 
-   test('when request does not exist, it returns failure', async () => {
+   test('when backup request does not exist, it returns failure', async () => {
       // Arrange
       const repo = backupRequestRepoFactory();
 
@@ -102,6 +102,9 @@ describe('Send Request To Interface Use Case', () => {
 
       // Assert
       expect(result.isErr()).toBe(true);
+      if (result.isErr()) { // type guard
+         expect(result.error.name).toBe('UnexpectedError');
+      }
    });
 
    test('when request is in NotAllowed status, it returns failure', async () => {
@@ -125,6 +128,9 @@ describe('Send Request To Interface Use Case', () => {
 
       // Assert
       expect(result.isErr()).toBe(true);
+      if (result.isErr()) { // type guard
+         expect(result.error.name).toBe('NotInAllowedStatusError');
+      }
    });
 
    test('when send message fails, it returns failure', async () => {
@@ -147,24 +153,8 @@ describe('Send Request To Interface Use Case', () => {
 
       // Assert
       expect(result.isErr()).toBe(true);
-   });
-
-   test('when backup request is not found, it returns failure with error message "not found"', async () => {
-      // Arrange
-      const repo = backupRequestRepoFactory();
-
-      const adapter = backupInterfaceAdapterFactory({sendMessageResult: false});
-
-      const useCase = new SendRequestToInterfaceUseCase({backupRequestRepo: repo, backupInterfaceAdapter: adapter});
-      const dto = { ...baseDto };
-
-      // Act
-      const result = await useCase.execute(dto);
-
-      // Assert
-      expect(result.isErr()).toBe(true);
       if (result.isErr()) { // type guard
-         expect(result.error.message).toMatch('not found');
-      };
+         expect(result.error.name).toBe('SendToInterfaceFailedError');
+      }
    });
 });

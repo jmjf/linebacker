@@ -12,7 +12,7 @@ import { backupRequestRepoFactory } from '../../test-utils/backupRequestRepoFact
 import { CheckRequestAllowedDTO } from './CheckRequestAllowedDTO';
 import { CheckRequestAllowedUseCase } from './CheckRequestAllowedUseCase';
 
-describe('Check Request Allowed Use Case', () => {
+describe('CheckRequestAllowedUseCase', () => {
    const baseDto: CheckRequestAllowedDTO = {
       backupRequestId: 'job'
    };
@@ -64,11 +64,13 @@ describe('Check Request Allowed Use Case', () => {
    test('when backup request is not found by id, it returns failure', async () => {
       // Arrange
       const repo = backupRequestRepoFactory();
+
       const resultBackupJob = BackupJob.create(
          {
             ...backupJobProps,
          }, new UniqueIdentifier('backup-job-01')).unwrapOr({} as BackupJob);
       const adapter = backupJobServiceAdapterFactory({getBackupJobResult: resultBackupJob});
+
       const useCase = new CheckRequestAllowedUseCase({backupRequestRepo: repo, backupJobServiceAdapter: adapter});
       const dto = { ...baseDto };
 
@@ -77,6 +79,9 @@ describe('Check Request Allowed Use Case', () => {
 
       // Assert
       expect(result.isErr()).toBe(true);
+      if (result.isErr()) { // type guard
+         expect(result.error.name).toBe('UnexpectedError');
+      }
    });
 
    test('when backup job is not found, it returns failure', async () => {
@@ -118,6 +123,9 @@ describe('Check Request Allowed Use Case', () => {
 
       // Assert
       expect(result.isErr()).toBe(true);
+      if (result.isErr()) { // type guard
+         expect(result.error.name).toBe('NotInReceivedStatusError');
+      }
    });
 
    // test.each(statusTestCases) runs the same test with different data (defined in statusTestCases)

@@ -1,7 +1,8 @@
-import { UseCase } from '../../../common/application/UseCase';
-import { Result, ok, err } from '../../../common/core/Result';
+import { Result } from '../../../common/core/Result';
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 import * as DomainErrors from '../../../common/domain/DomainErrors';
+import { UseCase } from '../../../common/application/UseCase';
+import * as ApplicationErrors from '../../../common/application/ApplicationErrors';
 
 import { CreateRequestDTO } from './CreateRequestDTO';
 import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
@@ -12,7 +13,8 @@ import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 
 // add errors when you define them
 type Response = Result<BackupRequest, 
-	DomainErrors.InvalidPropsError 
+	DomainErrors.InvalidPropsError
+	| ApplicationErrors.UnexpectedError
 	| Error
 >;
 
@@ -49,8 +51,6 @@ export class CreateRequestUseCase
 
 		// type guarded by isErr() above
 		const backupRequest = backupRequestOrError.value;
-		await this.backupRequestRepo.save(backupRequest);
-
-		return ok(backupRequest);
+		return await this.backupRequestRepo.save(backupRequest);
 	}
 }

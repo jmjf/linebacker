@@ -1,5 +1,7 @@
-import { UseCase } from '../../../common/application/UseCase';
 import { Result, ok, err } from '../../../common/core/Result';
+import { UseCase } from '../../../common/application/UseCase';
+import * as ApplicationErrors from '../../../common/application/ApplicationErrors';
+
 import { IBackupJobServiceAdapter } from '../../../backup/adapter/BackupJobServiceAdapter';
 import { BackupJob } from '../../../backup/domain/BackupJob';
 import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
@@ -11,6 +13,7 @@ import * as CheckRequestAllowedErrors from './CheckRequestAllowedErrors';
 
 type Response = Result<BackupRequest, 
    CheckRequestAllowedErrors.NotInReceivedStatusError
+   | ApplicationErrors.UnexpectedError
    | Error>
 
 export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDTO, Promise<Response>> {
@@ -27,12 +30,11 @@ export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDT
       // Get request from repository (returns a BackupRequest)
       const { backupRequestId } = request;
 
-      let backupRequest: BackupRequest;
-      try {
-         backupRequest = await this.backupRequestRepo.getById(backupRequestId);
-      } catch(e) {
-         return err(e as Error);
+      const backupRequestOrError = await this.backupRequestRepo.getById(backupRequestId);
+      if (backupRequestOrError.isErr()) {
+         return backupRequestOrError;
       }
+      const backupRequest = backupRequestOrError.value;
 
       // Already past this state
       if (backupRequest.isChecked() || backupRequest.isSentToInterface() || backupRequest.isReplied()) {
@@ -61,8 +63,6 @@ export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDT
       }
 
       // Update request in repo
-      await this.backupRequestRepo.save(backupRequest);
-      // return left(Result.fail(backupRequest.toJSON())); // force fail for initial test
-      return ok(backupRequest);
+      return await this.backupRequestRepo.save(backupRequest);
    }
 }

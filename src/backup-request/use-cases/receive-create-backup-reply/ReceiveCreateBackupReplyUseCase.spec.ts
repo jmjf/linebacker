@@ -60,8 +60,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
       // Assert
       expect(result.isErr()).toBe(true);
       if (result.isErr()) { // type guard
-         expect(result.error.message).toMatch('BackupRequestRepo');
-         expect(result.error.message).toMatch('not found');
+         expect(result.error.name).toBe('UnexpectedError');
       }
    });
 
@@ -116,7 +115,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
       // Assert
       expect(result.isErr()).toBe(true);
       if (result.isErr()) { // type guard
-         expect(result.error.message).toMatch('is null or undefined');
+         expect(result.error.name).toBe('InvalidPropsError');
          expect(result.error.message).toMatch(propName);
       }
    });
@@ -177,7 +176,8 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
       // Assert
       expect(result.isErr()).toBe(true);
       if (result.isErr()) { // type guard
-         expect(result.error.message).toMatch('resultTypeCode is invalid');
+         expect(result.error.name).toBe('InvalidPropsError');
+         expect(result.error.message).toMatch('resultTypeCode');
       }
    });
 
@@ -238,6 +238,5 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
       if (result.isOk()) {// type guard
          expect(result.value.constructor.name).toBe('Backup');
       }
-
    });
 });

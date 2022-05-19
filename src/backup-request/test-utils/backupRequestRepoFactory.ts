@@ -1,6 +1,10 @@
+import { Result, ok, err } from '../../common/core/Result';
+import { DomainEventBus } from '../../common/domain/DomainEventBus';
+import * as ApplicationErrors from '../../common/application/ApplicationErrors';
+
 import { IBackupRequestRepo } from '../adapter/BackupRequestRepo';
 import { BackupRequest } from '../domain/BackupRequest';
-import { DomainEventBus } from '../../common/domain/DomainEventBus';
+
 
 interface IBackupRequestRepoFactoryParams {
 	existsResult?: boolean;
@@ -14,16 +18,16 @@ export function backupRequestRepoFactory(
 			return Promise.resolve(params?.existsResult === undefined || params?.existsResult === null ? true : params?.existsResult);
 		},
 
-		async getById(requestId: string): Promise<BackupRequest> {
+		async getById(requestId: string): Promise<Result<BackupRequest, ApplicationErrors.UnexpectedError>> {
 			if (!params || !params.getByIdResult || !requestId) {
-				throw new Error('BackupRequestRepo getByIdResult not found');
+				return Promise.resolve(err(new ApplicationErrors.UnexpectedError('BackupRequestRepo getByIdResult not found')));
 			}
-			return Promise.resolve(params.getByIdResult);
+			return Promise.resolve(ok(params.getByIdResult));
 		},
 
-		save(backupRequest: BackupRequest): Promise<void> {
+		save(backupRequest: BackupRequest): Promise<Result<BackupRequest, ApplicationErrors.UnexpectedError>> {
 			DomainEventBus.publishEventsForAggregate(backupRequest.backupRequestId);
-			return Promise.resolve();
+			return Promise.resolve(ok(backupRequest));
 		},
 	};
 }

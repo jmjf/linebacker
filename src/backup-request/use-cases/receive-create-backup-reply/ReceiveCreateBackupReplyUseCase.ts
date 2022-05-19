@@ -52,12 +52,11 @@ export class ReceiveCreateBackupReplyUseCase
 		}
 
       // backup request must exist or we can't do anything
-		let backupRequest: BackupRequest;
-      try {
-         backupRequest = await this.backupRequestRepo.getById(backupRequestId);
-      } catch(e) {
-         return err(e as Error);
+      const backupRequestOrError = await this.backupRequestRepo.getById(backupRequestId);
+      if (backupRequestOrError.isErr()) {
+         return backupRequestOrError;
       }
+      const backupRequest = backupRequestOrError.value;
 
 		// don't change already replied values
 		if (backupRequest.isReplied()) {
