@@ -8,11 +8,10 @@ import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
 import { BackupRequest } from '../../domain/BackupRequest';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { CheckRequestAllowedDTO } from './CheckRequestAllowedDTO';
-import * as CheckRequestAllowedErrors from './CheckRequestAllowedErrors';
 
 
 type Response = Result<BackupRequest, 
-   CheckRequestAllowedErrors.NotInReceivedStatusError
+   ApplicationErrors.BackupRequestStatusError
    | ApplicationErrors.UnexpectedError
    | Error>
 
@@ -42,7 +41,7 @@ export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDT
       }
 
       if (backupRequest.statusTypeCode !== RequestStatusTypeValues.Received) {
-         return err(new CheckRequestAllowedErrors.NotInReceivedStatusError(`{ message: 'BackupRequest not in received status', backupRequestId: '${backupRequestId}', statusTypeCode: '${backupRequest.statusTypeCode}'`));
+         return err(new ApplicationErrors.BackupRequestStatusError(`{ message: 'Must be in Received status', backupRequestId: '${backupRequestId}', statusTypeCode: '${backupRequest.statusTypeCode}'`));
       }
       
       // Get backup job data

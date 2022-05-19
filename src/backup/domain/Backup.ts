@@ -117,7 +117,7 @@ export class Backup extends Entity<IBackupProps> {
       return deleteDate;
    }
 
-   public static create(props: IBackupProps, id?: UniqueIdentifier): Result<Backup, DomainErrors.InvalidPropsError> {
+   public static create(props: IBackupProps, id?: UniqueIdentifier): Result<Backup, DomainErrors.PropsError> {
       // check required props are not null or undefined
       // if result !succeeded return Result.fail<>()
 
@@ -138,7 +138,7 @@ export class Backup extends Entity<IBackupProps> {
 
       const propsGuardResult = Guard.againstNullOrUndefinedBulk(guardArgs);
       if (!propsGuardResult.isSuccess) {
-         return err(new DomainErrors.InvalidPropsError(`{ message: '${propsGuardResult.message}'}`));;
+         return err(new DomainErrors.PropsError(`{ message: '${propsGuardResult.message}'}`));;
       }
 
       // Guard: resultTypeCode is in the list of RequestStatusTypes

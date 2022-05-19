@@ -129,7 +129,8 @@ describe('Send Request To Interface Use Case', () => {
       // Assert
       expect(result.isErr()).toBe(true);
       if (result.isErr()) { // type guard
-         expect(result.error.name).toBe('NotInAllowedStatusError');
+         expect(result.error.name).toBe('BackupRequestStatusError');
+         expect(result.error.message).toMatch('in Allowed');
       }
    });
 
@@ -154,7 +155,7 @@ describe('Send Request To Interface Use Case', () => {
       // Assert
       expect(result.isErr()).toBe(true);
       if (result.isErr()) { // type guard
-         expect(result.error.name).toBe('SendToInterfaceFailedError');
+         expect(result.error.name).toBe('SendToInterfaceError');
       }
    });
 });

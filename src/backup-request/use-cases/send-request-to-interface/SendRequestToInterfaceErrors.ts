@@ -1,13 +1,8 @@
 import { BaseError } from '../../../common/core/BaseError';
 
-export class NotInAllowedStatusError extends BaseError {
+export class SendToInterfaceError extends BaseError {
    constructor(message: string) {
       super(message);
-   }
-}
-
-export class SendToInterfaceFailedError extends BaseError {
-   constructor(message: string) {
-      super(message);
+      this.name = 'SendToInterfaceError';
    }
 }

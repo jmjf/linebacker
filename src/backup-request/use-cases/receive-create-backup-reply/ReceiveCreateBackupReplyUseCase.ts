@@ -18,7 +18,7 @@ import { CreateBackupReplyDTO } from './CreateBackupReplyDTO';
 
 // add errors when you define them
 type Response = Result<Backup | BackupRequest, 
-	DomainErrors.InvalidPropsError 
+	DomainErrors.PropsError 
 	| Error
 >;
 
@@ -43,12 +43,12 @@ export class ReceiveCreateBackupReplyUseCase
 
 		const resultTypeCodeGuardResult = Guard.isOneOf(resultTypeCode, validBackupResultTypes, 'resultTypeCode');
 		if (!resultTypeCodeGuardResult.isSuccess) {
-			return err(new DomainErrors.InvalidPropsError(`{ message: 'Backup result resultTypeCode is invalid', resultTypeCode: '${resultTypeCode}'}`));
+			return err(new DomainErrors.PropsError(`{ message: 'Backup result resultTypeCode is invalid', resultTypeCode: '${resultTypeCode}'}`));
 		}
 
 		const backupRequestIdGuardResult = Guard.againstNullOrUndefined(backupRequestId, 'backupRequestId');
 		if (!backupRequestIdGuardResult.isSuccess) {
-			return err(new DomainErrors.InvalidPropsError(`{ message: 'backupRequestId is null or undefined.'}`));
+			return err(new DomainErrors.PropsError(`{ message: 'backupRequestId is null or undefined.'}`));
 		}
 
       // backup request must exist or we can't do anything

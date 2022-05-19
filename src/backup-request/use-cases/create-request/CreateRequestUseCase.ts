@@ -13,7 +13,7 @@ import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 
 // add errors when you define them
 type Response = Result<BackupRequest, 
-	DomainErrors.InvalidPropsError
+	DomainErrors.PropsError
 	| ApplicationErrors.UnexpectedError
 	| Error
 >;

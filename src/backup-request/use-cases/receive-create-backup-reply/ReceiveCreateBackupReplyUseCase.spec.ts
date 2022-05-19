@@ -115,7 +115,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
       // Assert
       expect(result.isErr()).toBe(true);
       if (result.isErr()) { // type guard
-         expect(result.error.name).toBe('InvalidPropsError');
+         expect(result.error.name).toBe('PropsError');
          expect(result.error.message).toMatch(propName);
       }
    });
@@ -176,7 +176,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
       // Assert
       expect(result.isErr()).toBe(true);
       if (result.isErr()) { // type guard
-         expect(result.error.name).toBe('InvalidPropsError');
+         expect(result.error.name).toBe('PropsError');
          expect(result.error.message).toMatch('resultTypeCode');
       }
    });

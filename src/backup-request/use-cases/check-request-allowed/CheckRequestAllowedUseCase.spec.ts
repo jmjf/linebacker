@@ -124,7 +124,8 @@ describe('CheckRequestAllowedUseCase', () => {
       // Assert
       expect(result.isErr()).toBe(true);
       if (result.isErr()) { // type guard
-         expect(result.error.name).toBe('NotInReceivedStatusError');
+         expect(result.error.name).toBe('BackupRequestStatusError');
+         expect(result.error.message).toMatch('in Received');
       }
    });
 

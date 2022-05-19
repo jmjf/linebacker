@@ -10,8 +10,8 @@ import { SendRequestToInterfaceDTO } from './SendRequestToInterfaceDTO';
 import * as SendRequestToInterfaceErrors from './SendRequestToInterfaceErrors';
 
 type Response = Result<BackupRequest, 
-   SendRequestToInterfaceErrors.NotInAllowedStatusError
-   | SendRequestToInterfaceErrors.SendToInterfaceFailedError
+   ApplicationErrors.BackupRequestStatusError
+   | SendRequestToInterfaceErrors.SendToInterfaceError
    | ApplicationErrors.UnexpectedError
    | Error>;
 
@@ -41,14 +41,14 @@ export class SendRequestToInterfaceUseCase implements UseCase<SendRequestToInter
       }
 
       if (backupRequest.statusTypeCode !== RequestStatusTypeValues.Allowed) {
-         return err(new SendRequestToInterfaceErrors.NotInAllowedStatusError(`{ message: 'Not in allowed status', requestId: '${backupRequestId}', statusTypeCode: '${backupRequest.statusTypeCode}'`));
+         return err(new ApplicationErrors.BackupRequestStatusError(`{ message: 'Must be in Allowed status', requestId: '${backupRequestId}', statusTypeCode: '${backupRequest.statusTypeCode}'`));
       }
       
       // Send request to backup store interface -- need to handle this better
       const sendOk = await this.backupInterfaceAdapter.sendMessage(backupRequest);
       if (!sendOk) {
          // LOG
-         return err(new SendRequestToInterfaceErrors.SendToInterfaceFailedError(`{ message: 'Send to backup interface ${this.backupInterfaceAdapter.constructor.name} failed', requestId: '${backupRequestId}'`));
+         return err(new SendRequestToInterfaceErrors.SendToInterfaceError(`{ message: 'Send to backup interface ${this.backupInterfaceAdapter.constructor.name} failed', requestId: '${backupRequestId}'`));
       }
 
       // Set request status, status timestamp, etc.

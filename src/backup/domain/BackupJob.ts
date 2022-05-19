@@ -59,7 +59,7 @@ export class BackupJob extends Entity<IBackupJobProps> {
     * If `create()` successfully creates the `BackupJob` object, `result.isSuccess` is true and `result.getValue()` returns the new object.
     * If `create()` fails for any reason,  `result.isError` is true, `result.isSuccess is fales, and `result.getError()` returns the error
     */
-   public static create(props:IBackupJobProps, id: UniqueIdentifier): Result<BackupJob, DomainErrors.InvalidPropsError> {
+   public static create(props:IBackupJobProps, id: UniqueIdentifier): Result<BackupJob, DomainErrors.PropsError> {
       // check required props are not null or undefined
       // if result !succeeded return Result.fail<>()
 
@@ -73,13 +73,13 @@ export class BackupJob extends Entity<IBackupJobProps> {
 
       const propsGuardResult = Guard.againstNullOrUndefinedBulk(guardArgs);
       if (!propsGuardResult.isSuccess) {
-         return err(new DomainErrors.InvalidPropsError(`{ message: '${propsGuardResult.message}'}`));
+         return err(new DomainErrors.PropsError(`{ message: '${propsGuardResult.message}'}`));
       }
 
       // ensure provider type is valid
 		const providerGuardResult = Guard.isOneOf(props.backupProviderCode, validBackupProviderTypes, 'backupProviderType');
 		if (!providerGuardResult.isSuccess){
-			return err(new DomainErrors.InvalidPropsError(`{ message: '${providerGuardResult.message}'}`));
+			return err(new DomainErrors.PropsError(`{ message: '${providerGuardResult.message}'}`));
 		}
 
       // initialize props data
