@@ -61,6 +61,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
       expect(result.isErr()).toBe(true);
       if (result.isErr()) { // type guard
          expect(result.error.name).toBe('DatabaseError');
+         // future, test message too
       }
    });
 
@@ -81,8 +82,8 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
       // Assert
       expect(result.isErr()).toBe(true);
       if (result.isErr()) { // type guard
-         expect(result.error.message).toMatch('BackupJobServiceAdapter');
-         expect(result.error.message).toMatch('not defined');
+         expect(result.error.name).toBe('BackupJobServiceError');
+         // future, test message
       }
    });
 

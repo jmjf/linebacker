@@ -81,6 +81,7 @@ describe('CheckRequestAllowedUseCase', () => {
       expect(result.isErr()).toBe(true);
       if (result.isErr()) { // type guard
          expect(result.error.name).toBe('DatabaseError');
+         // future, test message too
       }
    });
 
@@ -99,6 +100,10 @@ describe('CheckRequestAllowedUseCase', () => {
 
       // Assert
       expect(result.isErr()).toBe(true);
+      if (result.isErr()) { // type guard
+         expect(result.error.name).toBe('BackupJobServiceError');
+         // future test message too
+      }
    });
 
    test('when request status type is not post-received value and not Received, it returns failure', async () => {

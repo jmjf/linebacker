@@ -29,11 +29,11 @@ export class SendRequestToInterfaceUseCase implements UseCase<SendRequestToInter
       // Get request from repository (returns a `BackupRequest`)
       const { backupRequestId }= request;
 
-      const backupRequestOrError = await this.backupRequestRepo.getById(backupRequestId);
-      if (backupRequestOrError.isErr()) {
-         return backupRequestOrError;
+      const backupRequestResult = await this.backupRequestRepo.getById(backupRequestId);
+      if (backupRequestResult.isErr()) {
+         return backupRequestResult;
       }
-      const backupRequest = backupRequestOrError.value;
+      const backupRequest = backupRequestResult.value;
 
       if (backupRequest.isSentToInterface() || backupRequest.isReplied()) {
          // NEED TO LOG

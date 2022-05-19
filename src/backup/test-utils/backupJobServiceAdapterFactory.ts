@@ -1,3 +1,6 @@
+import { err, ok, Result } from '../../common/core/Result';
+import * as AdapterErrors from '../../common/adapter/AdapterErrors';
+
 import { IBackupJobServiceAdapter } from '../adapter/BackupJobServiceAdapter';
 import { BackupJob } from '../domain/BackupJob';
 
@@ -7,11 +10,11 @@ interface IBackupJobServiceAdapterFactoryParams {
 
 export function backupJobServiceAdapterFactory(params?: IBackupJobServiceAdapterFactoryParams): IBackupJobServiceAdapter {
    return <IBackupJobServiceAdapter> {
-      getBackupJob(backupJobId: string): Promise<BackupJob> {
+      getBackupJob(backupJobId: string): Promise<Result<BackupJob , AdapterErrors.BackupJobServiceError>> {
          if (!params || !params.getBackupJobResult) {
-            throw new Error('BackupJobServiceAdapter getBackupJobResult not defined');
+            return Promise.resolve(err(new AdapterErrors.BackupJobServiceError('BackupJobServiceAdapter getBackupJobResult not defined')));
          }
-         return Promise.resolve(params.getBackupJobResult);
+         return Promise.resolve(ok(params.getBackupJobResult));
       }
    };
 }

@@ -1,6 +1,7 @@
 import { Result, ok, err } from '../../../common/core/Result';
 import { UseCase } from '../../../common/application/UseCase';
 import * as ApplicationErrors from '../../../common/application/ApplicationErrors';
+import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 
 import { IBackupJobServiceAdapter } from '../../../backup/adapter/BackupJobServiceAdapter';
 import { BackupJob } from '../../../backup/domain/BackupJob';
@@ -13,6 +14,7 @@ import { CheckRequestAllowedDTO } from './CheckRequestAllowedDTO';
 type Response = Result<BackupRequest, 
    ApplicationErrors.BackupRequestStatusError
    | ApplicationErrors.UnexpectedError
+   | AdapterErrors.BackupJobServiceError
    | Error>
 
 export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDTO, Promise<Response>> {
@@ -29,11 +31,11 @@ export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDT
       // Get request from repository (returns a BackupRequest)
       const { backupRequestId } = request;
 
-      const backupRequestOrError = await this.backupRequestRepo.getById(backupRequestId);
-      if (backupRequestOrError.isErr()) {
-         return backupRequestOrError;
+      const backupRequestResult = await this.backupRequestRepo.getById(backupRequestId);
+      if (backupRequestResult.isErr()) {
+         return backupRequestResult;
       }
-      const backupRequest = backupRequestOrError.value;
+      const backupRequest = backupRequestResult.value;
 
       // Already past this state
       if (backupRequest.isChecked() || backupRequest.isSentToInterface() || backupRequest.isReplied()) {
@@ -45,12 +47,11 @@ export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDT
       }
       
       // Get backup job data
-      let backupJob: BackupJob;
-      try {
-         backupJob = await this.backupJobServiceAdapter.getBackupJob(backupRequest.backupJobId.value);
-      } catch(e) {
-         return err(e as Error);
+      const backupJobResult = await this.backupJobServiceAdapter.getBackupJob(backupRequest.backupJobId.value);
+      if (backupJobResult.isErr()) {
+         return err(backupJobResult.error);  // avoid a type error (BackupJob)
       }
+      const backupJob = backupJobResult.value;
 
       // set status based on allowed rules
       const isAllowed = backupJob.isAllowed();

@@ -5,6 +5,7 @@ import { Guard } from '../../../common/core/Guard';
 import { Backup, IBackupProps } from '../../../backup/domain/Backup';
 import { IBackupRepo } from '../../../backup/adapter/BackupRepo';
 import { IBackupJobServiceAdapter } from '../../../backup/adapter/BackupJobServiceAdapter';
+import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 import { BackupJob } from '../../../backup/domain/BackupJob';
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 import * as DomainErrors from '../../../common/domain/DomainErrors';
@@ -19,6 +20,7 @@ import { CreateBackupReplyDTO } from './CreateBackupReplyDTO';
 // add errors when you define them
 type Response = Result<Backup | BackupRequest, 
 	DomainErrors.PropsError 
+	| AdapterErrors.BackupJobServiceError
 	| Error
 >;
 
@@ -52,11 +54,11 @@ export class ReceiveCreateBackupReplyUseCase
 		}
 
       // backup request must exist or we can't do anything
-      const backupRequestOrError = await this.backupRequestRepo.getById(backupRequestId);
-      if (backupRequestOrError.isErr()) {
-         return backupRequestOrError;
+      const backupRequestResult = await this.backupRequestRepo.getById(backupRequestId);
+      if (backupRequestResult.isErr()) {
+         return backupRequestResult;
       }
-      const backupRequest = backupRequestOrError.value;
+      const backupRequest = backupRequestResult.value;
 
 		// don't change already replied values
 		if (backupRequest.isReplied()) {
@@ -69,12 +71,11 @@ export class ReceiveCreateBackupReplyUseCase
 		let backup: Backup = {} as Backup;
 		if (resultTypeCode === BackupResultTypeValues.Succeeded) {
 			// backup job must exist or we can't do anything
-			let backupJob: BackupJob;
-			try {
-				backupJob = await this.backupJobServiceAdapter.getBackupJob(backupRequest.backupJobId.value);
-			} catch (e) {
-				return err(e as Error);
+			const backupJobResult = await this.backupJobServiceAdapter.getBackupJob(backupRequest.backupJobId.value);
+			if (backupJobResult.isErr()) {
+				return err(backupJobResult.error);
 			}
+			const backupJob = backupJobResult.value;
 
 			// create backup aggregate from data in request, reply, and job
 			const requestProps: IBackupProps = {
