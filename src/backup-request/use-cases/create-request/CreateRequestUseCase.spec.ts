@@ -7,7 +7,7 @@ import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
  * See notes on testing with TypeORM in devnotes/3.1.1-RequestBackupUseCase
  */
 
-describe('Create Request Use Case', () => {
+describe('CreateRequestUseCase', () => {
 
    const baseDto = { 
       apiVersion: '2022-01-01',
@@ -53,7 +53,8 @@ describe('Create Request Use Case', () => {
       expect(result.isErr()).toBe(true);
       expect(saveSpy).toHaveBeenCalledTimes(0);
       if (result.isErr()) { // type guard
-         expect(result.error.message).toContain('transportType is not one of');
+         expect(result.error.message).toContain('is not one of');
+         expect(result.error.message).toContain('transportType');
       };
    });
 
@@ -98,7 +99,8 @@ describe('Create Request Use Case', () => {
       expect(result.isErr()).toBe(true);
       expect(saveSpy).toHaveBeenCalledTimes(0);
       if (result.isErr()) { // type guard
-         expect(result.error.message).toContain('dataDate is not a valid date');
+         expect(result.error.message).toContain('not a valid date');
+         expect(result.error.message).toContain('dataDate');
       }
    });
 });

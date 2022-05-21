@@ -1,8 +1,10 @@
+import { err, ok, Result } from './Result';
+
 /**
  * Result returned by a guard
  */
-export interface IGuardResult {
-   isSuccess: boolean;
+export interface IGuardError {
+   argName: string;
    message: string;
 }
 
@@ -31,15 +33,15 @@ export class Guard {
     * 
     * @param arg value to check for null or undefined
     * @param argName name of the value (variable) for error reporting
-    * @returns `IGuardResult` If `arg` is not null or undefined, `isSuccess` is true.
+    * @returns `IGuardError` If `arg` is not null or undefined, `isSuccess` is true.
     * If `arg` is null or undefined, `isSuccess` is false and `message`reports the failing `argName`.
     * 
     */
-   public static againstNullOrUndefined (arg: any, argName: string): IGuardResult {
+   public static againstNullOrUndefined (arg: any, argName: string): Result<null, IGuardError> {
       if (arg === null || arg === undefined) {
-         return { isSuccess: false, message: `${argName} is null or undefined` };
+         return err({ argName, message: `${argName} is null or undefined` });
       } else {
-         return { isSuccess: true, message: '' };
+         return ok(null);
       }
    }
 
@@ -47,17 +49,17 @@ export class Guard {
     * Guards to ensure none of the values passed is NOT null or undefined ("against" means not null or undefined === true)
     *
     * @param args an array of values and names to check for null or undefined
-    * @returns `IGuardResult` If all members of `args` are not null or undefined, `isSuccess` is true. 
+    * @returns `IGuardError` If all members of `args` are not null or undefined, `isSuccess` is true. 
     * If any member of `args` is null or undefined, `isSuccess` is false and `message` reports the failing `argName`.
     * 
     */
-   public static againstNullOrUndefinedBulk (args: GuardArgumentCollection): IGuardResult {
+   public static againstNullOrUndefinedBulk (args: GuardArgumentCollection): Result<null, IGuardError> {
       for (const arg of args) {
          const result = this.againstNullOrUndefined(arg.arg, arg.argName);
-         if (!result.isSuccess) return result;
+         if (result.isErr()) return result;
       }
 
-      return { isSuccess: true, message: '' };
+      return ok(null);
    }
 
    /**
@@ -66,18 +68,18 @@ export class Guard {
     * @param arg the argument to confirm is in the list of valid values
     * @param validValues an array of valid values
     * @param argName name of the argument (variable) for error reporting
-    * @returns `IGuardResult` If `arg` is in `validValues`, `isSuccess` is true.
+    * @returns `IGuardError` If `arg` is in `validValues`, `isSuccess` is true.
     * If `arg` is not in `validValues`, `isSuccess` is false and `message` reports the failing `argName` and `arg`.
     * 
     * @remarks
     * Use this guard for simple type comparisons (string, number, etc.). The check uses `Array.includes()`, so may not work for objects or classes.
     * 
     */
-   public static isOneOf (arg: any, validValues: any[], argName: string): IGuardResult {
+   public static isOneOf (arg: any, validValues: any[], argName: string): Result<null, IGuardError> {
       if (validValues.includes(arg)) {
-         return { isSuccess: true, message: '' };
+         return ok(null);
       } else {
-         return { isSuccess: false, message: `${argName} is not one of ${JSON.stringify(validValues)}. Got |${arg}|`};
+         return err({ argName, message: `is not one of ${JSON.stringify(validValues)} ; ${argName} |${arg}|`});
       } 
    }
 
@@ -86,19 +88,19 @@ export class Guard {
     * 
     * @param arg the argument to confirm as a valid Date
     * @param argName name of the argument (variable) for error reporting
-    * @returns `IGuardResult` If `arg` is a valid Date or can be converted to one, `isSuccess` is true.
+    * @returns `IGuardError` If `arg` is a valid Date or can be converted to one, `isSuccess` is true.
     * If `arg` is not a valid Date and can't be converted to one, `isSuccess` is false and `message` reports the failing `argName` and `arg`.
     * 
     */
-   public static isValidDate(arg: any, argName: string): IGuardResult {
+   public static isValidDate(arg: any, argName: string): Result<null, IGuardError> {
       if (arg instanceof Date && !isNaN(arg as unknown as number)) {
-         return { isSuccess: true, message: '' };
+         return ok(null);
       }
 
       if (!isNaN(Date.parse(arg))) {
-         return { isSuccess: true, message: '' };
+         return ok(null);
       }
 
-      return { isSuccess: false, message: `${argName} is not a valid date. Got |${(arg instanceof Object) ? JSON.stringify(arg) : arg}|` };
+      return err({ argName, message: `not a valid date ; ${argName} |${(arg instanceof Object) ? JSON.stringify(arg) : arg}|` });
    }
 }

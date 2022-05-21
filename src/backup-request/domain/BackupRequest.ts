@@ -177,14 +177,14 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
       ];
 
       const propsGuardResult = Guard.againstNullOrUndefinedBulk(guardArgs);
-      if (!propsGuardResult.isSuccess) {
-         return err(new DomainErrors.PropsError(`{ message: '${propsGuardResult.message}'}`));
+      if (propsGuardResult.isErr()) {
+         return err(new DomainErrors.PropsError(`{ message: '${propsGuardResult.error.message}'}`));
       }
 
       // ensure transport type is valid
 		const transportGuardResult = Guard.isOneOf(props.transportTypeCode, validRequestTransportTypes, 'transportType');
-		if (!transportGuardResult.isSuccess){
-			return err(new DomainErrors.PropsError(`{ message: '${transportGuardResult.message}'}`));
+		if (transportGuardResult.isErr()){
+			return err(new DomainErrors.PropsError(`{ message: '${transportGuardResult.error.message}'}`));
 		}
 
       // I could do a similar test on status, but that would make certain tests fail before the test
@@ -193,8 +193,8 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 
 		// ensure dataDate is a date
       const dataDateGuardResult = Guard.isValidDate(props.dataDate, 'dataDate');
-		if (!dataDateGuardResult.isSuccess) {
-   	   return err(new DomainErrors.PropsError(`{ message: '${dataDateGuardResult.message}'}`));
+		if (dataDateGuardResult.isErr()) {
+   	   return err(new DomainErrors.PropsError(`{ message: '${dataDateGuardResult.error.message}'}`));
 		}
       const dataDateAsDate = new Date(props.dataDate);
 

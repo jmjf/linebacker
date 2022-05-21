@@ -44,13 +44,13 @@ export class ReceiveCreateBackupReplyUseCase
 		const { resultTypeCode, backupRequestId, ...restOfReply } = reply;
 
 		const resultTypeCodeGuardResult = Guard.isOneOf(resultTypeCode, validBackupResultTypes, 'resultTypeCode');
-		if (!resultTypeCodeGuardResult.isSuccess) {
-			return err(new DomainErrors.PropsError(`{ message: 'Backup result resultTypeCode is invalid', resultTypeCode: '${resultTypeCode}'}`));
+		if (resultTypeCodeGuardResult.isErr()) {
+			return err(new DomainErrors.PropsError(`{ message: ${resultTypeCodeGuardResult.error.message}}`));
 		}
 
 		const backupRequestIdGuardResult = Guard.againstNullOrUndefined(backupRequestId, 'backupRequestId');
-		if (!backupRequestIdGuardResult.isSuccess) {
-			return err(new DomainErrors.PropsError(`{ message: 'backupRequestId is null or undefined.'}`));
+		if (backupRequestIdGuardResult.isErr()) {
+			return err(new DomainErrors.PropsError(`{ message: ${backupRequestIdGuardResult.error.message}}`));
 		}
 
       // backup request must exist or we can't do anything

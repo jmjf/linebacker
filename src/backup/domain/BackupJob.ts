@@ -72,14 +72,14 @@ export class BackupJob extends Entity<IBackupJobProps> {
       ];
 
       const propsGuardResult = Guard.againstNullOrUndefinedBulk(guardArgs);
-      if (!propsGuardResult.isSuccess) {
-         return err(new DomainErrors.PropsError(`{ message: '${propsGuardResult.message}'}`));
+      if (propsGuardResult.isErr()) {
+         return err(new DomainErrors.PropsError(`{ message: '${propsGuardResult.error.message}'}`));
       }
 
       // ensure provider type is valid
 		const providerGuardResult = Guard.isOneOf(props.backupProviderCode, validBackupProviderTypes, 'backupProviderType');
-		if (!providerGuardResult.isSuccess){
-			return err(new DomainErrors.PropsError(`{ message: '${providerGuardResult.message}'}`));
+		if (providerGuardResult.isErr()){
+			return err(new DomainErrors.PropsError(`{ message: '${providerGuardResult.error.message}'}`));
 		}
 
       // initialize props data

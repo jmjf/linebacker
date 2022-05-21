@@ -137,8 +137,8 @@ export class Backup extends Entity<IBackupProps> {
       ];
 
       const propsGuardResult = Guard.againstNullOrUndefinedBulk(guardArgs);
-      if (!propsGuardResult.isSuccess) {
-         return err(new DomainErrors.PropsError(`{ message: '${propsGuardResult.message}'}`));;
+      if (propsGuardResult.isErr()) {
+         return err(new DomainErrors.PropsError(`{ message: '${propsGuardResult.error.message}'}`));;
       }
 
       // Guard: resultTypeCode is in the list of RequestStatusTypes
