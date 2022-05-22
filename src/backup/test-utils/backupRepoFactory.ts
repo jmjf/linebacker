@@ -5,6 +5,7 @@ import { IBackupRepo } from '../adapter/BackupRepo';
 interface IBackupRepoFactoryParams {
 	existsResult?: boolean;
 	getByIdResult?: Backup;
+	failSave?: boolean;
 }
 export function backupRepoFactory(
 	params?: IBackupRepoFactoryParams
@@ -22,6 +23,9 @@ export function backupRepoFactory(
 		},
 
 		save(backup: Backup): Promise<void> {
+			if (params?.failSave) {
+				throw new Error('BackupRepo failSave true');
+			}
 			DomainEventBus.publishEventsForAggregate(backup.backupId);
 			return Promise.resolve();
 		},

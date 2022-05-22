@@ -44,13 +44,12 @@ export class CreateRequestUseCase
 		};
 		
 		// get a new BackupRequest (or handle error)
-		const backupRequestOrError = BackupRequest.create(requestProps);
-		if (backupRequestOrError.isErr()) {
-			return backupRequestOrError; // already an Err, so don't need err() wrapper
+		const backupRequestResult = BackupRequest.create(requestProps);
+		if (backupRequestResult.isErr()) {
+			return backupRequestResult; // already an Err, so don't need err() wrapper
 		}
 
 		// type guarded by isErr() above
-		const backupRequest = backupRequestOrError.value;
-		return await this.backupRequestRepo.save(backupRequest);
+		return await this.backupRequestRepo.save(backupRequestResult.value);
 	}
 }

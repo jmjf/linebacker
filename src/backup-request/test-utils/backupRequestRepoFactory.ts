@@ -9,6 +9,7 @@ import { BackupRequest } from '../domain/BackupRequest';
 interface IBackupRequestRepoFactoryParams {
 	existsResult?: boolean;
 	getByIdResult?: BackupRequest;
+	failSave?: boolean;
 }
 export function backupRequestRepoFactory(
 	params?: IBackupRequestRepoFactoryParams
@@ -26,6 +27,9 @@ export function backupRequestRepoFactory(
 		},
 
 		save(backupRequest: BackupRequest): Promise<Result<BackupRequest, AdapterErrors.DatabaseError>> {
+			if (params?.failSave) {
+				throw new Error('BackupRequestRepo failSave true');
+			}
 			DomainEventBus.publishEventsForAggregate(backupRequest.backupRequestId);
 			return Promise.resolve(ok(backupRequest));
 		},
