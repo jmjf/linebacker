@@ -1,6 +1,5 @@
 import { FastifyLoggerInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { CreateRequestUseCase } from '../backup-request/use-cases/create-request/CreateRequestUseCase';
-import { CreateRequestDTO } from '../backup-request/use-cases/create-request/CreateRequestDTO';
+import { CreateBackupRequestUseCase } from '../backup-request/use-cases/create-backup-request/CreateBackupRequestUseCase';
 import { HelloWorldUseCase, ISquareDTO, SquareUseCase } from './use-cases';
 
 export interface IController {
@@ -20,13 +19,13 @@ export class HelloWorldController implements IController {
       if (result.isOk()) {
          reply
             .code(200)
-            .header('Content-Type', 'application/json')
-            .send(result.value);
+            .header('Content-Type', 'application/json');
+         return result.value;
       } else {
          reply
             .code(400)
-            .header('Content-Type', 'application/json')
-            .send(result.error);
+            .header('Content-Type', 'application/json');
+         return result.error;
       }
    }
 }
@@ -67,15 +66,21 @@ export class SquareController implements IController {
    }
 }
 
+interface ICreateBackupRequestBody {
+   apiVersion: string,
+   backupJobId: string,
+   dataDate: string,
+   backupDataLocation: string
+}
 export class CreateBackupRequestController implements IController {
-   private useCase: CreateRequestUseCase;
+   private useCase: CreateBackupRequestUseCase;
 
-   constructor(useCase: CreateRequestUseCase) {
+   constructor(useCase: CreateBackupRequestUseCase) {
       this.useCase = useCase;
    }
 
-   async impl(request: FastifyRequest, reply: FastifyReply): Promise<any> {
-      const body = request.body as CreateRequestDTO;
+   async impl(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+      const body = <ICreateBackupRequestBody>request.body;
 
       if (!body.apiVersion || body.apiVersion !== '2022-05-22') {
          reply

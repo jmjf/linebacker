@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyPluginOptions, FastifyReply, FastifyRequest } from 'fastify';
 import { backupRequestRepoFactory } from '../backup-request/test-utils/backupRequestRepoFactory';
-import { CreateRequestUseCase } from '../backup-request/use-cases/create-request/CreateRequestUseCase';
+import { CreateBackupRequestUseCase } from '../backup-request/use-cases/create-backup-request/CreateBackupRequestUseCase';
 import { CreateBackupRequestController, HelloWorldController, SquareController } from './controllers';
 import { HelloWorldUseCase, SquareUseCase } from './use-cases';
 
@@ -12,7 +12,9 @@ export async function routes(server: FastifyInstance, options: FastifyPluginOpti
       const useCase = new HelloWorldUseCase();
       const controller = new HelloWorldController(useCase);
       server.log.info('GET / calling controller.impl()');
-      await controller.impl(request, reply);         
+      const result = await controller.impl(request, reply);
+      server.log.info({ status: reply.statusCode, headers: reply.getHeaders(), result }, `GET / result`);
+      reply.send(result);
    });
 
    server.get('/square/:x', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -34,17 +36,16 @@ export async function routes(server: FastifyInstance, options: FastifyPluginOpti
       }
    };
 
-   const schema = {
-      body: createBackupRequestBodySchema
-   };
-
-   server.post('/backup-request', { schema }, async (request: FastifyRequest, reply: FastifyReply) => {
+   server.post('/backup-request', { schema: { body: createBackupRequestBodySchema } }, async (request: FastifyRequest, reply: FastifyReply) => {
       server.log.info('POST /backup-request', JSON.stringify(request.body));
       const repo = backupRequestRepoFactory();
       // const repo = backupRequestRepoFactory({failSave: true}); // use this repo to test 500 error
-      const useCase = new CreateRequestUseCase(repo);
+      const useCase = new CreateBackupRequestUseCase(repo);
       const controller = new CreateBackupRequestController(useCase);
       server.log.info('POST /backup-request calling controller.impl()');
-      await controller.impl(request, reply);
+      const result = await controller.impl(request, reply);
+      server.log.info('POST /backup-request', { status: reply.statusCode, header: reply.getHeaders(), result });
+      reply.send(result);
+
    });
 }
