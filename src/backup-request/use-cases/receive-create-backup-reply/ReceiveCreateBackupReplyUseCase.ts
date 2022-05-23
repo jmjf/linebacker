@@ -6,7 +6,6 @@ import { Backup, IBackupProps } from '../../../backup/domain/Backup';
 import { IBackupRepo } from '../../../backup/adapter/BackupRepo';
 import { IBackupJobServiceAdapter } from '../../../backup/adapter/BackupJobServiceAdapter';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
-import { BackupJob } from '../../../backup/domain/BackupJob';
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 import * as DomainErrors from '../../../common/domain/DomainErrors';
 

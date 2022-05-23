@@ -1,5 +1,5 @@
-import { CreateRequestUseCase } from './CreateRequestUseCase';
-import { CreateRequestDTO } from './CreateRequestDTO';
+import { CreateBackupRequestUseCase } from './CreateBackupRequestUseCase';
+import { CreateBackupRequestDTO } from './CreateBackupRequestDTO';
 import { backupRequestRepoFactory } from '../../test-utils/backupRequestRepoFactory';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 
@@ -7,7 +7,7 @@ import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
  * See notes on testing with TypeORM in devnotes/3.1.1-RequestBackupUseCase
  */
 
-describe('CreateRequestUseCase', () => {
+describe('CreateBackupRequestUseCase', () => {
 
    const baseDto = { 
       apiVersion: '2022-01-01',
@@ -16,14 +16,14 @@ describe('CreateRequestUseCase', () => {
       backupDataLocation: '/path/to/data',
       transportType: RequestTransportTypeValues.HTTP,
       getOnStartFlag: true
-   } as CreateRequestDTO;
+   } as CreateBackupRequestDTO;
 
    test('when executed with good data, it returns a saved backupRequest', async () => {
       // Arrange
       const repo = backupRequestRepoFactory();
       const saveSpy = jest.spyOn(repo, 'save');
 
-      const useCase = new CreateRequestUseCase(repo);
+      const useCase = new CreateBackupRequestUseCase(repo);
       const dto = { ...baseDto };
       
       // Act
@@ -43,7 +43,7 @@ describe('CreateRequestUseCase', () => {
       const repo = backupRequestRepoFactory();
       const saveSpy = jest.spyOn(repo, 'save');
 
-      const useCase = new CreateRequestUseCase(repo);
+      const useCase = new CreateBackupRequestUseCase(repo);
       const dto = { ...baseDto, transportType: 'BadTransport'};
       
       // Act
@@ -63,15 +63,14 @@ describe('CreateRequestUseCase', () => {
       const repo = backupRequestRepoFactory();
       const saveSpy = jest.spyOn(repo, 'save');
 
-      const useCase = new CreateRequestUseCase(repo);
+      const useCase = new CreateBackupRequestUseCase(repo);
       // TypeScript won't let me delete dto.createOnStartFlag, so build a dto without it
       const dto = { 
-         apiVersion: '2022-01-01',
          backupJobId: 'b753d695-c9e1-4fa1-99f0-9fc025fca24c',
          dataDate: '2022-01-31',
          backupDataLocation: '/path/to/data',
          transportType: RequestTransportTypeValues.HTTP
-      } as CreateRequestDTO;
+      } as CreateBackupRequestDTO;
       
       // Act
       const result = await useCase.execute(dto);
@@ -89,7 +88,7 @@ describe('CreateRequestUseCase', () => {
       const repo = backupRequestRepoFactory();
       const saveSpy = jest.spyOn(repo, 'save');
       
-      const useCase = new CreateRequestUseCase(repo);
+      const useCase = new CreateBackupRequestUseCase(repo);
       const dto = { ...baseDto, dataDate: 'invalid date'};
       
       // Act

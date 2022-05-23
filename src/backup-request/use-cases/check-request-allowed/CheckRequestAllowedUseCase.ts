@@ -4,7 +4,6 @@ import * as ApplicationErrors from '../../../common/application/ApplicationError
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 
 import { IBackupJobServiceAdapter } from '../../../backup/adapter/BackupJobServiceAdapter';
-import { BackupJob } from '../../../backup/domain/BackupJob';
 import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
 import { BackupRequest } from '../../domain/BackupRequest';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';

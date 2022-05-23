@@ -1,5 +1,4 @@
-export interface CreateRequestDTO {
-   apiVersion: string, // yyyy-mm-dd
+export interface CreateBackupRequestDTO {
    backupJobId: string, // UUIDv4
    dataDate: string, // yyyy-mm-dd
    backupDataLocation: string

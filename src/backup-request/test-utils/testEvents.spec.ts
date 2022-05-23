@@ -11,7 +11,7 @@ import { BackupRequestAllowedSubscriber } from '../use-cases/send-request-to-int
 import { BackupRequestCreatedSubscriber } from '../use-cases/check-request-allowed/BackupRequestCreatedSubscriber';
 import { CheckRequestAllowedUseCase } from '../use-cases/check-request-allowed/CheckRequestAllowedUseCase';
 
-import { CreateRequestUseCase } from '../use-cases/create-request/CreateRequestUseCase';
+import { CreateBackupRequestUseCase } from '../use-cases/create-backup-request/CreateBackupRequestUseCase';
 
 import { backupInterfaceAdapterFactory } from './backupInterfaceAdapterFactory';
 import { backupRequestRepoFactory } from './backupRequestRepoFactory';
@@ -53,7 +53,7 @@ if (TEST_EVENTS) {
       test('when a backup request is created, events run', async () => {
          const repo = backupRequestRepoFactory();
          const saveSpy = jest.spyOn(repo, 'save');
-         const useCase = new CreateRequestUseCase(repo);
+         const useCase = new CreateBackupRequestUseCase(repo);
          const dto = { 
             apiVersion: '2022-01-01',
             backupJobId: 'b753d695-c9e1-4fa1-99f0-9fc025fca24c',

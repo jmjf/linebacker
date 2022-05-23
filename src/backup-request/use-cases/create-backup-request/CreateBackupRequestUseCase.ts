@@ -4,7 +4,7 @@ import * as DomainErrors from '../../../common/domain/DomainErrors';
 import { UseCase } from '../../../common/application/UseCase';
 import * as ApplicationErrors from '../../../common/application/ApplicationErrors';
 
-import { CreateRequestDTO } from './CreateRequestDTO';
+import { CreateBackupRequestDTO } from './CreateBackupRequestDTO';
 import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
 import { BackupRequest, IBackupRequestProps } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
@@ -15,14 +15,13 @@ import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 type Response = Result<BackupRequest, 
 	DomainErrors.PropsError
 	| ApplicationErrors.UnexpectedError
-	| Error
->;
+	| Error>;
 
 /**
  * Class representing a use case to create a new backup request and store it in the request log
  */
-export class CreateRequestUseCase
-	implements UseCase<CreateRequestDTO, Promise<Response>>
+export class CreateBackupRequestUseCase
+	implements UseCase<CreateBackupRequestDTO, Promise<Response>>
 {
 	private backupRequestRepo: IBackupRequestRepo;
 
@@ -30,7 +29,7 @@ export class CreateRequestUseCase
 		this.backupRequestRepo = backupRequestRepo;
 	}
 
-	async execute(request: CreateRequestDTO): Promise<Response> {
+	async execute(request: CreateBackupRequestDTO): Promise<Response> {
 
 		// initialize props
 		const requestProps: IBackupRequestProps = {
