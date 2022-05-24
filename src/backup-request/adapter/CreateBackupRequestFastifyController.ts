@@ -1,7 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { InvalidApiVersionError } from '../../../common/adapter/AdapterErrors';
-import { FastifyController } from '../../../common/adapter/FastifyController';
-import { CreateBackupRequestUseCase } from './CreateBackupRequestUseCase';
+import { InvalidApiVersionError } from '../../common/adapter/AdapterErrors';
+import { FastifyController } from '../../common/adapter/FastifyController';
+import { CreateBackupRequestUseCase } from '../use-cases/create-backup-request/CreateBackupRequestUseCase';
 
 export interface ICreateBackupRequestBody {
    apiVersion: string,
