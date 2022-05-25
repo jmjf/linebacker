@@ -1,0 +1,29 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model BackupRequest {
+  backupRequestId           String      @id @unique @map("BackupRequestIdentifier")
+  backupJobId               String      @map("BackupJobIdentifier")
+  dataDate                  DateTime    @map("DataDate")
+  preparedDataPathName      String      @map("PreparedDataPathName")
+  getOnStartFlag            Boolean     @map("GetOnStartFlag")
+  transportTypeCode         String      @map("TransportTypeCode")
+  backupProviderCode        String?     @map("BackupProviderCode")
+  storagePathName           String?     @map("StoragePathName")
+  statusTypeCode            String      @map("StatusTypeCode")
+  receivedTimestamp         DateTime    @map("ReceivedTimestamp")
+  checkedTimestamp          DateTime?   @map("CheckedTimestamp")
+  sentToInterfaceTimestamp  DateTime?   @map("SentToInterfaceTimestamp")
+  replyTimestamp            DateTime?   @map("ReplyTimestamp")
+  requesterId               String?     @map("RequesterIdentifier")
+  replyMessageText          String?     @map("ReplyMessageText")
+}
