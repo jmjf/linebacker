@@ -1,40 +1,41 @@
-import { PrismaClient } from '@prisma/client';
-import { BackupProviderType } from '../../../backup/domain/BackupProviderType';
+import { PrismaContext } from '../../../common/infrastructure/database/prismaContext';
+
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 import { err, ok, Result } from '../../../common/core/Result';
 import * as DomainErrors from '../../../common/domain/DomainErrors';
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
+
+import { BackupProviderType } from '../../../backup/domain/BackupProviderType';
+
 import { BackupRequest } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
 import { IBackupRequestRepo } from '../BackupRequestRepo';
 
 export class PrismaBackupRequestRepo implements IBackupRequestRepo {
-   public async exists(backupRequestId: string): Promise<boolean> {
-      const prisma = new PrismaClient();
+   private prisma;
 
+   constructor(ctx: PrismaContext) {
+      this.prisma = ctx.prisma;   
+   }
+
+   public async exists(backupRequestId: string): Promise<boolean> {
       // count the number of rows that meet the condition
-      const count = await prisma.backupRequest.count({
+      const count = await this.prisma.backupRequest.count({
          where: {
             backupRequestId: backupRequestId
          }
       });
       
-      await prisma.$disconnect();
-
       return (count > 0);
    }
 
    public async getById(backupRequestId: string): Promise<Result<BackupRequest, AdapterErrors.DatabaseError | DomainErrors.PropsError>> {
       try {
-         const prisma = new PrismaClient();
-
-         const data = await prisma.backupRequest.findUnique({
+         const data = await this.prisma.backupRequest.findUnique({
             where: {
                backupRequestId: backupRequestId
             }
          });
-
-         await prisma.$disconnect();
 
          return this.mapToDomain(data);
       } catch (e) {
@@ -43,15 +44,10 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
    }
 
    public async save(backupRequest: BackupRequest): Promise<Result<BackupRequest, AdapterErrors.DatabaseError>> {
-      console.log(`PrismaRepo called`);
-
+      const raw = this.mapToDb(backupRequest);
+      
       try {
-         const prisma = new PrismaClient();
-         console.log(`PrismaRepo client created`);
-
-         const raw = this.mapToDb(backupRequest);
-         console.log(`PrismaRepo mapped to db -- ${JSON.stringify(raw, null, 3)}`);
-         const data = await prisma.backupRequest.upsert({
+         await this.prisma.backupRequest.upsert({
             where: {
                backupRequestId: raw.backupRequestId
             },
@@ -62,16 +58,14 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
                ...raw
             }
          });
-         console.log(`PrismaRepo upsert called -- ${JSON.stringify(data, null, 3)}`);
-
-         await prisma.$disconnect();
-         console.log(`PrismaRepo client disconnected`);
-
-         return ok(backupRequest);
       } catch (e) {
-         console.log(`PrismaRepo caught error ${JSON.stringify(e, null, 3)}`);
          return err(new AdapterErrors.DatabaseError(`${JSON.stringify(e)}`));
-      }
+      };
+
+      // The application enforces the business rules, not the database.
+      // Under no circumstances should the database change the data it gets.
+      // Returning the backup request allows use cases to return the result of save() if they can't do anything about a DatabaseError.
+      return ok(backupRequest);
    }
 
    // this may belong in a mapper
