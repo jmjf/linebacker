@@ -18,15 +18,19 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
       this.prisma = ctx.prisma;   
    }
 
-   public async exists(backupRequestId: string): Promise<boolean> {
+   public async exists(backupRequestId: string): Promise<Result<boolean, AdapterErrors.DatabaseError>> {
       // count the number of rows that meet the condition
-      const count = await this.prisma.backupRequest.count({
-         where: {
-            backupRequestId: backupRequestId
-         }
-      });
+      try {
+         const count = await this.prisma.backupRequest.count({
+            where: {
+               backupRequestId: backupRequestId
+            }
+         });
       
-      return (count > 0);
+         return ok(count > 0);
+      } catch (e) {
+         return err(new AdapterErrors.DatabaseError(`${JSON.stringify(e)}`));
+      }
    }
 
    public async getById(backupRequestId: string): Promise<Result<BackupRequest, AdapterErrors.DatabaseError | DomainErrors.PropsError>> {
