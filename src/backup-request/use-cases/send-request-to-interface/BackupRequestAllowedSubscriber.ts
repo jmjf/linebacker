@@ -15,7 +15,7 @@ export class BackupRequestAllowedSubscriber implements IDomainEventSubscriber<Ba
       DomainEventBus.subscribe(BackupRequestAllowed.name, this.onBackupRequestAllowed.bind(this));
    }
 
-   private async onBackupRequestAllowed(event: BackupRequestAllowed): Promise<void> {
+   async onBackupRequestAllowed(event: BackupRequestAllowed): Promise<void> {
       const backupRequest = event.backupRequest;
       const eventName = event.constructor.name;
       log.debug(`{_time: '${(new Date()).toUTCString()}, message: 'onBackupRequestAllowed started'`);
@@ -23,8 +23,9 @@ export class BackupRequestAllowedSubscriber implements IDomainEventSubscriber<Ba
       try {
          const res = await this.sendRequestToInterfaceUseCase.execute({ backupRequestId: backupRequest.backupRequestId.value });
          log.info(`{_time: '${(new Date()).toUTCString()}', message: 'execute use case succeded', domainEvent: '${eventName}', res: ${JSON.stringify(res)}}`);
-      } catch (err) {
-         log.error(`{_time: '${(new Date()).toUTCString()}', message: 'execute use case failed', domainEvent: '${eventName}'}`);
+      } catch (e) {
+         const err = e as Error;
+         log.error(`{_time: '${(new Date()).toUTCString()}', message: 'execute use case failed', domainEvent: '${eventName}', error: '${err.message}'}`);
       }
    }
 }

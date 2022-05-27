@@ -1,5 +1,7 @@
 import { PrismaContext } from '../../../common/infrastructure/database/prismaContext';
 
+import { DomainEventBus } from '../../../common/domain/DomainEventBus';
+
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 import { err, ok, Result } from '../../../common/core/Result';
 import * as DomainErrors from '../../../common/domain/DomainErrors';
@@ -41,6 +43,10 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
             }
          });
 
+         if (data === null) {
+            return err(new AdapterErrors.DatabaseError(`Backup request not found |${backupRequestId}|`));
+         }
+
          return this.mapToDomain(data);
       } catch (e) {
          return err(new AdapterErrors.DatabaseError(`${JSON.stringify(e)}`));
@@ -66,6 +72,9 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
          return err(new AdapterErrors.DatabaseError(`${JSON.stringify(e)}`));
       };
 
+      // trigger domain events
+      DomainEventBus.publishEventsForAggregate(backupRequest.id);
+
       // The application enforces the business rules, not the database.
       // Under no circumstances should the database change the data it gets.
       // Returning the backup request allows use cases to return the result of save() if they can't do anything about a DatabaseError.
@@ -80,7 +89,7 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
          dataDate: raw.dataDate,
          preparedDataPathName: raw.preparedDataPathName,
          getOnStartFlag: raw.getOnStartFlag,
-         transportTypeCode: raw.RequestTransportType as RequestTransportType,
+         transportTypeCode: raw.transportTypeCode as RequestTransportType,
          backupProviderCode: raw.backupProviderCode as BackupProviderType,
          storagePathName: raw.storagePathName,
          statusTypeCode: raw.statusTypeCode,

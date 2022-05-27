@@ -1,41 +1,55 @@
-import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
-
-import { BackupRequest, IBackupRequestProps } from '../../domain/BackupRequest';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
+
 import { backupInterfaceAdapterFactory } from '../../test-utils/backupInterfaceAdapterFactory';
-import { backupRequestRepoFactory } from '../../test-utils/backupRequestRepoFactory';
 
 import { SendRequestToInterfaceUseCase } from './SendRequestToInterfaceUseCase';
 import { SendRequestToInterfaceDTO } from './SendRequestToInterfaceDTO';
 
+import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../../../common/infrastructure/database/prismaContext';
+import { BackupRequest } from '@prisma/client';
+import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
+
 
 describe('Send Request To Interface Use Case', () => {
+   let mockPrismaCtx: MockPrismaContext;
+   let prismaCtx: PrismaContext;
+
+   beforeEach(() => {
+      mockPrismaCtx = createMockPrismaContext();
+      prismaCtx = mockPrismaCtx as unknown as PrismaContext;
+    });
+
    const baseDto = {
       backupRequestId: 'testRequest'
    } as SendRequestToInterfaceDTO;
 
-   const backupRequestProps = {
-      backupJobId: new UniqueIdentifier('job'), // set in test Arrange phase to support logging if needed
+   const dbBackupRequest: BackupRequest = {
+      backupRequestId: 'dbBackupRequestId',
+      backupJobId: 'dbBackupJobId',
       dataDate: new Date(),
       preparedDataPathName: 'path',
       getOnStartFlag: true,
       transportTypeCode: RequestTransportTypeValues.HTTP,
       statusTypeCode: RequestStatusTypeValues.Allowed,
       receivedTimestamp: new Date(),
-      checkedTimestamp: new Date()      
-   } as IBackupRequestProps;
+      requesterId: 'dbRequesterId',
+      backupProviderCode: 'CloudA',
+      checkedTimestamp: new Date(),
+      storagePathName: 'dbStoragePathName',
+      sentToInterfaceTimestamp: null,
+      replyTimestamp: null,
+      replyMessageText: null      
+   };
 
    test('when request is Allowed, it returns a BackupRequest in Sent status', async () => {
       // Arrange
       const startTimestamp = new Date();
 
-      const resultBackupRequest = BackupRequest.create(
-         {
-            ...backupRequestProps,
-            backupJobId: new UniqueIdentifier('request Allowed')
-         }).unwrapOr({} as BackupRequest);
-      const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});
+      // VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
+      mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);      
+
+      const repo = new PrismaBackupRequestRepo(prismaCtx);
 
       const adapter = backupInterfaceAdapterFactory({sendMessageResult: true});
       
@@ -59,17 +73,19 @@ describe('Send Request To Interface Use Case', () => {
       { status: RequestStatusTypeValues.Succeeded, timestampName: 'replyTimestamp' }
    ])('when request is $status, it returns a BackupRequest in $status status with $timestampName unchanged', async ({status, timestampName}) => {
       // Arrange
-      const resultBackupRequest = BackupRequest.create(
+      const resultBackupRequest: {[index: string]:any} = 
          {
-            ...backupRequestProps,
-            backupJobId: new UniqueIdentifier('request is Sent'),
-            statusTypeCode: status,
-            sentToInterfaceTimestamp: new Date('2001-01-01'),
-            replyTimestamp: new Date('2002-02-02')
-         }
-      ).unwrapOr({} as BackupRequest);
-      const expectedTimestamp = new Date((resultBackupRequest as {[index: string]:any})[timestampName]); // ensure we have a separate instance
-      const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});
+            ...dbBackupRequest,
+            backupJobId: 'request is sent job id',
+            statusTypeCode: status
+         };
+      resultBackupRequest[timestampName] = new Date();
+      const expectedTimestamp = new Date(resultBackupRequest[timestampName]); // ensure we have a separate instance
+
+      // VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
+      mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest as BackupRequest);      
+
+      const repo = new PrismaBackupRequestRepo(prismaCtx);
 
       const adapter = backupInterfaceAdapterFactory({sendMessageResult: true});
 
@@ -90,7 +106,12 @@ describe('Send Request To Interface Use Case', () => {
 
    test('when backup request does not exist, it returns failure', async () => {
       // Arrange
-      const repo = backupRequestRepoFactory();
+
+      // findUnique() returns null if not found
+      // VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
+      mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(null as unknown as BackupRequest);
+
+      const repo = new PrismaBackupRequestRepo(prismaCtx);
 
       const adapter = backupInterfaceAdapterFactory({sendMessageResult: true});
 
@@ -109,14 +130,18 @@ describe('Send Request To Interface Use Case', () => {
 
    test('when request is in NotAllowed status, it returns failure', async () => {
       // Arrange
-      const resultBackupRequest = BackupRequest.create(
+      const resultBackupRequest: BackupRequest = 
          {
-            ...backupRequestProps,
-            backupJobId: new UniqueIdentifier('request NotAllowed'),
-            statusTypeCode: 'NotAllowed'
-         }
-      ).unwrapOr({} as BackupRequest);
-      const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});
+            ...dbBackupRequest,
+            backupJobId: 'request NotAllowed job id',
+            statusTypeCode: 'NotAllowed',
+            checkedTimestamp: new Date()
+         };
+
+      // VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
+      mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest);      
+
+      const repo = new PrismaBackupRequestRepo(prismaCtx);
 
       const adapter = backupInterfaceAdapterFactory({sendMessageResult: true});
 
@@ -136,13 +161,16 @@ describe('Send Request To Interface Use Case', () => {
 
    test('when send message fails, it returns failure', async () => {
       // Arrange
-      const resultBackupRequest = BackupRequest.create(
+      const resultBackupRequest: BackupRequest = 
          {
-            ...backupRequestProps,
-            backupJobId: new UniqueIdentifier('sendMessage fails')
-         }
-      ).unwrapOr({} as BackupRequest);
-      const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});
+            ...dbBackupRequest,
+            backupJobId: 'send fails job id',
+         };
+
+      // VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
+      mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest);      
+
+      const repo = new PrismaBackupRequestRepo(prismaCtx);
 
       const adapter = backupInterfaceAdapterFactory({sendMessageResult: false});
       

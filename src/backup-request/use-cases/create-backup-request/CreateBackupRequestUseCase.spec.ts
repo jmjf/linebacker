@@ -1,13 +1,19 @@
 import { CreateBackupRequestUseCase } from './CreateBackupRequestUseCase';
 import { CreateBackupRequestDTO } from './CreateBackupRequestDTO';
-import { backupRequestRepoFactory } from '../../test-utils/backupRequestRepoFactory';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
+import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
 
-/**
- * See notes on testing with TypeORM in devnotes/3.1.1-RequestBackupUseCase
- */
+import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../../../common/infrastructure/database/prismaContext';
+import { BackupRequest } from '@prisma/client';
 
-describe('CreateBackupRequestUseCase', () => {
+describe('CreateBackupRequestUseCasePRISMA', () => {
+   let mockPrismaCtx: MockPrismaContext;
+   let prismaCtx: PrismaContext;
+
+   beforeEach(() => {
+      mockPrismaCtx = createMockPrismaContext();
+      prismaCtx = mockPrismaCtx as unknown as PrismaContext;
+    });
 
    const baseDto = { 
       apiVersion: '2022-01-01',
@@ -20,7 +26,12 @@ describe('CreateBackupRequestUseCase', () => {
 
    test('when executed with good data, it returns a saved backupRequest', async () => {
       // Arrange
-      const repo = backupRequestRepoFactory();
+
+      // The repo's save() only cares that upsert() succeeds, so the value doesn't matter
+      // VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
+      mockPrismaCtx.prisma.backupRequest.upsert.mockResolvedValue({} as unknown as BackupRequest);
+
+      const repo = new PrismaBackupRequestRepo(prismaCtx);
       const saveSpy = jest.spyOn(repo, 'save');
 
       const useCase = new CreateBackupRequestUseCase(repo);
@@ -40,7 +51,9 @@ describe('CreateBackupRequestUseCase', () => {
 
    test('when executed with an invalid transport type, it returns the expected error', async() => {
       // Arrange
-      const repo = backupRequestRepoFactory();
+      // this test fails before it calls the repo, so no need to mock upsert
+
+      const repo = new PrismaBackupRequestRepo(prismaCtx);
       const saveSpy = jest.spyOn(repo, 'save');
 
       const useCase = new CreateBackupRequestUseCase(repo);
@@ -60,7 +73,9 @@ describe('CreateBackupRequestUseCase', () => {
 
    test('when executed with an undefined required value, it returns the expected error', async() => {
       // Arrange
-      const repo = backupRequestRepoFactory();
+      // this test fails before it calls the repo, so no need to mock upsert
+
+      const repo = new PrismaBackupRequestRepo(prismaCtx);
       const saveSpy = jest.spyOn(repo, 'save');
 
       const useCase = new CreateBackupRequestUseCase(repo);
@@ -85,7 +100,9 @@ describe('CreateBackupRequestUseCase', () => {
 
    test('when executed with an invalid dataDate, it returns the expected error', async() => {
       // Arrange
-      const repo = backupRequestRepoFactory();
+      // this test fails before it calls the repo, so no need to mock upsert
+
+      const repo = new PrismaBackupRequestRepo(prismaCtx);
       const saveSpy = jest.spyOn(repo, 'save');
       
       const useCase = new CreateBackupRequestUseCase(repo);

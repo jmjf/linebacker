@@ -3,12 +3,14 @@ export abstract class BaseError extends Error {
    //   message: string
    //   name: string
    //   stack: string
+   public readonly callerMessage: string;
    public readonly callerLine: string;       // first line of the stack
    public readonly functionName: string;     // function name from first line of the stack
    public readonly fileName: string;         // filename from first line of the stack
 
    constructor(message?: string) {
       super(message);
+      this.callerMessage = message || '';
       this.name = this.constructor.name;
       if (this.stack) {
          this.callerLine = this.stack.split('\n')[1].trim();

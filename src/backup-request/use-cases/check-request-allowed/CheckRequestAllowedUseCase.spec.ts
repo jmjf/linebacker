@@ -4,27 +4,27 @@ import { BackupJob, IBackupJobProps } from '../../../backup/domain/BackupJob';
 import { BackupProviderTypeValues } from '../../../backup/domain/BackupProviderType';
 import { backupJobServiceAdapterFactory } from '../../../backup/test-utils/backupJobServiceAdapterFactory';
 
-import { BackupRequest, IBackupRequestProps } from '../../domain/BackupRequest';
 import { RequestStatusType, RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
-import { backupRequestRepoFactory } from '../../test-utils/backupRequestRepoFactory';
 
 import { CheckRequestAllowedDTO } from './CheckRequestAllowedDTO';
 import { CheckRequestAllowedUseCase } from './CheckRequestAllowedUseCase';
 
+import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../../../common/infrastructure/database/prismaContext';
+import { BackupRequest } from '@prisma/client';
+import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
+
 describe('CheckRequestAllowedUseCase', () => {
+   let mockPrismaCtx: MockPrismaContext;
+   let prismaCtx: PrismaContext;
+
+   beforeEach(() => {
+      mockPrismaCtx = createMockPrismaContext();
+      prismaCtx = mockPrismaCtx as unknown as PrismaContext;
+    });
+
    const baseDto: CheckRequestAllowedDTO = {
       backupRequestId: 'job'
-   };
-
-   const backupRequestProps: IBackupRequestProps = {
-      backupJobId: new UniqueIdentifier('job'),
-      dataDate: new Date(),
-      preparedDataPathName: 'path',
-      getOnStartFlag: true,
-      transportTypeCode: RequestTransportTypeValues.HTTP,
-      statusTypeCode: RequestStatusTypeValues.Received,
-      receivedTimestamp: new Date()
    };
 
    const backupJobProps: IBackupJobProps = {
@@ -35,10 +35,31 @@ describe('CheckRequestAllowedUseCase', () => {
       holdFlag: false
    };
 
+   const dbBackupRequest: BackupRequest = {
+      backupRequestId: 'dbBackupRequestId',
+      backupJobId: 'dbBackupJobId',
+      dataDate: new Date(),
+      preparedDataPathName: 'path',
+      getOnStartFlag: true,
+      transportTypeCode: RequestTransportTypeValues.HTTP,
+      statusTypeCode: RequestStatusTypeValues.Received,
+      receivedTimestamp: new Date(),
+      requesterId: 'dbRequesterId',
+      backupProviderCode: null,
+      storagePathName: null,
+      checkedTimestamp: null,
+      sentToInterfaceTimestamp: null,
+      replyTimestamp: null,
+      replyMessageText: null
+   };
+
    test('when backup job for request meets allowed rules, it returns a BackupRequest in Allowed status', async () => {
       // Arrange
-      const resultBackupRequest = BackupRequest.create(backupRequestProps).unwrapOr({} as BackupRequest);
-      const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});
+
+      // VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
+      mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);      
+
+      const repo = new PrismaBackupRequestRepo(prismaCtx);
 
       const resultBackupJob = BackupJob.create(
          {
@@ -63,7 +84,12 @@ describe('CheckRequestAllowedUseCase', () => {
 
    test('when backup request is not found by id, it returns failure', async () => {
       // Arrange
-      const repo = backupRequestRepoFactory();
+
+      // findUnique() returns null if not found
+      // VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
+      mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(null as unknown as BackupRequest);
+
+      const repo = new PrismaBackupRequestRepo(prismaCtx);
 
       const resultBackupJob = BackupJob.create(
          {
@@ -81,14 +107,18 @@ describe('CheckRequestAllowedUseCase', () => {
       expect(result.isErr()).toBe(true);
       if (result.isErr()) { // type guard
          expect(result.error.name).toBe('DatabaseError');
+         expect(result.error.message).toMatch('not found');
          // future, test message too
       }
    });
 
    test('when backup job is not found, it returns failure', async () => {
       // Arrange
-      const resultBackupRequest = BackupRequest.create(backupRequestProps).unwrapOr({} as BackupRequest);
-      const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});
+
+      // VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
+      mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);      
+
+      const repo = new PrismaBackupRequestRepo(prismaCtx);
 
       const adapter = backupJobServiceAdapterFactory();
       
@@ -108,12 +138,11 @@ describe('CheckRequestAllowedUseCase', () => {
 
    test('when request status type is not post-received value and not Received, it returns failure', async () => {
       // Arrange
-      const resultBackupRequest = BackupRequest.create({
-         ...backupRequestProps,
-         statusTypeCode: 'INVALID' as RequestStatusType  // force it
-         // BackupRequest doesn't check status is a valid value, if it did, this test would fail here
-      }).unwrapOr({} as BackupRequest);
-      const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});
+
+      // VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
+      mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue({ ...dbBackupRequest, statusTypeCode: 'INVALID'});      
+
+      const repo = new PrismaBackupRequestRepo(prismaCtx);
 
       const resultBackupJob = BackupJob.create(
          {
@@ -145,14 +174,17 @@ describe('CheckRequestAllowedUseCase', () => {
    ];
    test.each(statusTestCases)('when backup request is in $status status, it returns an unchanged BackupRequest', async ({status, timestamp}) => {
       // Arrange
-      // timestamp that matters is defined in inputs, so need to add it after setting up base props         
-      const reqProps: {[index: string]:any} = {
-         ...backupRequestProps,
+      // timestamp that matters is defined in inputs, so need to add it after setting up base props     
+      const resultBackupRequest: {[index: string]:any} = {
+         ...dbBackupRequest,
          statusTypeCode: status as RequestStatusType
       };
-      reqProps[timestamp] = new Date();
-      const resultBackupRequest = BackupRequest.create(reqProps as IBackupRequestProps).unwrapOr({} as BackupRequest);
-      const repo = backupRequestRepoFactory({getByIdResult: resultBackupRequest});
+      resultBackupRequest[timestamp] = new Date();
+
+      // VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
+      mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest as BackupRequest);      
+
+      const repo = new PrismaBackupRequestRepo(prismaCtx);
 
       const resultBackupJob = BackupJob.create(
          {
