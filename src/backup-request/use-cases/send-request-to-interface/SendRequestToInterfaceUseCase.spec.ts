@@ -21,7 +21,7 @@ describe('Send Request To Interface Use Case', () => {
     });
 
    const baseDto = {
-      backupRequestId: 'testRequest'
+      backupRequestId: 'sendToInterfaceRequestId'
    } as SendRequestToInterfaceDTO;
 
    const dbBackupRequest: BackupRequest = {
@@ -124,7 +124,8 @@ describe('Send Request To Interface Use Case', () => {
       // Assert
       expect(result.isErr()).toBe(true);
       if (result.isErr()) { // type guard
-         expect(result.error.name).toBe('DatabaseError');
+         expect(result.error.name).toBe('NotFoundError');
+         expect(result.error.message).toMatch(dto.backupRequestId);
       }
    });
 

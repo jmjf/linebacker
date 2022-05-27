@@ -7,6 +7,13 @@ export class DatabaseError extends BaseError {
    }
 };
 
+export class NotFoundError extends BaseError {
+   constructor(message: string) {
+      super(message);
+      this.name = 'NotFoundError';
+   }  
+}
+
 export class BackupJobServiceError extends BaseError {
    constructor(message: string) {
       super(message);

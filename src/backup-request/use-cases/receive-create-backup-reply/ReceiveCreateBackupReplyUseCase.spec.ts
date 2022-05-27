@@ -82,8 +82,8 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
       // Assert
       expect(result.isErr()).toBe(true);
       if (result.isErr()) { // type guard
-         expect(result.error.name).toBe('DatabaseError');
-         // future, test message too
+         expect(result.error.name).toBe('NotFoundError');
+         expect(result.error.message).toMatch(dto.backupRequestId);
       }
    });
 

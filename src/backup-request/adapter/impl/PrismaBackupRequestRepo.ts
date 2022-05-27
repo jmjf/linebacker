@@ -35,7 +35,11 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
       }
    }
 
-   public async getById(backupRequestId: string): Promise<Result<BackupRequest, AdapterErrors.DatabaseError | DomainErrors.PropsError>> {
+   public async getById(backupRequestId: string): Promise<Result<BackupRequest, 
+      AdapterErrors.DatabaseError
+      | AdapterErrors.NotFoundError
+      | DomainErrors.PropsError>> 
+   {
       try {
          const data = await this.prisma.backupRequest.findUnique({
             where: {
@@ -44,7 +48,7 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
          });
 
          if (data === null) {
-            return err(new AdapterErrors.DatabaseError(`Backup request not found |${backupRequestId}|`));
+            return err(new AdapterErrors.NotFoundError(`Backup request not found |${backupRequestId}|`));
          }
 
          return this.mapToDomain(data);

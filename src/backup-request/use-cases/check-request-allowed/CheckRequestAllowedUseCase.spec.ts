@@ -24,7 +24,7 @@ describe('CheckRequestAllowedUseCase', () => {
     });
 
    const baseDto: CheckRequestAllowedDTO = {
-      backupRequestId: 'job'
+      backupRequestId: 'checkAllowedRequestId'
    };
 
    const backupJobProps: IBackupJobProps = {
@@ -106,9 +106,8 @@ describe('CheckRequestAllowedUseCase', () => {
       // Assert
       expect(result.isErr()).toBe(true);
       if (result.isErr()) { // type guard
-         expect(result.error.name).toBe('DatabaseError');
-         expect(result.error.message).toMatch('not found');
-         // future, test message too
+         expect(result.error.name).toBe('NotFoundError');
+         expect(result.error.message).toMatch(dto.backupRequestId);
       }
    });
 
