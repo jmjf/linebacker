@@ -7,6 +7,7 @@ import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
 import * as DomainErrors from '../../common/domain/DomainErrors';
 
 import { BackupProviderType } from './BackupProviderType';
+import { AggregateRoot } from '../../common/domain/AggregateRoot';
 
 export interface IBackupProps {
    backupRequestId: UniqueIdentifier,
@@ -14,7 +15,7 @@ export interface IBackupProps {
    dataDate: string | Date,
    backupProviderCode: BackupProviderType,
    daysToKeepCount: number,
-   deleteDate?: string | Date,
+   dueToDeleteDate?: string | Date,
    holdFlag: boolean,
    storagePathName: string,
    backupByteCount: number,
@@ -26,7 +27,7 @@ export interface IBackupProps {
    deletedTimestamp?: string | Date
 }
 
-export class Backup extends Entity<IBackupProps> {
+export class Backup extends AggregateRoot<IBackupProps> {
    public get backupId(): UniqueIdentifier {
       return this._id;
    }
@@ -57,11 +58,11 @@ export class Backup extends Entity<IBackupProps> {
       this.props.daysToKeepCount = days;
    }
 
-   public get deleteDate(): Date {
-      return dateOrUndefinedAsDate(this.props.deleteDate);
+   public get dueToDeleteDate(): Date {
+      return dateOrUndefinedAsDate(this.props.dueToDeleteDate);
    }
-   public set deleteDate(date: Date) {
-      this.props.deleteDate = date;
+   public set dueToDeleteDate(date: Date) {
+      this.props.dueToDeleteDate = date;
    }
 
    public get holdFlag(): boolean {
@@ -111,7 +112,7 @@ export class Backup extends Entity<IBackupProps> {
    }
 
    // used in create() so must be static, which means it can't reference this.props (not static)
-   public static calculateDeleteDate(dataDate: Date, daysToKeepCount: number): Date {
+   public static calculateDueToDeleteDate(dataDate: Date, daysToKeepCount: number): Date {
       const deleteDate = new Date(dataDate);
       deleteDate.setDate(dataDate.getDate() + daysToKeepCount);
       return deleteDate;
@@ -151,7 +152,7 @@ export class Backup extends Entity<IBackupProps> {
       const defaultValues: IBackupProps = {
          ...props,
          dataDate: new Date(props.dataDate),
-         deleteDate: this.calculateDeleteDate(new Date(props.dataDate), props.daysToKeepCount),
+         dueToDeleteDate: this.calculateDueToDeleteDate(new Date(props.dataDate), props.daysToKeepCount),
          storagePathName: props.storagePathName,
          backupByteCount: props.backupByteCount,
          copyStartTimestamp,

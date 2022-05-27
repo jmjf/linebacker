@@ -27,3 +27,22 @@ model BackupRequest {
   requesterId               String?     @map("RequesterIdentifier")
   replyMessageText          String?     @map("ReplyMessageText")
 }
+
+model Backup {
+  backupId                  String      @id @unique @map("BackupIdentifier")
+  backupRequestId           String      @map("BackupRequestIdentifier")
+  backupJobId               String      @map("BackupJobIdentifier")
+  dataDate                  DateTime    @map("DataDate")
+  storagePathName           String      @map("StoragePathName")
+  backupProviderCode        String      @map("BackupProviderCode")
+  daysToKeepCount           Int         @map("DaysToKeepCount")
+  holdFlag                  Boolean     @map("HoldFlag")
+  backupByteCount           BigInt      @map("BackupByteCount")
+  copyStartTimestamp        DateTime    @map("CopyStartTimestamp")
+  copyEndTimestamp          DateTime    @map("CopyEndTimestamp")
+  verifyStartTimestamp      DateTime    @map("VerifyStartTimestamp")
+  verifyEndTimestamp        DateTime    @map("VerifyEndTimestamp")
+  verifyHashText            String      @map("VerifyHashText")
+  dueToDeleteDate           DateTime    @map("DueToDeleteDate")
+  deletedTimestamp          DateTime    @map("DeletedTimestamp")
+}

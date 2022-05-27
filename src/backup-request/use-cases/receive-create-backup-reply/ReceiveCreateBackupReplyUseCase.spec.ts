@@ -3,7 +3,6 @@ import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 import { BackupJob, IBackupJobProps } from '../../../backup/domain/BackupJob';
 import { backupJobServiceAdapterFactory } from '../../../backup/test-utils/backupJobServiceAdapterFactory';
 import { BackupProviderTypeValues } from '../../../backup/domain/BackupProviderType';
-import { backupRepoFactory } from '../../../backup/test-utils/backupRepoFactory';
 
 import { BackupResultTypeValues } from '../../domain/BackupResultType';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
@@ -15,6 +14,7 @@ import { ReceiveCreateBackupReplyUseCase } from './ReceiveCreateBackupReplyUseCa
 import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../../../common/infrastructure/database/prismaContext';
 import { BackupRequest } from '@prisma/client';
 import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
+import { PrismaBackupRepo } from '../../../backup/adapter/impl/PrismaBackupRepo';
 
 describe('ReceiveCreateBackupReplyUseCase', () => {
    let mockPrismaCtx: MockPrismaContext;
@@ -69,7 +69,8 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 
       const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
 
-      const backupRepo = backupRepoFactory();
+      const backupRepo = new PrismaBackupRepo(prismaCtx);
+      const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
       const backupJobServiceAdapter = backupJobServiceAdapterFactory();
 
@@ -81,6 +82,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 
       // Assert
       expect(result.isErr()).toBe(true);
+      expect(backupRepoSaveSpy).not.toBeCalled();
       if (result.isErr()) { // type guard
          expect(result.error.name).toBe('NotFoundError');
          expect(result.error.message).toMatch(dto.backupRequestId);
@@ -95,7 +97,9 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
       
       const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
 
-      const backupRepo = backupRepoFactory();
+      const backupRepo = new PrismaBackupRepo(prismaCtx);
+      const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
+
       const backupJobServiceAdapter = backupJobServiceAdapterFactory();
 
       const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
@@ -106,6 +110,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 
       // Assert
       expect(result.isErr()).toBe(true);
+      expect(backupRepoSaveSpy).not.toBeCalled();
       if (result.isErr()) { // type guard
          expect(result.error.name).toBe('BackupJobServiceError');
          // future, test message
@@ -127,7 +132,8 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
       
       const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
 
-      const backupRepo = backupRepoFactory();
+      const backupRepo = new PrismaBackupRepo(prismaCtx);
+      const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
       const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier(`backupJob-${propName}`)).unwrapOr({} as BackupJob);
       const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
@@ -143,6 +149,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 
       // Assert
       expect(result.isErr()).toBe(true);
+      expect(backupRepoSaveSpy).not.toBeCalled();
       if (result.isErr()) { // type guard
          expect(result.error.name).toBe('PropsError');
          expect(result.error.message).toMatch(propName);
@@ -166,7 +173,8 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
       const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
       const expectedTimestamp = resultBackupRequest.replyTimestamp;
 
-      const backupRepo = backupRepoFactory();
+      const backupRepo = new PrismaBackupRepo(prismaCtx);
+      const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
       const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier(`backupJob-${status}`)).unwrapOr({} as BackupJob);
       const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
@@ -179,6 +187,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 
       // Assert
       expect(result.isOk()).toBe(true);
+      expect(backupRepoSaveSpy).not.toBeCalled();
       if (result.isOk()) { // type guard
          const value = result.value as unknown as BackupRequest;
          expect(value?.statusTypeCode).toMatch(status);
@@ -194,7 +203,9 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
       
       const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
 
-      const backupRepo = backupRepoFactory();
+      const backupRepo = new PrismaBackupRepo(prismaCtx);
+      const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
+
       const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob-invalidType')).unwrapOr({} as BackupJob);
 
       const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
@@ -210,6 +221,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 
       // Assert
       expect(result.isErr()).toBe(true);
+      expect(backupRepoSaveSpy).not.toBeCalled();
       if (result.isErr()) { // type guard
          expect(result.error.name).toBe('PropsError');
          expect(result.error.message).toMatch('resultTypeCode');
@@ -220,12 +232,12 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
       // Arrange
 
       // VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-      mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);      
+      mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);    
 
       const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
       const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-      const backupRepo = backupRepoFactory();
+      const backupRepo = new PrismaBackupRepo(prismaCtx);
       const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
       
       const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob-Failed')).unwrapOr({} as BackupJob);
@@ -255,11 +267,10 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 
       // VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
       mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);      
-
       const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
       const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
-
-      const backupRepo = backupRepoFactory();
+     
+      const backupRepo = new PrismaBackupRepo(prismaCtx);
       const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
       
       const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).unwrapOr({} as BackupJob);
