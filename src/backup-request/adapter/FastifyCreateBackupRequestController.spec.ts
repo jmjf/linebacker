@@ -34,14 +34,11 @@ describe('CreateBackupRequestFastifyController', () => {
          }
       });
 
-      try {
-         const body = JSON.parse(response.body);
-         // Assert
-         expect(response.statusCode).toBe(400);
-         expect(body.message).toMatch('apiVersion');
-      } catch (e) {
-         //JSON.parse(response.body) failed
-         expect(false).toBe(true);
-      }
+      // Assert
+      // convert body to an object we can use
+      const body = JSON.parse(response.body);
+      
+      expect(response.statusCode).toBe(400);
+      expect(body.code).toMatch('InvalidApiVersion');
    });
 });

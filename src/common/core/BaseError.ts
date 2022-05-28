@@ -7,11 +7,13 @@ export abstract class BaseError extends Error {
    public readonly callerLine: string;       // first line of the stack
    public readonly functionName: string;     // function name from first line of the stack
    public readonly fileName: string;         // filename from first line of the stack
+   public readonly code: string;
 
    constructor(message?: string) {
       super(message);
-      this.callerMessage = message || '';
       this.name = this.constructor.name;
+      this.code = ((this.name.toLowerCase().endsWith('error')) ? this.name.slice(0, this.name.length - 5) : this.name);
+      this.callerMessage = message || '';
       if (this.stack) {
          this.callerLine = this.stack.split('\n')[1].trim();
          this.functionName = this.callerLine.match(/at ([^ ]+)/)?.[1] || `can't parse function name`;

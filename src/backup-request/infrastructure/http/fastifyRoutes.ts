@@ -11,6 +11,7 @@ export function addBackupRequestRoutes(app: RealFastifyInstance, prismaCtx: Pris
 
    app.post('/backup-request', async function (request: RealFastifyRequest, reply: RealFastifyReply) {
       const result = await fastifyCreateBackupRequestController.execute(request, reply);
+      // HTTP status > 399 is an error
       if (reply.statusCode > 399) {
          app.log.error(result);
       }
