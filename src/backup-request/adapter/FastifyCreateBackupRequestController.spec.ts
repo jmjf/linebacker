@@ -39,10 +39,10 @@ describe('CreateBackupRequestFastifyController', () => {
       expect(response.statusCode).toBe(400);
       // convert body to an object we can use -- may throw an error if body isn't JSON
       const body = JSON.parse(response.body);
-      expect(body.code).toMatch('InvalidApiVersion');
+      expect(body.code).toBe('InvalidApiVersion');
    });
 
-   test('when the use case gets a database error, the controller returns 500 and an error', async () => {
+   test('when the use case gets a database error, the controller returns 500 and a low-leak error', async () => {
       // Arrange
       // simulate a database error
       const prismaCode = 'P1012';
@@ -62,7 +62,29 @@ describe('CreateBackupRequestFastifyController', () => {
       expect(response.statusCode).toBe(500);
       // convert body to an object we can use -- may throw an error if body isn't JSON
       const body = JSON.parse(response.body);
-      expect(body.code).toMatch('Database');
+      expect(body.code).toBe('Database');
       expect(body.message).toBe(prismaCode.slice(1));      // ensure message is clean
+   });
+
+   test('when the use case returns a PropsError, the controller returns 400 and an error', async () => {
+      // Arrange
+      const app = buildApp(prismaCtx);
+
+      // Act
+      const response = await app.inject({
+         method: 'POST',
+         url: '/backup-request',
+         payload: {
+            ...baseBody,
+            dataDate: ''   // easy error to force
+         }
+      });
+
+      // Assert
+      expect(response.statusCode).toBe(400);
+      // convert body to an object we can use -- may throw an error if body isn't JSON
+      const body = JSON.parse(response.body);
+      expect(body.code).toBe('BadData');
+      expect(body.message).toMatch('dataDate');
    });
 });

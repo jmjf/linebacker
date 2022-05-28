@@ -37,3 +37,10 @@ export class InvalidApiVersionError extends BaseError {
       this.name = 'InvalidApiVersionError';
    }  
 }
+
+export class BadDataError extends BaseError {
+   constructor(message: string) {
+      super(message);
+      this.name = 'BadDataError';
+   }  
+}

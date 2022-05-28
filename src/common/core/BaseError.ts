@@ -7,7 +7,7 @@ export abstract class BaseError extends Error {
    public readonly callerLine: string;       // first line of the stack
    public readonly functionName: string;     // function name from first line of the stack
    public readonly fileName: string;         // filename from first line of the stack
-   public readonly code: string;
+   public code: string;                      // not readonly because it goes to the client and sometimes needs to be changed
 
    constructor(message?: string) {
       super(message);

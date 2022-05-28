@@ -1,5 +1,6 @@
 import { InvalidApiVersionError } from '../../common/adapter/AdapterErrors';
 import { FastifyController, RealFastifyRequest, RealFastifyReply } from '../../common/adapter/FastifyController';
+import { PropsError } from '../../common/domain/DomainErrors';
 import { CreateBackupRequestUseCase } from '../use-cases/create-backup-request/CreateBackupRequestUseCase';
 
 export interface ICreateBackupRequestBody {
@@ -50,9 +51,9 @@ export class FastifyCreateBackupRequestController extends FastifyController {
             return replyValue;
          } else {
             switch(result.error.name) {
-               // case 'PropsError':
-               //    this.replyBadRequest(reply);
-               //    break;
+               case 'PropsError':
+                  this.replyBadRequest(reply);
+                  break;
                default:
                   this.replyServerError(reply);
                   break;
