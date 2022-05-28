@@ -1,7 +1,7 @@
 import { FastifyRequest, FastifyReply, fastify } from 'fastify';
 
 import { IBackupRequestRepo } from './BackupRequestRepo';
-import { CreateBackupRequestFastifyController, ICreateBackupRequestBody } from './CreateBackupRequestFastifyController';
+import { CreateBackupRequestFastifyController, ICreateBackupRequestBody } from './FastifyCreateBackupRequestController';
 import { CreateBackupRequestUseCase } from '../use-cases/create-backup-request/CreateBackupRequestUseCase';
 
 describe('CreateBackupRequestFastifyController', () => {
