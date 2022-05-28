@@ -24,44 +24,41 @@ export class FastifyCreateBackupRequestController extends FastifyController {
          this.replyBadRequest(reply);
          return new InvalidApiVersionError(`{ message: 'invalid apiVersion', apiVersion: ${body.apiVersion} }`);
       } else {
-         this.replyOk(reply);
-         return 'valid api version';
-      }
+         const dto = {
+            ...body,
+            transportType: 'HTTP', // this is an HTTP controller
+            getOnStartFlag: true
+         };
 
-      //    const dto = {
-      //       ...body,
-      //       transportType: 'HTTP', // this is an HTTP controller
-      //       getOnStartFlag: true
-      //    };
+         const result = await this.useCase.execute(dto);
 
-      //    const result = await this.useCase.execute(dto);
+         if (result.isOk()) {
+            // const { backupJobId, dataDate, ...v } = result.value.props;
+            // const dt = new Date(dataDate);
+            // const replyValue = {
+            //    backupRequestId: result.value.id.value,
+            //    backupJobId: backupJobId.value,
+            //    dataDate: dt.toISOString().slice(0,10), // only the date part
+            //    preparedDatePathName: v.preparedDataPathName,
+            //    statusTypeCode: v.statusTypeCode,
+            //    receivedTimestamp: v.receivedTimestamp,
+            //    requesterId: v.requesterId
+            // };
 
-      //    if (result.isOk()) {
-      //       const { backupJobId, dataDate, ...v } = result.value.props;
-      //       const dt = new Date(dataDate);
-      //       const replyValue = {
-      //          backupRequestId: result.value.id.value,
-      //          backupJobId: backupJobId.value,
-      //          dataDate: dt.toISOString().slice(0,10), // only the date part
-      //          preparedDatePathName: v.preparedDataPathName,
-      //          statusTypeCode: v.statusTypeCode,
-      //          receivedTimestamp: v.receivedTimestamp,
-      //          requesterId: v.requesterId
-      //       };
-
-      //       this.replyAccepted(reply);
-      //       return replyValue;
-      //    } else {
-      //       switch(result.error.name) {
-      //          case 'PropsError':
-      //             this.replyBadRequest(reply);
-      //             break;
-      //          default:
-      //             this.replyServerError(reply);
-      //             break;
-      //       }
-      //       return result.error;
-      //    }
-      // }      
+            const replyValue = 'result is ok';
+            this.replyAccepted(reply);
+            return replyValue;
+         } else {
+            switch(result.error.name) {
+               // case 'PropsError':
+               //    this.replyBadRequest(reply);
+               //    break;
+               default:
+                  this.replyServerError(reply);
+                  break;
+            }
+            return result.error;
+         }
+      }      
    }
 }

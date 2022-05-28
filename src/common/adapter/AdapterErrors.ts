@@ -5,6 +5,16 @@ export class DatabaseError extends BaseError {
       super(message);
       this.name = 'DatabaseError';
    }
+
+   cleanMessage(): void {
+      let msg;
+      try {
+         msg = JSON.parse(this.message);
+      } catch (e) {
+         msg = { code: ' error'};
+      };
+      this.message = msg.code.slice(1);
+   }
 };
 
 export class NotFoundError extends BaseError {

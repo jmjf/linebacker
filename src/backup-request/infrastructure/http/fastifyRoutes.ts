@@ -14,6 +14,10 @@ export function addBackupRequestRoutes(app: RealFastifyInstance, prismaCtx: Pris
       // HTTP status > 399 is an error
       if (reply.statusCode > 399) {
          app.log.error(result);
+
+         if (result.name === 'DatabaseError') {
+            result.cleanMessage();
+         };
       }
       reply.send(result);
    });
