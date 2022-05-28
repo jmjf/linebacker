@@ -18,13 +18,15 @@ export class FastifyCreateBackupRequestController extends FastifyController {
    }
 
    protected async execImpl(request: RealFastifyRequest, reply: RealFastifyReply): Promise<any> {
-      return {};
-      // const body = <ICreateBackupRequestBody>request.body;
+      const body = <ICreateBackupRequestBody>request.body;
 
-      // if (!body.apiVersion || body.apiVersion !== '2022-05-22') {
-      //    this.replyBadRequest(reply);
-      //    return new InvalidApiVersionError(`{ message: 'invalid apiVersion', apiVersion: ${body.apiVersion} }`);
-      // } else {
+      if (!body.apiVersion || body.apiVersion !== '2022-05-22') {
+         this.replyBadRequest(reply);
+         return new InvalidApiVersionError(`{ message: 'invalid apiVersion', apiVersion: ${body.apiVersion} }`);
+      } else {
+         this.replyOk(reply);
+         return 'valid api version';
+      }
 
       //    const dto = {
       //       ...body,

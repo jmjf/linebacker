@@ -17,7 +17,7 @@ export abstract class FastifyController {
 
    public async execute(request: RealFastifyRequest, reply: RealFastifyReply): Promise<void | any> {
       try {
-         await this.execImpl(request, reply);
+         return await this.execImpl(request, reply);
       } catch (e) {
          console.log(e);
       }

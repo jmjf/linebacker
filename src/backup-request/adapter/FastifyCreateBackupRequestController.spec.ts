@@ -1,11 +1,8 @@
-import { FastifyRequest, FastifyReply, fastify } from 'fastify';
+import { buildApp } from '../../app';
 
-import { CreateBackupRequestFastifyController, ICreateBackupRequestBody } from './FastifyCreateBackupRequestController';
-import { CreateBackupRequestUseCase } from '../use-cases/create-backup-request/CreateBackupRequestUseCase';
+import { ICreateBackupRequestBody } from './FastifyCreateBackupRequestController';
 
 import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../../common/infrastructure/database/prismaContext';
-import { BackupRequest } from '@prisma/client';
-import { PrismaBackupRequestRepo } from './impl/PrismaBackupRequestRepo';
 
 describe('CreateBackupRequestFastifyController', () => {
    let mockPrismaCtx: MockPrismaContext;
@@ -24,20 +21,27 @@ describe('CreateBackupRequestFastifyController', () => {
    } as ICreateBackupRequestBody;
 
    test('when apiVersion is invalid, it returns 400 and an error', async () => {
-      const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+      // Arrange
+      const app = buildApp(prismaCtx);
 
-      const useCase = new CreateBackupRequestUseCase(backupRequestRepo);
+      // Act
+      const response = await app.inject({
+         method: 'POST',
+         url: '/backup-request',
+         payload: {
+            ...baseBody,
+            apiVersion: 'invalid'
+         }
+      });
 
-      const controller = new CreateBackupRequestFastifyController(useCase);
-
-      
-
-      
-
-      // const result = await controller.execute(request, reply);
-
-      // expect(reply.statusCode).toBe(400);
-      // expect(result.message).toMatch('apiVersion');
-
+      try {
+         const body = JSON.parse(response.body);
+         // Assert
+         expect(response.statusCode).toBe(400);
+         expect(body.message).toMatch('apiVersion');
+      } catch (e) {
+         //JSON.parse(response.body) failed
+         expect(false).toBe(true);
+      }
    });
 });

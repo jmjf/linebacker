@@ -10,6 +10,10 @@ export function addBackupRequestRoutes(app: RealFastifyInstance, prismaCtx: Pris
    const fastifyCreateBackupRequestController = new FastifyCreateBackupRequestController(createBackupRequestUseCase);
 
    app.post('/backup-request', async function (request: RealFastifyRequest, reply: RealFastifyReply) {
-      await fastifyCreateBackupRequestController.execute(request, reply);
+      const result = await fastifyCreateBackupRequestController.execute(request, reply);
+      if (reply.statusCode > 399) {
+         app.log.error(result);
+      }
+      reply.send(result);
    });
 }
