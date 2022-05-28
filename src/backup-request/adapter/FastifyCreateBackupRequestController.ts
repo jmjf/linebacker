@@ -1,6 +1,5 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
 import { InvalidApiVersionError } from '../../common/adapter/AdapterErrors';
-import { FastifyController } from '../../common/adapter/FastifyController';
+import { FastifyController, RealFastifyRequest, RealFastifyReply } from '../../common/adapter/FastifyController';
 import { CreateBackupRequestUseCase } from '../use-cases/create-backup-request/CreateBackupRequestUseCase';
 
 export interface ICreateBackupRequestBody {
@@ -10,7 +9,7 @@ export interface ICreateBackupRequestBody {
    backupDataLocation: string
 };
 
-export class CreateBackupRequestFastifyController extends FastifyController {
+export class FastifyCreateBackupRequestController extends FastifyController {
    private useCase: CreateBackupRequestUseCase;
 
    constructor(useCase: CreateBackupRequestUseCase) {
@@ -18,7 +17,7 @@ export class CreateBackupRequestFastifyController extends FastifyController {
       this.useCase = useCase;
    }
 
-   protected async execImpl(request: FastifyRequest, reply: FastifyReply): Promise<any> {
+   protected async execImpl(request: RealFastifyRequest, reply: RealFastifyReply): Promise<any> {
       return {};
       // const body = <ICreateBackupRequestBody>request.body;
 
