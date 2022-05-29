@@ -34,19 +34,18 @@ export class FastifyCreateBackupRequestController extends FastifyController {
          const result = await this.useCase.execute(dto);
 
          if (result.isOk()) {
-            // const { backupJobId, dataDate, ...v } = result.value.props;
-            // const dt = new Date(dataDate);
-            // const replyValue = {
-            //    backupRequestId: result.value.id.value,
-            //    backupJobId: backupJobId.value,
-            //    dataDate: dt.toISOString().slice(0,10), // only the date part
-            //    preparedDatePathName: v.preparedDataPathName,
-            //    statusTypeCode: v.statusTypeCode,
-            //    receivedTimestamp: v.receivedTimestamp,
-            //    requesterId: v.requesterId
-            // };
+            const { backupJobId, dataDate, ...v } = result.value.props;
+            const dt = new Date(dataDate);
+            const replyValue = {
+               backupRequestId: result.value.id.value,
+               backupJobId: backupJobId.value,
+               dataDate: dt.toISOString().slice(0,10), // only the date part
+               preparedDataPathName: v.preparedDataPathName,
+               statusTypeCode: v.statusTypeCode,
+               receivedTimestamp: v.receivedTimestamp,
+               requesterId: v.requesterId
+            };
 
-            const replyValue = 'result is ok';
             this.replyAccepted(reply);
             return replyValue;
          } else {

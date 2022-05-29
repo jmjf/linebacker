@@ -1,9 +1,12 @@
+import * as uuid from 'uuid';
+
 import { buildApp } from '../../app';
 
 import { ICreateBackupRequestBody } from './FastifyCreateBackupRequestController';
 
 import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../../common/infrastructure/database/prismaContext';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
+import { RequestStatusTypeValues } from '../domain/RequestStatusType';
 
 describe('CreateBackupRequestFastifyController', () => {
    let mockPrismaCtx: MockPrismaContext;
@@ -14,7 +17,7 @@ describe('CreateBackupRequestFastifyController', () => {
       prismaCtx = mockPrismaCtx as unknown as PrismaContext;
     });
 
-   const baseBody = {
+   const basePayload = {
       apiVersion: '2022-05-22',
       backupJobId: 'job-id',
       dataDate: '2022-05-30',
@@ -30,7 +33,7 @@ describe('CreateBackupRequestFastifyController', () => {
          method: 'POST',
          url: '/backup-request',
          payload: {
-            ...baseBody,
+            ...basePayload,
             apiVersion: 'invalid'
          }
       });
@@ -54,16 +57,16 @@ describe('CreateBackupRequestFastifyController', () => {
          method: 'POST',
          url: '/backup-request',
          payload: {
-            ...baseBody
+            ...basePayload
          }
       });
 
       // Assert
       expect(response.statusCode).toBe(500);
-      // convert body to an object we can use -- may throw an error if body isn't JSON
-      const body = JSON.parse(response.body);
-      expect(body.code).toBe('Database');
-      expect(body.message).toBe(prismaCode.slice(1));      // ensure message is clean
+      // convert payload to an object we can use -- may throw an error if payload isn't JSON
+      const payload = JSON.parse(response.payload);
+      expect(payload.code).toBe('Database');
+      expect(payload.message).toBe(prismaCode.slice(1));      // ensure message is clean
    });
 
    test('when the use case returns a PropsError, the controller returns 400 and an error', async () => {
@@ -75,16 +78,46 @@ describe('CreateBackupRequestFastifyController', () => {
          method: 'POST',
          url: '/backup-request',
          payload: {
-            ...baseBody,
+            ...basePayload,
             dataDate: ''   // easy error to force
          }
       });
 
       // Assert
       expect(response.statusCode).toBe(400);
-      // convert body to an object we can use -- may throw an error if body isn't JSON
-      const body = JSON.parse(response.body);
-      expect(body.code).toBe('BadData');
-      expect(body.message).toMatch('dataDate');
+      // convert payload to an object we can use -- may throw an error if payload isn't JSON
+      const payload = JSON.parse(response.payload);
+      expect(payload.code).toBe('BadData');
+      expect(payload.message).toMatch('dataDate');
+   });
+
+   test('when request data is good, the controller returns Accepted and a result payload', async () => {
+      // Arrange
+      const app = buildApp(prismaCtx);
+
+      // Act
+      const startTime = new Date();
+      const response = await app.inject({
+         method: 'POST',
+         url: '/backup-request',
+         payload: {
+            ...basePayload
+         }
+      });
+      const endTime = new Date();
+
+      // Assert
+      expect(response.statusCode).toBe(202);
+      // convert payload to an object we can use -- may throw an error if payload isn't JSON
+      const payload = JSON.parse(response.payload);
+      const receivedTimestamp = new Date(payload.receivedTimestamp);
+
+      expect(uuid.validate((payload.backupRequestId))).toBe(true);
+      expect(payload.statusTypeCode).toBe(RequestStatusTypeValues.Received);
+      expect(payload.backupJobId).toBe(basePayload.backupJobId);
+      expect(payload.preparedDataPathName).toBe(basePayload.backupDataLocation);
+      expect(payload.dataDate).toBe(basePayload.dataDate);
+      expect(receivedTimestamp.valueOf()).toBeGreaterThanOrEqual(startTime.valueOf());
+      expect(receivedTimestamp.valueOf()).toBeLessThanOrEqual(endTime.valueOf());
    });
 });

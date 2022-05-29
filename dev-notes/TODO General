@@ -1,8 +1,0 @@
-* Does the use case need to know about API versions? 
-  * Can I remove API version from DTOs and let controllers decide to accept/reject based on API version?
-  * Controller would need to deal with any API version differences that might cause issues.
-
-Next major steps
-* Write controllers - let's go with express for now
-* Add a proper logger - let's go with pino for now
-* Add persistence - use TypeORM with sqlite for now
