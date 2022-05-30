@@ -95,11 +95,17 @@ export class ReceiveCreateBackupReplyUseCase
 			backup = backupOrError.value;
 
 			// save backup aggregate
-			await this.backupRepo.save(backup);
+			const backupSaveResult = await this.backupRepo.save(backup);
+			if (backupSaveResult.isErr()) {
+				return backupSaveResult;
+			}
 		}
 
 		// save backup request aggregate -- keep this save adjacent to backup aggregate save
-		await this.backupRequestRepo.save(backupRequest);
+		const backupRequestSaveResult = await this.backupRequestRepo.save(backupRequest);
+		if (backupRequestSaveResult.isErr()) {
+			return backupRequestSaveResult;
+		}
 
 		return ok(resultTypeCode === BackupResultTypeValues.Succeeded
 			? backup
