@@ -16,6 +16,7 @@ import { Backup, BackupRequest } from '@prisma/client';
 import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
 import { PrismaBackupRepo } from '../../../backup/adapter/impl/PrismaBackupRepo';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
+import { DatabaseError } from '../../../common/adapter/AdapterErrors';
 
 describe('ReceiveCreateBackupReplyUseCase', () => {
    let mockPrismaCtx: MockPrismaContext;
@@ -37,7 +38,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
    };
 
    const backupJobDTO: IBackupJobProps = {
-      storagePathName: 'storage path',
+      storagePathName: 'storage/path',
       backupProviderCode: BackupProviderTypeValues.CloudB,
       daysToKeep: 100,
       isActive: true,
@@ -48,7 +49,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
       backupRequestId: 'dbBackupRequestId',
       backupJobId: 'dbBackupJobId',
       dataDate: new Date(),
-      preparedDataPathName: 'path',
+      preparedDataPathName: 'prepared/data/path',
       getOnStartFlag: true,
       transportTypeCode: RequestTransportTypeValues.HTTP,
       statusTypeCode: RequestStatusTypeValues.Sent,
@@ -62,176 +63,28 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
       replyMessageText: null      
    };
 
+   const prismaBackup: Backup = {
+      backupId: 'backupId',
+      backupRequestId: 'dbBackupRequestId',
+      backupJobId: 'dbBackupJobId',
+      dataDate: new Date('2022-05-30'),
+      backupProviderCode: 'CloudA',
+      storagePathName: 'path/to/backup/storage/prisma',
+      daysToKeepCount: 42,
+      holdFlag: false,
+      backupByteCount: BigInt(9999999),
+      copyStartTimestamp: new Date('2022-05-30T20:00:00Z'),
+      copyEndTimestamp: new Date('2022-05-30T20:11:11Z'),
+      verifyStartTimestamp: new Date('2022-05-30T20:11:33Z'),
+      verifyEndTimestamp: new Date('2022-05-30T20:20:44Z'),
+      verifyHashText: 'verifyHash',
+      dueToDeleteDate: new Date('2029-04-30'),
+      deletedTimestamp: null as unknown as Date
+   }
+
    const prismaCode = 'P1010';
 
-   describe('Data quality', () => {
-
-      test(`when the backup request doesn't exist, it returns failure`, async () => {
-         // Arrange
-         
-         // VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
-         // findUnique() returns null if not found
-         mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(null as unknown as BackupRequest);
-         const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
-
-         const backupRepo = new PrismaBackupRepo(prismaCtx);
-         const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
-
-         const backupJobServiceAdapter = backupJobServiceAdapterFactory();
-
-         const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
-         const dto = { ...createBackupReply, backupRequestId: `request doesn't exist` };
-
-         // Act
-         const result = await useCase.execute(dto);
-
-         // Assert
-         expect(result.isErr()).toBe(true);
-         expect(backupRepoSaveSpy).not.toBeCalled();
-         if (result.isErr()) { // type guard
-            expect(result.error.name).toBe('NotFoundError');
-            expect(result.error.message).toMatch(dto.backupRequestId);
-         }
-      });
-
-      test(`when the backup job doesn't exist, it returns failure`, async () => {
-         // Arrange
-
-         // VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
-         mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
-         const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
-
-         const backupRepo = new PrismaBackupRepo(prismaCtx);
-         const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
-
-         const backupJobServiceAdapter = backupJobServiceAdapterFactory();
-
-         const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
-         const dto = { ...createBackupReply, backupRequestId: `job doesn't exist`  };
-
-         // Act
-         const result = await useCase.execute(dto);
-
-         // Assert
-         expect(result.isErr()).toBe(true);
-         expect(backupRepoSaveSpy).not.toBeCalled();
-         if (result.isErr()) { // type guard
-            expect(result.error.name).toBe('BackupJobServiceError');
-            // future, test message
-         }
-      });
-
-      // Can test attributes in BackupRequestReplyDTO because other values are set from retrieved data in the use case
-      test.each( [
-         { propName: 'backupRequestId' },
-         { propName: 'storagePathName' },
-         { propName: 'backupByteCount' },
-         { propName: 'copyStartTimestamp' },
-         { propName: 'copyEndTimestamp' }
-      ])('when required reply attribute $propName is missing, it returns failure', async ({propName}) => {
-         // Arrange
-
-         // VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
-         mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);      
-         const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
-
-         const backupRepo = new PrismaBackupRepo(prismaCtx);
-         const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
-
-         const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier(`backupJob-${propName}`)).unwrapOr({} as BackupJob);
-         const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
-
-         const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
-         const dto = { ...createBackupReply };
-         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-         // @ts-ignore
-         dto[propName] = undefined;
-
-         // Act
-         const result = await useCase.execute(dto);
-
-         // Assert
-         expect(result.isErr()).toBe(true);
-         expect(backupRepoSaveSpy).not.toBeCalled();
-         if (result.isErr()) { // type guard
-            expect(result.error.name).toBe('PropsError');
-            expect(result.error.message).toMatch(propName);
-         }
-      });
-
-      test('when result type is invalid, it returns failure', async () => {
-         // Arrange
-   
-         // VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
-         mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);      
-         const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
-   
-         const backupRepo = new PrismaBackupRepo(prismaCtx);
-         const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
-   
-         const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob-invalidType')).unwrapOr({} as BackupJob);
-   
-         const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
-   
-         const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
-         const dto = { ...createBackupReply };
-         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-         // @ts-ignore
-         dto.resultTypeCode = 'INVALID';
-   
-         // Act
-         const result = await useCase.execute(dto);
-   
-         // Assert
-         expect(result.isErr()).toBe(true);
-         expect(backupRepoSaveSpy).not.toBeCalled();
-         if (result.isErr()) { // type guard
-            expect(result.error.name).toBe('PropsError');
-            expect(result.error.message).toMatch('resultTypeCode');
-         }
-      });
-   });
-
-   test.each([
-      RequestStatusTypeValues.Succeeded,
-      RequestStatusTypeValues.Failed
-   ])('when request is %p, it returns ok with unchanged status and timestamp', async (status) => {
-      // Arrange
-      const resultBackupRequest = {
-         ...dbBackupRequest,
-         statusTypeCode: status,
-         replyTimestamp: new Date()
-      };
-      
-      // VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
-      mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest);      
-      
-      const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
-      const expectedTimestamp = resultBackupRequest.replyTimestamp;
-
-      const backupRepo = new PrismaBackupRepo(prismaCtx);
-      const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
-
-      const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier(`backupJob-${status}`)).unwrapOr({} as BackupJob);
-      const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
-
-      const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
-      const dto = { ...createBackupReply };
-
-      // Act
-      const result = await useCase.execute(dto);
-
-      // Assert
-      expect(result.isOk()).toBe(true);
-      expect(backupRepoSaveSpy).not.toBeCalled();
-      if (result.isOk()) { // type guard
-         const value = result.value as unknown as BackupRequest;
-         expect(value?.statusTypeCode).toMatch(status);
-         expect(value?.replyTimestamp?.valueOf()).toBe(expectedTimestamp.valueOf());
-      }
-   });   
-
-   test('when result type is Failed, it saves the request but not the backup record', async () => {
+   test('when reply status is Failed, it calls BackupRequest save() but not Backup save()', async () => {
       // Arrange
 
       // VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
@@ -265,6 +118,138 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 
    });
 
+   describe('Data integrity', () => {
+      test(`when the BackupRequest doesn't exist, it returns failure`, async () => {
+         // Arrange
+         
+         // VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
+         // findUnique() returns null if not found
+         mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(null as unknown as BackupRequest);
+         const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+
+         const backupRepo = new PrismaBackupRepo(prismaCtx);
+         const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
+
+         const backupJobServiceAdapter = backupJobServiceAdapterFactory();
+
+         const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
+         const dto = { ...createBackupReply, backupRequestId: `request doesn't exist` };
+
+         // Act
+         const result = await useCase.execute(dto);
+
+         // Assert
+         expect(result.isErr()).toBe(true);
+         expect(backupRepoSaveSpy).not.toBeCalled();
+         if (result.isErr()) { // type guard
+            expect(result.error.name).toBe('NotFoundError');
+            expect(result.error.message).toMatch(dto.backupRequestId);
+         }
+      });
+
+      test(`when the BackupJob doesn't exist, it returns failure`, async () => {
+         // Arrange
+
+         // VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
+         mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
+         const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+
+         const backupRepo = new PrismaBackupRepo(prismaCtx);
+         const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
+
+         const backupJobServiceAdapter = backupJobServiceAdapterFactory();
+
+         const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
+         const dto = { ...createBackupReply, backupRequestId: `job doesn't exist`  };
+
+         // Act
+         const result = await useCase.execute(dto);
+
+         // Assert
+         expect(result.isErr()).toBe(true);
+         expect(backupRepoSaveSpy).not.toBeCalled();
+         if (result.isErr()) { // type guard
+            expect(result.error.name).toBe('BackupJobServiceError');
+            // future, test message
+         }
+      });
+   });
+
+   describe('Reply data quality', () => {
+
+      test('when reply status is invalid, it returns Err', async () => {
+         // Arrange
+   
+         // VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
+         mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);      
+         const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+   
+         const backupRepo = new PrismaBackupRepo(prismaCtx);
+         const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
+   
+         const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob-invalidType')).unwrapOr({} as BackupJob);
+   
+         const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
+   
+         const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
+         const dto = { ...createBackupReply };
+         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+         // @ts-ignore
+         dto.resultTypeCode = 'INVALID';
+   
+         // Act
+         const result = await useCase.execute(dto);
+   
+         // Assert
+         expect(result.isErr()).toBe(true);
+         expect(backupRepoSaveSpy).not.toBeCalled();
+         if (result.isErr()) { // type guard
+            expect(result.error.name).toBe('PropsError');
+            expect(result.error.message).toMatch('resultTypeCode');
+         }
+      });
+
+      // Can test attributes in BackupRequestReplyDTO because other values are set from retrieved data in the use case
+      test.each( [
+         { propName: 'backupRequestId' },
+         { propName: 'storagePathName' },
+         { propName: 'backupByteCount' },
+         { propName: 'copyStartTimestamp' },
+         { propName: 'copyEndTimestamp' }
+      ])('when required reply attribute $propName is missing, it returns failure', async ({propName}) => {
+         // Arrange
+
+         // VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
+         mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);      
+         const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+
+         mockPrismaCtx.prisma.backup.findFirst.mockResolvedValue(null as unknown as Backup);
+         mockPrismaCtx.prisma.backup.upsert.mockResolvedValue({} as Backup);
+         const backupRepo = new PrismaBackupRepo(prismaCtx);
+         const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
+
+         const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier(`backupJob-${propName}`)).unwrapOr({} as BackupJob);
+         const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
+
+         const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
+         const dto = { ...createBackupReply };
+         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+         // @ts-ignore
+         dto[propName] = undefined;
+
+         // Act
+         const result = await useCase.execute(dto);
+
+         // Assert
+         expect(result.isErr()).toBe(true);
+         expect(backupRepoSaveSpy).not.toBeCalled();
+         if (result.isErr()) { // type guard
+            expect(result.error.name).toBe('PropsError');
+            expect(result.error.message).toMatch(propName);
+         }
+      });
+   });
+
    describe('Partial update idempotence', () => {
 
       test(`when reply is Succeeded but BackupRepo.save() fails, it doesn't save the BackupRequest and returns an Err`, async () => {
@@ -278,6 +263,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
          const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
       
          // Backup save() will fail
+         mockPrismaCtx.prisma.backup.findFirst.mockResolvedValue(null as unknown as Backup);
          mockPrismaCtx.prisma.backup.upsert.mockRejectedValue(new PrismaClientKnownRequestError('Some upsert failure', prismaCode, '2'));
          const backupRepo = new PrismaBackupRepo(prismaCtx);
          const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
@@ -298,10 +284,12 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
          expect(backupRequestSaveSpy).not.toBeCalled(); // never called, so the Err must be from backupRepo
          if (result.isErr()) {// type guard
             expect(result.error.name).toBe('DatabaseError');
+            // ensure it fails in the BackupRepo.save, not some other DatabaseError
+            expect((result.error as DatabaseError).functionName).toBe('PrismaBackupRepo.save');
          }
       });
 
-      test(`when reply is Succeeded and BackupRepo.save() succeeds but BackupReplyRepo.save() fails, it returns an Err`, async () => {
+      test(`when reply is Succeeded and BackupRepo.save() succeeds but BackupRequestRepo.save() fails, it returns an Err`, async () => {
          // Arrange
 
          // VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
@@ -312,6 +300,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
          const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
          const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
       
+         mockPrismaCtx.prisma.backup.findFirst.mockResolvedValue(null as unknown as Backup);
          mockPrismaCtx.prisma.backup.upsert.mockResolvedValue({} as Backup);
          const backupRepo = new PrismaBackupRepo(prismaCtx);
          const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
@@ -332,6 +321,8 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
          expect(backupRequestSaveSpy).toBeCalledTimes(1);
          if (result.isErr()) {// type guard
             expect(result.error.name).toBe('DatabaseError');
+            // ensure it fails in the BackupRequestRepo.save, not some other DatabaseError
+            expect((result.error as DatabaseError).functionName).toBe('PrismaBackupRequestRepo.save');
          }
       });   
 
@@ -345,6 +336,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
          const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
          const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
       
+         mockPrismaCtx.prisma.backup.findFirst.mockResolvedValue(null as unknown as Backup);
          mockPrismaCtx.prisma.backup.upsert.mockResolvedValue({} as Backup);
          const backupRepo = new PrismaBackupRepo(prismaCtx);
          const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
@@ -366,6 +358,77 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
          if (result.isOk()) {// type guard
             expect(result.value.constructor.name).toBe('Backup');
          }
+      });
+   });
+
+   describe('Duplicate reply idempotence', () => {
+      test('when the Backup exists, the BackupRequest is not complete, and the BackupRequest save() fails, it returns Err and does not call Backup save()', async () => {
+         // Arrange
+
+         // VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
+
+         mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
+         mockPrismaCtx.prisma.backupRequest.upsert.mockRejectedValue(new PrismaClientKnownRequestError('rejected', prismaCode, '2'));
+         const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+         const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
+
+         // findFirst() for getByBackupRequestId()
+         mockPrismaCtx.prisma.backup.findFirst.mockResolvedValue(prismaBackup as Backup);
+         mockPrismaCtx.prisma.backup.upsert.mockResolvedValue({} as Backup); // succeed if called, shouldn't be called
+         const backupRepo = new PrismaBackupRepo(prismaCtx);
+         const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
+         
+         const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).unwrapOr({} as BackupJob);
+         const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
+         
+         const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
+         const dto = { ...createBackupReply };
+         dto.resultTypeCode = BackupResultTypeValues.Succeeded;
+
+         // Act
+         const result = await useCase.execute(dto);
+
+         // Assert
+         expect(result.isErr()).toBe(true);
+         expect(backupRequestSaveSpy).toBeCalledTimes(1);
+         expect(backupRepoSaveSpy).not.toBeCalled();
+         if (result.isErr()) {// type guard
+            expect(result.error.name).toBe('DatabaseError');
+            // ensure it fails in the BackupRequestRepo.save, not some other DatabaseError
+            expect((result.error as DatabaseError).functionName).toBe('PrismaBackupRequestRepo.save');
+         }
+      });
+
+      test('when the Backup exists, the BackupRequest is not complete, and the BackupRequest save() succeeds, it returns Ok and does not call Backup save()', async () => {
+         // Arrange
+
+         // VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
+
+         mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
+         mockPrismaCtx.prisma.backupRequest.upsert.mockResolvedValue({} as BackupRequest);
+         const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+         const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
+
+         // findFirst() for getByBackupRequestId()
+         mockPrismaCtx.prisma.backup.findFirst.mockResolvedValue(prismaBackup as Backup);
+         mockPrismaCtx.prisma.backup.upsert.mockResolvedValue({} as Backup); // succeed if called, shouldn't be called
+         const backupRepo = new PrismaBackupRepo(prismaCtx);
+         const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
+         
+         const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).unwrapOr({} as BackupJob);
+         const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
+         
+         const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
+         const dto = { ...createBackupReply };
+         dto.resultTypeCode = BackupResultTypeValues.Succeeded;
+
+         // Act
+         const result = await useCase.execute(dto);
+
+         // Assert
+         expect(result.isOk()).toBe(true);
+         expect(backupRequestSaveSpy).toBeCalledTimes(1);
+         expect(backupRepoSaveSpy).not.toBeCalled();
       });
    });
 });

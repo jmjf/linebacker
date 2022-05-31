@@ -12,6 +12,7 @@ import { BackupProviderType } from '../../../backup/domain/BackupProviderType';
 import { Backup } from '../../domain/Backup';
 import { RequestTransportType } from '../../../backup-request/domain/RequestTransportType';
 import { IBackupRepo } from '../BackupRepo';
+import { BackupRequest } from '../../../backup-request/domain/BackupRequest';
 
 export class PrismaBackupRepo implements IBackupRepo {
    private prisma;
@@ -49,6 +50,27 @@ export class PrismaBackupRepo implements IBackupRepo {
 
          if (data === null) {
             return err(new AdapterErrors.NotFoundError(`Backup not found |${backupId}|`));
+         }
+
+         return this.mapToDomain(data);
+      } catch (e) {
+         return err(new AdapterErrors.DatabaseError(`${JSON.stringify(e)}`));
+      }
+   }
+
+   public async getByBackupRequestId(backupRequestId: string): Promise<Result<Backup,
+      AdapterErrors.DatabaseError
+      | AdapterErrors.NotFoundError>>
+   {
+      try {
+         const data = await this.prisma.backup.findFirst({
+            where: {
+               backupRequestId: backupRequestId
+            }
+         });
+
+         if (data === null) {
+            return err(new AdapterErrors.NotFoundError(`Backup not found for request |${backupRequestId}|`));
          }
 
          return this.mapToDomain(data);

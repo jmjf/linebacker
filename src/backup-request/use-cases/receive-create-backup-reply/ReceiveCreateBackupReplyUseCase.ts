@@ -6,8 +6,8 @@ import { Backup, IBackupProps } from '../../../backup/domain/Backup';
 import { IBackupRepo } from '../../../backup/adapter/BackupRepo';
 import { IBackupJobServiceAdapter } from '../../../backup/adapter/BackupJobServiceAdapter';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
-import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 import * as DomainErrors from '../../../common/domain/DomainErrors';
+import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 
 import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
 import { BackupRequest } from '../../domain/BackupRequest';
@@ -20,6 +20,7 @@ import { CreateBackupReplyDTO } from './CreateBackupReplyDTO';
 type Response = Result<Backup | BackupRequest, 
 	DomainErrors.PropsError 
 	| AdapterErrors.BackupJobServiceError
+	| AdapterErrors.DatabaseError
 	| Error
 >;
 
@@ -59,15 +60,9 @@ export class ReceiveCreateBackupReplyUseCase
       }
       const backupRequest = backupRequestResult.value;
 
-		// don't change already replied values
-		if (backupRequest.isReplied()) {
-			return ok(backupRequest);
-		}
-
-		// wait to save changes until the end in case Backup create fails
-		backupRequest.setStatusReplied(resultTypeCode as BackupResultType, reply.messageText);
-
 		let backup: Backup = {} as Backup;
+		
+		// if request succeeded, do Backup stuff, otherwise, the request failed and no Backup is needed.
 		if (resultTypeCode === BackupResultTypeValues.Succeeded) {
 			// backup job must exist or we can't do anything
 			const backupJobResult = await this.backupJobServiceAdapter.getBackupJob(backupRequest.backupJobId.value);
@@ -76,41 +71,55 @@ export class ReceiveCreateBackupReplyUseCase
 			}
 			const backupJob = backupJobResult.value;
 
-			// create backup aggregate from data in request, reply, and job
-			const requestProps: IBackupProps = {
-				backupRequestId: new UniqueIdentifier(backupRequestId),
-				dataDate: backupRequest.dataDate,
-				backupProviderCode: backupRequest.backupProviderCode,
-				backupJobId: backupJob.backupJobId,
-				daysToKeepCount: backupJob.daysToKeep,
-				holdFlag: backupJob.holdFlag,
-				...restOfReply
-			};
-
-			const backupOrError = Backup.create(requestProps);
-			if (backupOrError.isErr()) {
-				return backupOrError;
+			// get any existing Backup for this BackupRequest
+			const existingBackupResult = await this.backupRepo.getByBackupRequestId(backupRequestId);
+			
+			// If an error isn't a NotFoundError, fail the use case -- it's probably a DatabaseError, but use !== 'NotFoundError' so nothing slips through
+			if (existingBackupResult.isErr() && (existingBackupResult.error.name !== 'NotFoundError'))
+			{
+				return existingBackupResult;			
 			}
+			
+			// Any isErr() that makes it here it must be NotFoundError -- create and save the backup
+			if (existingBackupResult.isErr()) {
+				// create backup aggregate from data in request, reply, and job
+				const requestProps: IBackupProps = {
+					backupRequestId: new UniqueIdentifier(backupRequestId),
+					dataDate: backupRequest.dataDate,
+					backupProviderCode: backupRequest.backupProviderCode,
+					backupJobId: backupJob.backupJobId,
+					daysToKeepCount: backupJob.daysToKeep,
+					holdFlag: backupJob.holdFlag,
+					...restOfReply
+				};
 
-			backup = backupOrError.value;
+				const backupCreateResult = Backup.create(requestProps);
+				if (backupCreateResult.isErr()) {
+					return backupCreateResult;
+				}
 
-			// save backup aggregate
-			const backupSaveResult = await this.backupRepo.save(backup);
-			if (backupSaveResult.isErr()) {
-				return backupSaveResult;
+				backup = backupCreateResult.value;
+
+				// save the backup aggregate
+				const backupSaveResult = await this.backupRepo.save(backup);
+				if (backupSaveResult.isErr()) {
+					return backupSaveResult;
+				}
+			} else { // must be isOk(), so get the Backup so we can return it (if succeeded)
+				backup = existingBackupResult.value;
 			}
-		}
+		} // else request failed and backup is set to {}
 
-		// save backup request aggregate -- keep this save adjacent to backup aggregate save
+		backupRequest.setStatusReplied(resultTypeCode as BackupResultType, reply.messageText);
 		const backupRequestSaveResult = await this.backupRequestRepo.save(backupRequest);
 		if (backupRequestSaveResult.isErr()) {
 			return backupRequestSaveResult;
 		}
 
+		// if the request succeeded, return the Backup, otherwise return the BackupRequest
 		return ok(resultTypeCode === BackupResultTypeValues.Succeeded
 			? backup
 			: backupRequest
 		);
-
 	}
 }
