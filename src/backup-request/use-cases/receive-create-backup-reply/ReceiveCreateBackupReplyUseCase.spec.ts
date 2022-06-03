@@ -84,7 +84,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 
    const prismaCode = 'P1010';
 
-   describe('Data integrity', () => {
+   describe('Prerequisites for any update (BackupRequest and BackupJob must exist)', () => {
       test(`when the BackupRequest doesn't exist, it returns a NotFoundError`, async () => {
          // Arrange
          
@@ -142,7 +142,6 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
    });
 
    describe('Reply data quality', () => {
-
       test('when reply status is invalid, it returns a PropsError', async () => {
          // Arrange
    
@@ -216,8 +215,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
       });
    });
 
-   describe('Partial update idempotence', () => {
-
+   describe('Partial updates (at least one save() fails)', () => {
       test(`when reply is Succeeded but BackupRepo.save() fails, it doesn't save the BackupRequest and returns a DatabaseError`, async () => {
          // Arrange
 
@@ -290,9 +288,11 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
             // ensure it fails in the BackupRequestRepo.save, not some other DatabaseError
             expect((result.error as DatabaseError).functionName).toBe('PrismaBackupRequestRepo.save');
          }
-      });   
+      });
+   });
 
-      test('when reply is Succeeded and both repo save()s succeed, it returns a BackupRequest', async () => {
+   describe('Simple updates (Backup does not exist)', () => {
+      test('when reply is Succeeded and Backup does not exist, both repo save()s are called and it returns a BackupRequest (Succeeded status)', async () => {
          // Arrange
 
          // VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
@@ -323,12 +323,48 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
          expect(backupRepoSaveSpy).toBeCalledTimes(1);
          if (result.isOk()) {// type guard
             expect(result.value.constructor.name).toBe('BackupRequest');
+            expect(result.value.statusTypeCode).toBe(RequestStatusTypeValues.Succeeded);
+         }
+      });
+
+      test('when reply is Failed and a Backup does not exist, only BackupRequest.save() is called and it returns a BackupRequest (Failed status)', async () => {
+         // Arrange
+
+         // VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
+
+         mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
+         mockPrismaCtx.prisma.backupRequest.upsert.mockResolvedValue({} as BackupRequest);
+         const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+         const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
+      
+         mockPrismaCtx.prisma.backup.findFirst.mockResolvedValue(null as unknown as Backup);
+         mockPrismaCtx.prisma.backup.upsert.mockResolvedValue({} as Backup);
+         const backupRepo = new PrismaBackupRepo(prismaCtx);
+         const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
+         
+         const backupJob = BackupJob.create(backupJobDTO, new UniqueIdentifier('backupJob')).unwrapOr({} as BackupJob);
+         const backupJobServiceAdapter = backupJobServiceAdapterFactory({ getBackupJobResult: backupJob });
+         
+         const useCase = new ReceiveCreateBackupReplyUseCase({backupRequestRepo, backupRepo, backupJobServiceAdapter});
+         const dto = { ...createBackupReply };
+         dto.resultTypeCode = BackupResultTypeValues.Failed;
+
+         // Act
+         const result = await useCase.execute(dto);
+
+         // Assert
+         expect(result.isOk()).toBe(true);
+         expect(backupRequestSaveSpy).toBeCalledTimes(1);
+         expect(backupRepoSaveSpy).not.toBeCalled();
+         if (result.isOk()) {// type guard
+            expect(result.value.constructor.name).toBe('BackupRequest');
+            expect(result.value.statusTypeCode).toBe(RequestStatusTypeValues.Failed);
          }
       });
    });
 
-   describe('Duplicate reply handling', () => {
-      test('when the Backup exists and the BackupRequest save() fails, it returns a DatabaseError and does not call Backup save()', async () => {
+   describe('Duplicate replies (Backup exists)', () => {
+      test('when BackupRequest.save() fails, it returns a DatabaseError and does not call Backup.save()', async () => {
          // Arrange
 
          // VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
@@ -372,7 +408,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
          { requestStatus: RequestStatusTypeValues.Succeeded, resultStatus: BackupResultTypeValues.Failed },
          { requestStatus: RequestStatusTypeValues.Failed, resultStatus: BackupResultTypeValues.Succeeded },
          { requestStatus: RequestStatusTypeValues.Failed, resultStatus: BackupResultTypeValues.Failed },
-      ])('when a Backup exists, BackupRequest save() succeeds, BackupRequest status $requestStatus, and BackupResult status $resultStatus, it returns a BackupRequest in Succeeded status and does not call Backup save()', async ({requestStatus, resultStatus}) => {
+      ])('when BackupRequest status is $requestStatus, BackupResult status $resultStatus, and BackupRequest.save() succeeds, it returns a BackupRequest (Succeeded status) and does not call Backup.save()', async ({requestStatus, resultStatus}) => {
          // Arrange
 
          // VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
@@ -403,7 +439,8 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
          expect(backupRequestSaveSpy).toBeCalledTimes(1);
          expect(backupRepoSaveSpy).not.toBeCalled();
          if (result.isOk()) { // type guard
-            expect((result.value as unknown as BackupRequest).statusTypeCode).toBe(RequestStatusTypeValues.Succeeded);
+            expect(result.value.constructor.name).toBe('BackupRequest');
+            expect(result.value.statusTypeCode).toBe(RequestStatusTypeValues.Succeeded);
          }
       });
    });

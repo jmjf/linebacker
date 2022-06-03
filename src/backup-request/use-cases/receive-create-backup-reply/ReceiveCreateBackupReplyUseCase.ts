@@ -107,7 +107,7 @@ export class ReceiveCreateBackupReplyUseCase
 			}
 		}
 		
-		if (backup.backupId.value.length > 0) {
+		if (backup.backupId?.value.length > 0) {
 			// if we have a Backup, it succeeded at some point
 			backupRequest.setStatusReplied(RequestStatusTypeValues.Succeeded, reply.messageText);
 		} else if (resultTypeCode === BackupResultTypeValues.Failed) {
