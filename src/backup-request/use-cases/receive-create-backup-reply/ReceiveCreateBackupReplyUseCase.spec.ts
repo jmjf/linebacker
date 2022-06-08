@@ -5,7 +5,7 @@ import { backupJobServiceAdapterFactory } from '../../../backup/test-utils/backu
 import { BackupProviderTypeValues } from '../../../backup/domain/BackupProviderType';
 
 import { BackupResultTypeValues } from '../../domain/BackupResultType';
-import { RequestStatusType, RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 
 import { CreateBackupReplyDTO } from './CreateBackupReplyDTO';
@@ -28,7 +28,6 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
     });
 
    const createBackupReply: CreateBackupReplyDTO = {
-      apiVersion: '2022-01-01',
       backupRequestId: 'backup request',
       storagePathName: '/path/to/backup/storage',
       resultTypeCode: BackupResultTypeValues.Succeeded,

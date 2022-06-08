@@ -2,7 +2,6 @@ import { dateOrUndefinedAsDate } from '../../utils/utils';
 
 import { Guard, GuardArgumentCollection } from '../../common/core/Guard';
 import { Result, ok, err } from '../../common/core/Result';
-import { Entity } from '../../common/domain/Entity';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
 import * as DomainErrors from '../../common/domain/DomainErrors';
 

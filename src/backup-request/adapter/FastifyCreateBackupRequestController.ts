@@ -1,6 +1,5 @@
 import { InvalidApiVersionError } from '../../common/adapter/AdapterErrors';
 import { FastifyController, RealFastifyRequest, RealFastifyReply } from '../../common/adapter/FastifyController';
-import { PropsError } from '../../common/domain/DomainErrors';
 import { CreateBackupRequestUseCase } from '../use-cases/create-backup-request/CreateBackupRequestUseCase';
 
 export interface ICreateBackupRequestBody {

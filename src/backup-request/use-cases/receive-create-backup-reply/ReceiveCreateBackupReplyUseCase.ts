@@ -1,5 +1,5 @@
 import { UseCase } from '../../../common/application/UseCase';
-import { Result, ok, err, Ok } from '../../../common/core/Result';
+import { Result, ok, err } from '../../../common/core/Result';
 import { Guard } from '../../../common/core/Guard';
 
 import { Backup, IBackupProps } from '../../../backup/domain/Backup';
@@ -11,7 +11,7 @@ import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 
 import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
 import { BackupRequest } from '../../domain/BackupRequest';
-import { BackupResultType, BackupResultTypeValues, validBackupResultTypes } from '../../domain/BackupResultType';
+import { BackupResultTypeValues, validBackupResultTypes } from '../../domain/BackupResultType';
 import { CreateBackupReplyDTO } from './CreateBackupReplyDTO';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 

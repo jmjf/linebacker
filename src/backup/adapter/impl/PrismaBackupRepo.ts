@@ -10,9 +10,7 @@ import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 import { BackupProviderType } from '../../../backup/domain/BackupProviderType';
 
 import { Backup } from '../../domain/Backup';
-import { RequestTransportType } from '../../../backup-request/domain/RequestTransportType';
 import { IBackupRepo } from '../BackupRepo';
-import { BackupRequest } from '../../../backup-request/domain/BackupRequest';
 
 export class PrismaBackupRepo implements IBackupRepo {
    private prisma;
