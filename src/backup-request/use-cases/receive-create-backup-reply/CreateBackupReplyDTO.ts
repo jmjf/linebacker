@@ -1,5 +1,4 @@
 export interface CreateBackupReplyDTO {
-   apiVersion: string, // yyyy-mm-dd
    backupRequestId: string,   // -> UniqueIdentifier (UUIDv4)
    storagePathName: string,
    resultTypeCode: string, // -> ReplyResultType

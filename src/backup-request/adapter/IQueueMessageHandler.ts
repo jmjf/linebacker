@@ -3,8 +3,6 @@ export type QueueMessageHandlerResponse = {
    opts?: any
 }
 
-export type QueueMessageHandlerMessage = string;
-
 export interface IQueueMessageHandler {
-   processMessage(message: QueueMessageHandlerMessage, opts?: any): Promise<QueueMessageHandlerResponse>;
+   processMessage(message: any, opts?: any): Promise<QueueMessageHandlerResponse>;
 }
