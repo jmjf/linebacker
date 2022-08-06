@@ -9,16 +9,17 @@ export abstract class ExpressController {
 	protected abstract execImpl(
 		request: Request,
 		response: Response
-	): Promise<void | any>;
+	): Promise<void | unknown>;
 
 	public async execute(
 		request: Request,
 		response: Response
-	): Promise<void | any> {
+	): Promise<void | unknown> {
 		try {
 			return await this.execImpl(request, response);
 		} catch (e) {
 			console.log(e);
+			return e;
 		}
 	}
 

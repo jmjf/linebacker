@@ -78,29 +78,23 @@ describe('ExpressCreateBackupRequestController', () => {
 		expect(payload.code).toBe('Database');
 		expect(payload.message).toBe(prismaCode.slice(1)); // ensure message is clean
 	});
-});
-
-/*	
-
 
 	test('when the use case returns a PropsError, the controller returns 400 and an error', async () => {
 		// Arrange
 		const app = buildApp(prismaCtx);
 
 		// Act
-		const response = await app.inject({
-			method: 'POST',
-			url: '/backup-request',
-			payload: {
+		const response = await request(app)
+			.post(url)
+			.send({
 				...basePayload,
 				dataDate: '', // easy error to force
-			},
-		});
+			});
 
 		// Assert
 		expect(response.statusCode).toBe(400);
-		// convert payload to an object we can use -- may throw an error if payload isn't JSON
-		const payload = JSON.parse(response.payload);
+		// convert text to an object we can use -- may throw an error if isn't JSON
+		const payload = JSON.parse(response.text);
 		expect(payload.code).toBe('BadData');
 		expect(payload.message).toMatch('dataDate');
 	});
@@ -111,19 +105,17 @@ describe('ExpressCreateBackupRequestController', () => {
 
 		// Act
 		const startTime = new Date();
-		const response = await app.inject({
-			method: 'POST',
-			url: '/backup-request',
-			payload: {
+		const response = await request(app)
+			.post(url)
+			.send({
 				...basePayload,
-			},
-		});
+			});
 		const endTime = new Date();
 
 		// Assert
 		expect(response.statusCode).toBe(202);
-		// convert payload to an object we can use -- may throw an error if payload isn't JSON
-		const payload = JSON.parse(response.payload);
+		// convert text to an object we can use -- may throw an error if not JSON
+		const payload = JSON.parse(response.text);
 		const receivedTimestamp = new Date(payload.receivedTimestamp);
 
 		expect(uuid.validate(payload.backupRequestId)).toBe(true);
@@ -139,4 +131,3 @@ describe('ExpressCreateBackupRequestController', () => {
 		);
 	});
 });
-*/
