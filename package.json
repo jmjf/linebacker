@@ -3,13 +3,12 @@
 	"version": "0.0.1",
 	"description": "backup system backup controller",
 	"main": "dist/fastifyServer.js",
-	"type": "module",
 	"scripts": {
 		"test": "jest",
 		"test:dev": "jest --watchAll",
 		"start:dev": "APP_ENV=dev nodemon",
 		"pretty": "prettier --write \"src/**/*.ts\"",
-		"fastify:dev": "APP_ENV=dev node --experimental-specifier-resolution=node --loader ts-node/esm src/fastifyServer.ts"
+		"fastify:dev": "APP_ENV=dev ts-node src/fastifyServer.ts"
 	},
 	"author": "Jamee Mikell",
 	"license": "MIT",
