@@ -21,7 +21,7 @@ export function addBackupRequestRoutes(
 		new ExpressCreateBackupRequestController(createBackupRequestUseCase);
 
 	app.post(
-		'/backup-request',
+		'/backup-requests',
 		async function (request: Request, response: Response) {
 			let result = await expressCreateBackupRequestController.execute(
 				request,

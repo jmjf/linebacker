@@ -12,9 +12,9 @@
 
 		/* Language and Environment */
 		// this is an api backend, so I don't care about browser support
-		"target": "ES2021" /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */,
+		"target": "ESNext" /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */,
 		"lib": [
-			"ES2021"
+			"ESNext"
 		] /* Specify a set of bundled library declaration files that describe the target runtime environment. */,
 		// "jsx": "preserve",                                /* Specify what JSX code is generated. */
 		"experimentalDecorators": true /* Enable experimental support for TC39 stage 2 draft decorators. */,
@@ -27,9 +27,9 @@
 		// "useDefineForClassFields": true,                  /* Emit ECMAScript-standard-compliant class fields. */
 
 		/* Modules */
-		"module": "commonjs" /* Specify what module code is generated. */,
-		// "rootDir": "./",                                  /* Specify the root folder within your source files. */
-		"moduleResolution": "node" /* Specify how TypeScript looks up a file from a given module specifier. */,
+		"module": "EsNext" /* Specify what module code is generated. */,
+		"rootDir": "./src" /* Specify the root folder within your source files. */,
+		"moduleResolution": "Node" /* Specify how TypeScript looks up a file from a given module specifier. */,
 		// "baseUrl": "." /* Specify the base directory to resolve non-relative module names. */,
 		// "paths": {} /* Specify entries that map imports to lookup locations. */
 		// "rootDirs": [],                                   /* Allow multiple folders to be treated as one when resolving modules. */
@@ -85,9 +85,9 @@
 		/* Type Checking */
 		"strict": true /* Enable all strict type-checking options. */,
 		"noImplicitAny": true /* Enable error reporting for expressions and declarations with an implied `any` type.. */,
-		"strictNullChecks": true,                            /* When type checking, take into account `null` and `undefined`. */
+		"strictNullChecks": true /* When type checking, take into account `null` and `undefined`. */,
 		// "strictFunctionTypes": true,                      /* When assigning functions, check to ensure parameters and the return values are subtype-compatible. */
-		"strictBindCallApply": false, /* Check that the arguments for `bind`, `call`, and `apply` methods match the original function. */
+		"strictBindCallApply": false /* Check that the arguments for `bind`, `call`, and `apply` methods match the original function. */,
 		// "strictPropertyInitialization": true,             /* Check for class properties that are declared but not set in the constructor. */
 		// "noImplicitThis": true,                           /* Enable error reporting when `this` is given the type `any`. */
 		// "useUnknownInCatchVariables": true,               /* Type catch clause variables as 'unknown' instead of 'any'. */
@@ -107,6 +107,19 @@
 		// "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
 		"skipLibCheck": true /* Skip type checking all .d.ts files. */
 	},
-	"include": ["src/*.ts", "src/**/*.ts", "src/backup/test-utils/backupRepoFactory.tsno"],
-	"exclude": ["node_modules", "node_modules/@types", "./dist", "src/**/*.spec.ts", "src/zz-learn-fastify"]
+	"ts-node": {
+		"esm": true
+	},
+	"include": [
+		"./src/*.ts",
+		"./src/**/*.ts",
+		"./src/backup/test-utils/backupRepoFactory.tsno"
+	],
+	"exclude": [
+		"./node_modules",
+		"./node_modules/@types",
+		"./dist",
+		"./src/**/*.spec.ts",
+		"./src/zz-learn-fastify"
+	]
 }

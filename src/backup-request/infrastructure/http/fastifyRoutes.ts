@@ -20,7 +20,7 @@ export function addBackupRequestRoutes(
 		new FastifyCreateBackupRequestController(createBackupRequestUseCase);
 
 	app.post(
-		'/backup-request',
+		'/backup-requests',
 		async function (request: RealFastifyRequest, reply: RealFastifyReply) {
 			let result = await fastifyCreateBackupRequestController.execute(
 				request,
