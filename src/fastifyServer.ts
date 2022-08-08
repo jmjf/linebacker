@@ -4,7 +4,7 @@ import { prismaCtx } from './common/infrastructure/database/prismaContext';
 import { buildApp } from './fastifyApp';
 
 const startServer = async () => {
-	const logContext = 'linebacker | startServer';
+	const logContext = 'linebacker | Fastify | startServer';
 
 	console.log(`${logContext} | getting environment`);
 	if (!process.env.APP_ENV) {

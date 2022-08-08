@@ -1,32 +1,27 @@
 import { Application, Request, Response } from 'express';
 
 import { PrismaContext } from '../../common/infrastructure/database/prismaContext';
-
-import { CreateBackupRequestUseCase } from '../use-cases/create-backup-request/CreateBackupRequestUseCase';
-
-import { PrismaBackupRequestRepo } from '../adapter/impl/PrismaBackupRequestRepo';
-import { ExpressCreateBackupRequestController } from '../adapter/impl/ExpressCreateBackupRequestController';
 import { BaseError } from '../../common/core/BaseError';
 import { DatabaseError } from '../../common/adapter/AdapterErrors';
+
+import { ExpressCreateBackupRequestController } from '../adapter/impl/ExpressCreateBackupRequestController';
+import { initBackupRequestModule } from './initBackupRequestModule';
 
 export function addBackupRequestRoutes(
 	app: Application,
 	prismaCtx: PrismaContext
 ) {
-	const prismaBackupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
-	const createBackupRequestUseCase = new CreateBackupRequestUseCase(
-		prismaBackupRequestRepo
+	const { createBackupRequestController } = initBackupRequestModule(
+		prismaCtx,
+		'Express'
 	);
-	const expressCreateBackupRequestController =
-		new ExpressCreateBackupRequestController(createBackupRequestUseCase);
 
 	app.post(
 		'/backup-requests',
 		async function (request: Request, response: Response) {
-			let result = await expressCreateBackupRequestController.execute(
-				request,
-				response
-			);
+			let result = await (
+				createBackupRequestController as ExpressCreateBackupRequestController
+			).execute(request, response);
 
 			// HTTP status > 399 is an error
 			if (response.statusCode > 399) {
