@@ -113,7 +113,7 @@
 	"include": [
 		"./src/*.ts",
 		"./src/**/*.ts",
-		"./src/backup/test-utils/backupRepoFactory.tsno"
+		"src/backup-job/test-utils/backupRepoFactory.tsno"
 	],
 	"exclude": [
 		"./node_modules",

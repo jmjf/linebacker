@@ -16,7 +16,6 @@ const startServer = async () => {
 
 	console.log(`${logContext} | APP_ENV ${process.env.APP_ENV}`);
 	dotenv.config({ path: `./env/${process.env.APP_ENV}.env` });
-
 	if (!process.env.API_PORT || process.env.API_PORT.length === 0) {
 		console.log(`${logContext} | API_PORT is falsey or empty`);
 		process.exit(1);

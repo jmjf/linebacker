@@ -1,13 +1,13 @@
 import { Application, Request, Response } from 'express';
 
-import { PrismaContext } from '../../../common/infrastructure/database/prismaContext';
+import { PrismaContext } from '../../common/infrastructure/database/prismaContext';
 
-import { CreateBackupRequestUseCase } from '../../use-cases/create-backup-request/CreateBackupRequestUseCase';
+import { CreateBackupRequestUseCase } from '../use-cases/create-backup-request/CreateBackupRequestUseCase';
 
-import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
-import { ExpressCreateBackupRequestController } from '../../adapter/impl/ExpressCreateBackupRequestController';
-import { BaseError } from '../../../common/core/BaseError';
-import { DatabaseError } from '../../../common/adapter/AdapterErrors';
+import { PrismaBackupRequestRepo } from '../adapter/impl/PrismaBackupRequestRepo';
+import { ExpressCreateBackupRequestController } from '../adapter/impl/ExpressCreateBackupRequestController';
+import { BaseError } from '../../common/core/BaseError';
+import { DatabaseError } from '../../common/adapter/AdapterErrors';
 
 export function addBackupRequestRoutes(
 	app: Application,

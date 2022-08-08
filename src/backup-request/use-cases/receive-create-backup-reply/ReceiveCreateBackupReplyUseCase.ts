@@ -4,25 +4,28 @@ import { Guard } from '../../../common/core/Guard';
 
 import { Backup, IBackupProps } from '../../../backup/domain/Backup';
 import { IBackupRepo } from '../../../backup/adapter/BackupRepo';
-import { IBackupJobServiceAdapter } from '../../../backup/adapter/BackupJobServiceAdapter';
+import { IBackupJobServiceAdapter } from '../../../backup-job/adapter/BackupJobServiceAdapter';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 import * as DomainErrors from '../../../common/domain/DomainErrors';
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 
 import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
 import { BackupRequest } from '../../domain/BackupRequest';
-import { BackupResultTypeValues, validBackupResultTypes } from '../../domain/BackupResultType';
+import {
+	BackupResultTypeValues,
+	validBackupResultTypes,
+} from '../../domain/BackupResultType';
 import { CreateBackupReplyDTO } from './CreateBackupReplyDTO';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 
-
-
 // add errors when you define them
-type Response = Result<BackupRequest, 
-	DomainErrors.PropsError 
+type Response = Result<
+	BackupRequest,
+	| DomainErrors.PropsError
 	| AdapterErrors.BackupJobServiceError
 	| AdapterErrors.DatabaseError
-	| Error>;
+	| Error
+>;
 
 /**
  * Class representing a use case to create a new backup request and store it in the request log
@@ -31,10 +34,14 @@ export class ReceiveCreateBackupReplyUseCase
 	implements UseCase<CreateBackupReplyDTO, Promise<Response>>
 {
 	private backupRequestRepo: IBackupRequestRepo;
-   private backupRepo: IBackupRepo;
+	private backupRepo: IBackupRepo;
 	private backupJobServiceAdapter: IBackupJobServiceAdapter;
 
-	constructor(inject: {backupRequestRepo: IBackupRequestRepo, backupRepo: IBackupRepo, backupJobServiceAdapter: IBackupJobServiceAdapter}) {
+	constructor(inject: {
+		backupRequestRepo: IBackupRequestRepo;
+		backupRepo: IBackupRepo;
+		backupJobServiceAdapter: IBackupJobServiceAdapter;
+	}) {
 		this.backupRequestRepo = inject.backupRequestRepo;
 		this.backupRepo = inject.backupRepo;
 		this.backupJobServiceAdapter = inject.backupJobServiceAdapter;
@@ -43,37 +50,60 @@ export class ReceiveCreateBackupReplyUseCase
 	async execute(reply: CreateBackupReplyDTO): Promise<Response> {
 		const { resultTypeCode, backupRequestId, ...restOfReply } = reply;
 
-		const resultTypeCodeGuardResult = Guard.isOneOf(resultTypeCode, validBackupResultTypes, 'resultTypeCode');
+		const resultTypeCodeGuardResult = Guard.isOneOf(
+			resultTypeCode,
+			validBackupResultTypes,
+			'resultTypeCode'
+		);
 		if (resultTypeCodeGuardResult.isErr()) {
-			return err(new DomainErrors.PropsError(`{ message: ${resultTypeCodeGuardResult.error.message}}`));
+			return err(
+				new DomainErrors.PropsError(
+					`{ message: ${resultTypeCodeGuardResult.error.message}}`
+				)
+			);
 		}
 
-		const backupRequestIdGuardResult = Guard.againstNullOrUndefined(backupRequestId, 'backupRequestId');
+		const backupRequestIdGuardResult = Guard.againstNullOrUndefined(
+			backupRequestId,
+			'backupRequestId'
+		);
 		if (backupRequestIdGuardResult.isErr()) {
-			return err(new DomainErrors.PropsError(`{ message: ${backupRequestIdGuardResult.error.message}}`));
+			return err(
+				new DomainErrors.PropsError(
+					`{ message: ${backupRequestIdGuardResult.error.message}}`
+				)
+			);
 		}
 
-      // backup request must exist or we can't do anything
-      const backupRequestResult = await this.backupRequestRepo.getById(backupRequestId);
-      if (backupRequestResult.isErr()) {
-         return backupRequestResult;
-      }
-      const backupRequest = backupRequestResult.value;
+		// backup request must exist or we can't do anything
+		const backupRequestResult = await this.backupRequestRepo.getById(
+			backupRequestId
+		);
+		if (backupRequestResult.isErr()) {
+			return backupRequestResult;
+		}
+		const backupRequest = backupRequestResult.value;
 
 		// backup job must exist or we can't do anything
-		const backupJobResult = await this.backupJobServiceAdapter.getBackupJob(backupRequest.backupJobId.value);
+		const backupJobResult = await this.backupJobServiceAdapter.getBackupJob(
+			backupRequest.backupJobId.value
+		);
 		if (backupJobResult.isErr()) {
 			return err(backupJobResult.error);
 		}
 		const backupJob = backupJobResult.value;
 
 		// get any existing Backup for this BackupRequest
-		const existingBackupResult = await this.backupRepo.getByBackupRequestId(backupRequestId);
-		
+		const existingBackupResult = await this.backupRepo.getByBackupRequestId(
+			backupRequestId
+		);
+
 		// If an error isn't a NotFoundError, fail the use case -- it's probably a DatabaseError, but use !== 'NotFoundError' so nothing slips through
-		if (existingBackupResult.isErr() && (existingBackupResult.error.name !== 'NotFoundError'))
-		{
-			return existingBackupResult as unknown as Response;			
+		if (
+			existingBackupResult.isErr() &&
+			existingBackupResult.error.name !== 'NotFoundError'
+		) {
+			return existingBackupResult as unknown as Response;
 		}
 
 		let backup: Backup = {} as Backup;
@@ -90,7 +120,7 @@ export class ReceiveCreateBackupReplyUseCase
 				backupJobId: backupJob.backupJobId,
 				daysToKeepCount: backupJob.daysToKeep,
 				holdFlag: backupJob.holdFlag,
-				...restOfReply
+				...restOfReply,
 			};
 
 			const backupCreateResult = Backup.create(requestProps);
@@ -106,16 +136,24 @@ export class ReceiveCreateBackupReplyUseCase
 				return backupSaveResult as unknown as Response;
 			}
 		}
-		
+
 		if (backup.backupId?.value.length > 0) {
 			// if we have a Backup, it succeeded at some point
-			backupRequest.setStatusReplied(RequestStatusTypeValues.Succeeded, reply.messageText);
+			backupRequest.setStatusReplied(
+				RequestStatusTypeValues.Succeeded,
+				reply.messageText
+			);
 		} else if (resultTypeCode === BackupResultTypeValues.Failed) {
 			// if no Backup exists and the reply says it failed, it failed
-			backupRequest.setStatusReplied(RequestStatusTypeValues.Failed, reply.messageText);
-		} // otherwise, don't change request status because it doesn't make sense		
+			backupRequest.setStatusReplied(
+				RequestStatusTypeValues.Failed,
+				reply.messageText
+			);
+		} // otherwise, don't change request status because it doesn't make sense
 
-		const backupRequestSaveResult = await this.backupRequestRepo.save(backupRequest);
+		const backupRequestSaveResult = await this.backupRequestRepo.save(
+			backupRequest
+		);
 		if (backupRequestSaveResult.isErr()) {
 			return backupRequestSaveResult;
 		}

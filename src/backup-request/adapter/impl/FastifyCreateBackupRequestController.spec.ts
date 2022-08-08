@@ -21,6 +21,8 @@ describe('FastifyCreateBackupRequestController', () => {
 		prismaCtx = mockPrismaCtx as unknown as PrismaContext;
 	});
 
+	const testUrl = '/backup-requests';
+
 	const basePayload = {
 		apiVersion: '2022-05-22',
 		backupJobId: 'job-id',
@@ -35,7 +37,7 @@ describe('FastifyCreateBackupRequestController', () => {
 		// Act
 		const response = await app.inject({
 			method: 'POST',
-			url: '/backup-request',
+			url: testUrl,
 			payload: {
 				...basePayload,
 				apiVersion: 'invalid',
@@ -65,7 +67,7 @@ describe('FastifyCreateBackupRequestController', () => {
 		// Act
 		const response = await app.inject({
 			method: 'POST',
-			url: '/backup-request',
+			url: testUrl,
 			payload: {
 				...basePayload,
 			},
@@ -86,7 +88,7 @@ describe('FastifyCreateBackupRequestController', () => {
 		// Act
 		const response = await app.inject({
 			method: 'POST',
-			url: '/backup-request',
+			url: testUrl,
 			payload: {
 				...basePayload,
 				dataDate: '', // easy error to force
@@ -109,7 +111,7 @@ describe('FastifyCreateBackupRequestController', () => {
 		const startTime = new Date();
 		const response = await app.inject({
 			method: 'POST',
-			url: '/backup-request',
+			url: testUrl,
 			payload: {
 				...basePayload,
 			},

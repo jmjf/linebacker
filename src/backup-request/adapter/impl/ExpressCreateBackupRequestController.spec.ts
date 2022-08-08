@@ -23,6 +23,8 @@ describe('ExpressCreateBackupRequestController', () => {
 		prismaCtx = mockPrismaCtx as unknown as PrismaContext;
 	});
 
+	const testUrl = '/backup-requests';
+
 	const basePayload = {
 		apiVersion: '2022-05-22',
 		backupJobId: 'job-id',
@@ -30,15 +32,13 @@ describe('ExpressCreateBackupRequestController', () => {
 		backupDataLocation: 'data-location',
 	} as ICreateBackupRequestBody;
 
-	const url = '/backup-request';
-
 	test('when apiVersion is invalid, it returns 400 and an error', async () => {
 		// Arrange
 		const app = buildApp(prismaCtx);
 
 		// Act
 		const response = await request(app)
-			.post(url)
+			.post(testUrl)
 			.send({
 				...basePayload,
 				apiVersion: 'invalid',
@@ -66,7 +66,7 @@ describe('ExpressCreateBackupRequestController', () => {
 
 		// Act
 		const response = await request(app)
-			.post(url)
+			.post(testUrl)
 			.send({
 				...basePayload,
 			});
@@ -85,7 +85,7 @@ describe('ExpressCreateBackupRequestController', () => {
 
 		// Act
 		const response = await request(app)
-			.post(url)
+			.post(testUrl)
 			.send({
 				...basePayload,
 				dataDate: '', // easy error to force
@@ -106,7 +106,7 @@ describe('ExpressCreateBackupRequestController', () => {
 		// Act
 		const startTime = new Date();
 		const response = await request(app)
-			.post(url)
+			.post(testUrl)
 			.send({
 				...basePayload,
 			});
