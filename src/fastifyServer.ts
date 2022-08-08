@@ -1,8 +1,6 @@
 import dotenv from 'dotenv';
 
-import { PrismaClient } from '@prisma/client';
-
-import { PrismaContext } from './common/infrastructure/database/prismaContext';
+import { prismaCtx } from './common/infrastructure/database/prismaContext';
 import { buildApp } from './fastifyApp';
 
 const startServer = async () => {
@@ -23,10 +21,6 @@ const startServer = async () => {
 	const apiPort = parseInt(process.env.API_PORT);
 	console.log(`${logContext} | apiPort ${apiPort}`);
 
-	console.log(`${logContext} | creating Prisma client`);
-	const prismaCtx: PrismaContext = {
-		prisma: new PrismaClient(),
-	};
 	console.log(`${logContext} | connecting Prisma client`);
 	await prismaCtx.prisma.$connect();
 

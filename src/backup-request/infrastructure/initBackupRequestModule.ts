@@ -3,11 +3,14 @@ import { PrismaContext } from '../../common/infrastructure/database/prismaContex
 import { ExpressCreateBackupRequestController } from '../adapter/impl/ExpressCreateBackupRequestController';
 
 import { FastifyCreateBackupRequestController } from '../adapter/impl/FastifyCreateBackupRequestController';
+import { MockBackupRequestBackupInterfaceAdapter } from '../adapter/impl/MockBackupRequestBackupInterfaceAdapter';
 import { PrismaBackupRequestRepo } from '../adapter/impl/PrismaBackupRequestRepo';
 import { BackupRequestCreatedSubscriber } from '../use-cases/check-request-allowed/BackupRequestCreatedSubscriber';
 import { CheckRequestAllowedUseCase } from '../use-cases/check-request-allowed/CheckRequestAllowedUseCase';
 
 import { CreateBackupRequestUseCase } from '../use-cases/create-backup-request/CreateBackupRequestUseCase';
+import { BackupRequestAllowedSubscriber } from '../use-cases/send-request-to-interface/BackupRequestAllowedSubscriber';
+import { SendRequestToInterfaceUseCase } from '../use-cases/send-request-to-interface/SendRequestToInterfaceUseCase';
 
 export const initBackupRequestModule = (
 	prismaCtx: PrismaContext,
@@ -19,13 +22,21 @@ export const initBackupRequestModule = (
 		backupRequestRepo
 	);
 
+	// subscribe BackupRequestCreatedSubscriber
 	const backupJobServiceAdapter = new MockBackupJobServiceAdapter();
 	const checkRequestAllowedUseCase = new CheckRequestAllowedUseCase({
 		backupRequestRepo,
 		backupJobServiceAdapter,
 	});
-	// we don't need a reference to the subscriber
 	new BackupRequestCreatedSubscriber(checkRequestAllowedUseCase);
+
+	// subscribe BackupRequestAllowedSubscriber
+	const backupInterfaceAdapter = new MockBackupRequestBackupInterfaceAdapter();
+	const sendRequestToInterfaceUseCase = new SendRequestToInterfaceUseCase({
+		backupRequestRepo,
+		backupInterfaceAdapter,
+	});
+	new BackupRequestAllowedSubscriber(sendRequestToInterfaceUseCase);
 
 	const createBackupRequestController =
 		controllerType === 'Fastify'
@@ -36,6 +47,7 @@ export const initBackupRequestModule = (
 		backupRequestRepo,
 		createBackupRequestUseCase,
 		checkRequestAllowedUseCase,
+		sendRequestToInterfaceUseCase,
 		createBackupRequestController,
 	};
 };

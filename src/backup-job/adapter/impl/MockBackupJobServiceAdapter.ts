@@ -5,6 +5,7 @@ import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 import { BackupJob } from '../../domain/BackupJob';
 import { BackupProviderTypeValues } from '../../domain/BackupProviderType';
 import { IBackupJobServiceAdapter } from '../BackupJobServiceAdapter';
+import { delay } from '../../../utils/utils';
 
 const backupJobProps = {
 	storagePathName: 'storagePathName',
@@ -18,6 +19,7 @@ export class MockBackupJobServiceAdapter implements IBackupJobServiceAdapter {
 	async getBackupJob(
 		backupJobId: string
 	): Promise<Result<BackupJob, AdapterErrors.BackupJobServiceError>> {
+		//await delay(10000);
 		return BackupJob.create(
 			backupJobProps,
 			new UniqueIdentifier(backupJobId)
