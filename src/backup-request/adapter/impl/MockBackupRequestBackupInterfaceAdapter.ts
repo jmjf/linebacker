@@ -1,3 +1,4 @@
+import { logger } from '../../../common/infrastructure/pinoLogger';
 import { delay } from '../../../utils/utils';
 import { BackupRequest } from '../../domain/BackupRequest';
 import { IBackupRequestBackupInterfaceAdapter } from '../BackupRequestBackupInterfaceAdapter';
@@ -7,11 +8,12 @@ export class MockBackupRequestBackupInterfaceAdapter
 {
 	async sendMessage(backupRequest: BackupRequest): Promise<boolean> {
 		//await delay(10000);
-		console.log(
-			`{ location: 'MockBRBIA sendMessage', backupRequest: {${JSON.stringify(
-				backupRequest
-			)}}`
-		);
+		logger.info({
+			context: 'MockBRBIA.sendMessage',
+			backupRequestId: backupRequest.idValue,
+			backupJobId: backupRequest.backupJobId.value,
+			msg: 'sendMessage',
+		});
 		return true;
 	}
 }

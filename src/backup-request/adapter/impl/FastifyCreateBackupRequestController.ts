@@ -4,6 +4,7 @@ import {
 	RealFastifyRequest,
 	RealFastifyReply,
 } from '../../../common/adapter/FastifyController';
+import { logger } from '../../../common/infrastructure/pinoLogger';
 import { CreateBackupRequestUseCase } from '../../use-cases/create-backup-request/CreateBackupRequestUseCase';
 
 export interface ICreateBackupRequestBody {
@@ -25,13 +26,28 @@ export class FastifyCreateBackupRequestController extends FastifyController {
 		request: RealFastifyRequest,
 		reply: RealFastifyReply
 	): Promise<any> {
+		const logContext = {
+			context: 'FastifyCreateBackupRequestController.execImpl',
+			fastifyRequestId: request.id,
+		};
 		const body = <ICreateBackupRequestBody>request.body;
+		logger.info({
+			...logContext,
+			requestBody: body,
+			msg: 'start',
+		});
 
 		if (!body.apiVersion || body.apiVersion !== '2022-05-22') {
 			this.replyBadRequest(reply);
-			return new InvalidApiVersionError(
+			const err = new InvalidApiVersionError(
 				`{ message: 'invalid apiVersion', apiVersion: ${body.apiVersion} }`
 			);
+			logger.error({
+				...logContext,
+				error: err,
+				msg: 'InvalidApiVersionError',
+			});
+			return err;
 		} else {
 			const dto = {
 				...body,
@@ -39,6 +55,7 @@ export class FastifyCreateBackupRequestController extends FastifyController {
 				getOnStartFlag: true,
 			};
 
+			logger.info({ ...logContext, dto: dto, msg: 'execute use case' });
 			const result = await this.useCase.execute(dto);
 
 			if (result.isOk()) {
@@ -53,20 +70,30 @@ export class FastifyCreateBackupRequestController extends FastifyController {
 					receivedTimestamp: v.receivedTimestamp,
 					requesterId: v.requesterId,
 				};
+				logger.info({
+					...logContext,
+					reply: replyValue,
+					msg: 'reply isOk',
+				});
 
 				this.replyAccepted(reply);
 				return replyValue;
-			} else {
-				switch (result.error.name) {
-					case 'PropsError':
-						this.replyBadRequest(reply);
-						break;
-					default:
-						this.replyServerError(reply);
-						break;
-				}
-				return result.error;
 			}
+			// else isErr()
+			logger.error({
+				...logContext,
+				error: result.error,
+				msg: 'reply isErr',
+			});
+			switch (result.error.name) {
+				case 'PropsError':
+					this.replyBadRequest(reply);
+					break;
+				default:
+					this.replyServerError(reply);
+					break;
+			}
+			return result.error;
 		}
 	}
 }

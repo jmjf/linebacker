@@ -61,8 +61,9 @@ export class CheckRequestAllowedUseCase
 		}
 
 		// Get backup job data
-		const backupJobResult = await this.backupJobServiceAdapter.getBackupJob(
-			backupRequest.backupJobId.value
+		const backupJobResult = await this.backupJobServiceAdapter.getById(
+			backupRequest.backupJobId.value,
+			backupRequestId // for logging
 		);
 		if (backupJobResult.isErr()) {
 			return err(backupJobResult.error); // avoid a type error (BackupJob)

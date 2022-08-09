@@ -9,6 +9,7 @@
 		"start:dev": "APP_ENV=dev nodemon",
 		"pretty": "prettier --write \"src/**/*.ts\"",
 		"fastify:dev": "APP_ENV=dev ts-node src/fastifyServer.ts",
+		"fastify:uat": "APP_ENV=uat ts-node src/fastifyServer.ts",
 		"express:dev": "APP_ENV=dev ts-node src/expressServer.ts"
 	},
 	"author": "Jamee Mikell",
@@ -19,6 +20,7 @@
 		"express": "^4.17.3",
 		"fastify": "^3.29.0",
 		"morgan": "^1.10.0",
+		"pino": "^8.4.0",
 		"uuid": "^8.3.2",
 		"winston": "^3.8.1"
 	},
@@ -37,6 +39,7 @@
 		"jest": "^28.1.0",
 		"jest-mock-extended": "^2.0.6",
 		"nodemon": "^2.0.15",
+		"pino-pretty": "^8.1.0",
 		"prettier": "2.6.2",
 		"prisma": "^4.1.1",
 		"supertest": "^6.2.4",
