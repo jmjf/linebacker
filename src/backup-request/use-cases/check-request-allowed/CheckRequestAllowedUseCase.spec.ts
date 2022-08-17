@@ -1,16 +1,10 @@
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 
-import {
-	BackupJob,
-	IBackupJobProps,
-} from '../../../backup-job/domain/BackupJob';
+import { BackupJob, IBackupJobProps } from '../../../backup-job/domain/BackupJob';
 import { BackupProviderTypeValues } from '../../../backup-job/domain/BackupProviderType';
-import { backupJobServiceAdapterFactory } from '../../../backup/test-utils/backupJobServiceAdapterFactory';
+import { MockBackupJobServiceAdapter } from '../../../backup-job/adapter/impl/MockBackupJobServiceAdapter';
 
-import {
-	RequestStatusType,
-	RequestStatusTypeValues,
-} from '../../domain/RequestStatusType';
+import { RequestStatusType, RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 
 import { CheckRequestAllowedDTO } from './CheckRequestAllowedDTO';
@@ -23,6 +17,7 @@ import {
 } from '../../../common/infrastructure/database/prismaContext';
 import { BackupRequest } from '@prisma/client';
 import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
+import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 
 describe('CheckRequestAllowedUseCase', () => {
 	let mockPrismaCtx: MockPrismaContext;
@@ -67,20 +62,12 @@ describe('CheckRequestAllowedUseCase', () => {
 		// Arrange
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(
-			dbBackupRequest
-		);
+		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
 
 		const repo = new PrismaBackupRequestRepo(prismaCtx);
 
-		const resultBackupJob = BackupJob.create(
-			{
-				...backupJobProps,
-			},
-			new UniqueIdentifier('backup-job-01')
-		).unwrapOr({} as BackupJob);
-		const adapter = backupJobServiceAdapterFactory({
-			getBackupJobResult: resultBackupJob,
+		const adapter = new MockBackupJobServiceAdapter({
+			getByIdResult: { ...backupJobProps },
 		});
 
 		const useCase = new CheckRequestAllowedUseCase({
@@ -97,12 +84,8 @@ describe('CheckRequestAllowedUseCase', () => {
 		expect(result.isOk()).toBe(true);
 		if (result.isOk()) {
 			// type guard makes the rest easier
-			expect(result.value.statusTypeCode).toBe(
-				RequestStatusTypeValues.Allowed
-			);
-			expect(result.value.checkedTimestamp.valueOf()).toBeGreaterThanOrEqual(
-				startTimestamp.valueOf()
-			);
+			expect(result.value.statusTypeCode).toBe(RequestStatusTypeValues.Allowed);
+			expect(result.value.checkedTimestamp.valueOf()).toBeGreaterThanOrEqual(startTimestamp.valueOf());
 		}
 	});
 
@@ -111,20 +94,14 @@ describe('CheckRequestAllowedUseCase', () => {
 
 		// findUnique() returns null if not found
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(
-			null as unknown as BackupRequest
-		);
+		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(null as unknown as BackupRequest);
 
 		const repo = new PrismaBackupRequestRepo(prismaCtx);
 
-		const resultBackupJob = BackupJob.create(
-			{
-				...backupJobProps,
-			},
-			new UniqueIdentifier('backup-job-01')
-		).unwrapOr({} as BackupJob);
-		const adapter = backupJobServiceAdapterFactory({
-			getBackupJobResult: resultBackupJob,
+		const adapter = new MockBackupJobServiceAdapter({
+			getByIdError: new AdapterErrors.NotFoundError(
+				`{ msg: 'backupJobId not found for backupRequestId ${baseDto.backupRequestId}'`
+			),
 		});
 
 		const useCase = new CheckRequestAllowedUseCase({
@@ -149,13 +126,13 @@ describe('CheckRequestAllowedUseCase', () => {
 		// Arrange
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(
-			dbBackupRequest
-		);
+		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
 
 		const repo = new PrismaBackupRequestRepo(prismaCtx);
 
-		const adapter = backupJobServiceAdapterFactory();
+		const adapter = new MockBackupJobServiceAdapter({
+			getByIdError: new AdapterErrors.BackupJobServiceError(`{msg: 'backupJobId not found' }`),
+		});
 
 		const useCase = new CheckRequestAllowedUseCase({
 			backupRequestRepo: repo,
@@ -186,15 +163,8 @@ describe('CheckRequestAllowedUseCase', () => {
 
 		const repo = new PrismaBackupRequestRepo(prismaCtx);
 
-		const resultBackupJob = BackupJob.create(
-			{
-				...backupJobProps,
-			},
-			new UniqueIdentifier('backup-job-01')
-		).unwrapOr({} as BackupJob);
-		const adapter = backupJobServiceAdapterFactory({
-			getBackupJobResult: resultBackupJob,
-		});
+		const adapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });
+
 		const useCase = new CheckRequestAllowedUseCase({
 			backupRequestRepo: repo,
 			backupJobServiceAdapter: adapter,
@@ -246,21 +216,11 @@ describe('CheckRequestAllowedUseCase', () => {
 			resultBackupRequest[timestamp] = new Date();
 
 			// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(
-				resultBackupRequest as BackupRequest
-			);
+			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest as BackupRequest);
 
 			const repo = new PrismaBackupRequestRepo(prismaCtx);
 
-			const resultBackupJob = BackupJob.create(
-				{
-					...backupJobProps,
-				},
-				new UniqueIdentifier('backup-job-01')
-			).unwrapOr({} as BackupJob);
-			const adapter = backupJobServiceAdapterFactory({
-				getBackupJobResult: resultBackupJob,
-			});
+			const adapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });
 
 			const useCase = new CheckRequestAllowedUseCase({
 				backupRequestRepo: repo,
@@ -278,9 +238,7 @@ describe('CheckRequestAllowedUseCase', () => {
 				// type guard
 				const value = result.value as { [index: string]: any }; // required for value[timestamp]
 				expect(value.statusTypeCode).toBe(status);
-				expect((value[timestamp] as Date).valueOf()).toBeLessThanOrEqual(
-					startTimestamp.valueOf()
-				);
+				expect((value[timestamp] as Date).valueOf()).toBeLessThanOrEqual(startTimestamp.valueOf());
 			}
 		}
 	);

@@ -44,3 +44,10 @@ export class BadDataError extends BaseError {
 		this.name = 'BadDataError';
 	}
 }
+
+export class SendQueueAdapterError extends BaseError {
+	constructor(message: string) {
+		super(message);
+		this.name = 'SendQueueAdapterError';
+	}
+}

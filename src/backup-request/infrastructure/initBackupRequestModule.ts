@@ -1,9 +1,12 @@
-import { MockBackupJobServiceAdapter } from '../../backup-job/adapter/impl/MockBackupJobServiceAdapter';
+import {
+	mockBackupJobProps,
+	MockBackupJobServiceAdapter,
+} from '../../backup-job/adapter/impl/MockBackupJobServiceAdapter';
 import { PrismaContext } from '../../common/infrastructure/database/prismaContext';
 import { ExpressCreateBackupRequestController } from '../adapter/impl/ExpressCreateBackupRequestController';
 
 import { FastifyCreateBackupRequestController } from '../adapter/impl/FastifyCreateBackupRequestController';
-import { MockBackupRequestBackupInterfaceAdapter } from '../adapter/impl/MockBackupRequestBackupInterfaceAdapter';
+import { MockBackupRequestSendQueueAdapter } from '../adapter/impl/MockBackupRequestSendQueueAdapter';
 import { PrismaBackupRequestRepo } from '../adapter/impl/PrismaBackupRequestRepo';
 import { BackupRequestCreatedSubscriber } from '../use-cases/check-request-allowed/BackupRequestCreatedSubscriber';
 import { CheckRequestAllowedUseCase } from '../use-cases/check-request-allowed/CheckRequestAllowedUseCase';
@@ -12,18 +15,13 @@ import { CreateBackupRequestUseCase } from '../use-cases/create-backup-request/C
 import { BackupRequestAllowedSubscriber } from '../use-cases/send-request-to-interface/BackupRequestAllowedSubscriber';
 import { SendRequestToInterfaceUseCase } from '../use-cases/send-request-to-interface/SendRequestToInterfaceUseCase';
 
-export const initBackupRequestModule = (
-	prismaCtx: PrismaContext,
-	controllerType: 'Fastify' | 'Express'
-) => {
+export const initBackupRequestModule = (prismaCtx: PrismaContext, controllerType: 'Fastify' | 'Express') => {
 	const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
 
-	const createBackupRequestUseCase = new CreateBackupRequestUseCase(
-		backupRequestRepo
-	);
+	const createBackupRequestUseCase = new CreateBackupRequestUseCase(backupRequestRepo);
 
 	// subscribe BackupRequestCreatedSubscriber
-	const backupJobServiceAdapter = new MockBackupJobServiceAdapter();
+	const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...mockBackupJobProps } });
 	const checkRequestAllowedUseCase = new CheckRequestAllowedUseCase({
 		backupRequestRepo,
 		backupJobServiceAdapter,
@@ -31,10 +29,10 @@ export const initBackupRequestModule = (
 	new BackupRequestCreatedSubscriber(checkRequestAllowedUseCase);
 
 	// subscribe BackupRequestAllowedSubscriber
-	const backupInterfaceAdapter = new MockBackupRequestBackupInterfaceAdapter();
+	const sendQueueAdapter = new MockBackupRequestSendQueueAdapter({ sendMessageResult: true });
 	const sendRequestToInterfaceUseCase = new SendRequestToInterfaceUseCase({
 		backupRequestRepo,
-		backupInterfaceAdapter,
+		sendQueueAdapter,
 	});
 	new BackupRequestAllowedSubscriber(sendRequestToInterfaceUseCase);
 

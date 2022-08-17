@@ -4,7 +4,8 @@ import { RequestTransportTypeValues } from '../domain/RequestTransportType';
 import { RequestStatusTypeValues } from '../domain/RequestStatusType';
 
 import { BackupJob, IBackupJobProps } from '../../backup-job/domain/BackupJob';
-import { backupJobServiceAdapterFactory } from '../../backup-job/test-utils/backupJobServiceAdapterFactory';
+//import { backupJobServiceAdapterFactory } from '../../backup-job/test-utils/backupJobServiceAdapterFactory.ts.zzz';
+import { MockBackupJobServiceAdapter } from '../../backup-job/adapter/impl/MockBackupJobServiceAdapter';
 
 import { SendRequestToInterfaceUseCase } from '../use-cases/send-request-to-interface/SendRequestToInterfaceUseCase';
 import { BackupRequestAllowedSubscriber } from '../use-cases/send-request-to-interface/BackupRequestAllowedSubscriber';
@@ -14,7 +15,9 @@ import { CheckRequestAllowedUseCase } from '../use-cases/check-request-allowed/C
 
 import { CreateBackupRequestUseCase } from '../use-cases/create-backup-request/CreateBackupRequestUseCase';
 
-import { backupInterfaceAdapterFactory } from './backupInterfaceAdapterFactory';
+import { MockBackupRequestSendQueueAdapter } from '../adapter/impl/MockBackupRequestSendQueueAdapter';
+
+//import { backupInterfaceAdapterFactory } from './backupInterfaceAdapterFactory';
 
 import {
 	MockPrismaContext,
@@ -62,41 +65,35 @@ if (TEST_EVENTS) {
 			holdFlag: false,
 		} as IBackupJobProps;
 
-		const resultBackupJob = BackupJob.create(
-			backupJobProps,
-			new UniqueIdentifier()
-		);
+		const resultBackupJob = BackupJob.create(backupJobProps, new UniqueIdentifier());
 		if (resultBackupJob.isErr()) {
-			console.log(
-				'create BackupJob failed',
-				JSON.stringify(resultBackupJob.error, null, 4)
-			);
+			console.log('create BackupJob failed', JSON.stringify(resultBackupJob.error, null, 4));
 			return;
 		}
 
-		const backupJobServiceAdapter = backupJobServiceAdapterFactory({
-			getBackupJobResult: resultBackupJob.unwrapOr({} as BackupJob),
+		const backupJobServiceAdapter = new MockBackupJobServiceAdapter({
+			getByIdResult: {
+				storagePathName: 'bjsa.storagePathName',
+				backupProviderCode: 'CloudA',
+				daysToKeep: 100,
+				isActive: true,
+				holdFlag: false,
+			},
 		});
 
 		test('when a backup request is created, events run', async () => {
 			// Arrange
 
 			// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(
-				dbBackupRequest
-			); // default after responses below
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValueOnce(
-				dbBackupRequest
-			); // first response -- for check allowed
+			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest); // default after responses below
+			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValueOnce(dbBackupRequest); // first response -- for check allowed
 			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValueOnce({
 				...dbBackupRequest,
 				statusTypeCode: RequestStatusTypeValues.Allowed,
 			}); // second reponse -- for send to interface
 
 			// save() just needs to succeed; result value doesn't affect outcome
-			mockPrismaCtx.prisma.backupRequest.upsert.mockResolvedValue(
-				{} as unknown as BackupRequest
-			);
+			mockPrismaCtx.prisma.backupRequest.upsert.mockResolvedValue({} as unknown as BackupRequest);
 
 			const repo = new PrismaBackupRequestRepo(prismaCtx);
 			const saveSpy = jest.spyOn(repo, 'save');
@@ -110,7 +107,7 @@ if (TEST_EVENTS) {
 			new BackupRequestAllowedSubscriber(
 				new SendRequestToInterfaceUseCase({
 					backupRequestRepo: repo,
-					backupInterfaceAdapter: backupInterfaceAdapterFactory(),
+					sendQueueAdapter: new MockBackupRequestSendQueueAdapter({ sendMessageResult: true }),
 				})
 			);
 
