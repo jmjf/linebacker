@@ -3,13 +3,9 @@ import {
 	FastifyReply,
 	FastifyInstance,
 	FastifySchema,
-	FastifyTypeProvider,
+	//FastifyTypeProvider,
 } from 'fastify';
-import {
-	Http2SecureServer,
-	Http2ServerRequest,
-	Http2ServerResponse,
-} from 'http2';
+import { Http2SecureServer, Http2ServerRequest, Http2ServerResponse } from 'http2';
 import { RouteGenericInterface } from 'fastify/types/route';
 
 const responseTypes = {
@@ -22,8 +18,8 @@ export type RealFastifyRequest = FastifyRequest<
 	RouteGenericInterface,
 	Http2SecureServer,
 	Http2ServerRequest,
-	FastifySchema,
-	FastifyTypeProvider
+	FastifySchema //,
+	//FastifyTypeProvider
 >;
 export type RealFastifyReply = FastifyReply<
 	Http2SecureServer,
@@ -32,21 +28,11 @@ export type RealFastifyReply = FastifyReply<
 	RouteGenericInterface,
 	unknown
 >;
-export type RealFastifyInstance = FastifyInstance<
-	Http2SecureServer,
-	Http2ServerRequest,
-	Http2ServerResponse
->;
+export type RealFastifyInstance = FastifyInstance<Http2SecureServer, Http2ServerRequest, Http2ServerResponse>;
 export abstract class FastifyController {
-	protected abstract execImpl(
-		request: RealFastifyRequest,
-		reply: RealFastifyReply
-	): Promise<void | any>;
+	protected abstract execImpl(request: RealFastifyRequest, reply: RealFastifyReply): Promise<void | any>;
 
-	public async execute(
-		request: RealFastifyRequest,
-		reply: RealFastifyReply
-	): Promise<void | any> {
+	public async execute(request: RealFastifyRequest, reply: RealFastifyReply): Promise<void | any> {
 		try {
 			return await this.execImpl(request, reply);
 		} catch (e) {

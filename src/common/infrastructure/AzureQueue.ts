@@ -1,5 +1,5 @@
 import { DefaultAzureCredential } from '@azure/identity';
-import { QueueClient, StorageSharedKeyCredential } from '@azure/storage-queue';
+import { QueueClient, QueueSendMessageResponse, RestError, StorageSharedKeyCredential } from '@azure/storage-queue';
 import { err, ok, Result } from '../core/Result';
 import * as InfrastructureErrors from './InfrastructureErrors';
 
@@ -7,16 +7,17 @@ export type CredentialType = 'ADCC' | 'SASK';
 // ADCC -> AD Client Credentials
 // SASK -> Storage Account Shared Key
 
-const accountUriRegExp = new RegExp(`^https://[a-z0-9]{3,24}.queue.core.windows.net`);
-
 export class AzureQueue {
+	// do not use 'gi' -- global flag makes it start where it left off (end of the RegExp) so next test will fail
+	private static accountUriRegExp = new RegExp(`^https://[a-z0-9]{3,24}.queue.core.windows.net`, 'i');
+
 	private static isValidString(s: unknown): boolean {
 		return !!s && typeof s === 'string' && s.length > 0;
 	}
 
 	private static getCredential(): Result<
 		DefaultAzureCredential | StorageSharedKeyCredential,
-		InfrastructureErrors.EnvironmentError
+		InfrastructureErrors.EnvironmentError | Error
 	> {
 		const adccEnv = ['AZURE_TENANT_ID', 'AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET_ID'];
 		const saskEnv = ['SASK_ACCOUNT_NAME', 'SASK_ACCOUNT_KEY'];
@@ -29,56 +30,79 @@ export class AzureQueue {
 				)
 			);
 
-		switch (credentialType.toUpperCase()) {
-			case 'ADCC':
-				for (const envName of adccEnv) {
-					if (!this.isValidString(process.env[envName]))
-						return err(
-							new InfrastructureErrors.EnvironmentError(
-								`{msg: 'Invalid environment value', env: '${envName}', credentialType: 'ADCC'}`
-							)
-						);
-				}
-				break;
-
-			case 'SASK':
-				for (const envName of saskEnv) {
-					if (!this.isValidString(process.env[envName]))
-						return err(
-							new InfrastructureErrors.EnvironmentError(
-								`{msg: 'Invalid environment value', env: '${envName}', credentialType: 'SASK'}`
-							)
-						);
-				}
-				break;
-
-			default:
-				break;
+		if (credentialType.toUpperCase() === 'ADCC') {
+			for (const envName of adccEnv) {
+				if (!this.isValidString(process.env[envName]))
+					return err(
+						new InfrastructureErrors.EnvironmentError(
+							`{msg: 'Invalid environment value', env: '${envName}', credentialType: 'ADCC'}`
+						)
+					);
+			}
+			return ok(new DefaultAzureCredential());
 		}
-		return ok({} as StorageSharedKeyCredential);
+		// else (because returns above)
+
+		for (const envName of saskEnv) {
+			if (!this.isValidString(process.env[envName]))
+				return err(
+					new InfrastructureErrors.EnvironmentError(
+						`{msg: 'Invalid environment value', env: '${envName}', credentialType: 'SASK'}`
+					)
+				);
+		}
+		try {
+			return ok(
+				new StorageSharedKeyCredential(<string>process.env.SASK_ACCOUNT_NAME, <string>process.env.SASK_ACCOUNT_KEY)
+			);
+		} catch (e) {
+			console.log('SASK err', JSON.stringify(e, null, 3));
+			return err(new Error('SASK'));
+		}
 	}
 
 	private static getQueueClient(queueName: string): Result<QueueClient, InfrastructureErrors.EnvironmentError> {
-		const accountUri = <string>process.env.AZURE_QUEUE_ACCOUNT_URI;
-		if (!this.isValidString(accountUri) || (process.env.AUTH_METHOD === 'ADCC' && !accountUriRegExp.test(accountUri)))
+		const accountUri = process.env.AZURE_QUEUE_ACCOUNT_URI as string;
+		if (
+			!this.isValidString(accountUri) ||
+			(process.env.AUTH_METHOD === 'ADCC' && !this.accountUriRegExp.test(accountUri))
+		) {
 			return err(
 				new InfrastructureErrors.EnvironmentError(
 					`{msg: 'Invalid environment value', env: 'AZURE_QUEUE_ACCOUNT_URI'}`
 				)
 			);
+		}
 
 		const credentialResult = this.getCredential();
-		if (credentialResult.isErr()) return err(credentialResult.error);
+		if (credentialResult.isErr()) return err(credentialResult.error as InfrastructureErrors.EnvironmentError);
 
-		// construct queue URI
-		// create queueClient and return it
+		// console.log('gqc credential ok');
 
-		!queueName && !accountUri;
-		const queueClient = {} as QueueClient;
-		return ok(queueClient);
+		const queueUri = accountUri.slice(-1) === '/' ? `${accountUri}${queueName}` : `${accountUri}/${queueName}`;
+
+		const queueClientOptions = {
+			retryOptions: {
+				maxTries: 1,
+				tryTimeoutInMs: 15 * 1000,
+			},
+		};
+
+		try {
+			const queueClient = new QueueClient(queueUri, credentialResult.value, queueClientOptions);
+			// console.log('gqc try');
+			return ok(queueClient);
+		} catch (e) {
+			// console.log('gqc error', JSON.stringify(e, null, 3));
+		}
+		// console.log('gqc final return');
+		return ok({} as QueueClient);
 	}
 
-	public static async sendMessage(queueName: string, messageText: string): Promise<Result<boolean, Error>> {
+	public static async sendMessage(
+		queueName: string,
+		messageText: string
+	): Promise<Result<QueueSendMessageResponse, RestError | Error>> {
 		if (!this.isValidString(queueName))
 			return err(
 				new InfrastructureErrors.InputError(
@@ -94,12 +118,23 @@ export class AzureQueue {
 			);
 
 		const queueClientResult = this.getQueueClient(queueName);
-		if (queueClientResult.isErr()) return err(queueClientResult.error);
+		if (queueClientResult.isErr()) {
+			return err(queueClientResult.error);
+		}
+		const queueClient = queueClientResult.value;
 
-		// call send on client
-		// handle result
-
-		!messageText;
-		return ok(false);
+		try {
+			const sendRes = await queueClient.sendMessage(messageText);
+			console.log('sendMessage sendRes', JSON.stringify(sendRes, null, 3));
+			// return ok(sendRes);
+		} catch (er) {
+			const error = er as RestError;
+			return err(
+				new InfrastructureErrors.SDKError(
+					`{ message: '${error.message}', name: '${error.name}', code: '${error.code}' }`
+				)
+			);
+		}
+		return ok({ messageId: 'bad ok' } as QueueSendMessageResponse);
 	}
 }
