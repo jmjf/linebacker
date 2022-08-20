@@ -7,9 +7,14 @@ export type CredentialType = 'ADCC' | 'SASK';
 // ADCC -> AD Client Credentials
 // SASK -> Storage Account Shared Key
 
+export interface AqQueueSendMessageResponse extends QueueSendMessageResponse {
+	isSent: boolean;
+	responseStatus: number;
+}
+
 export class AzureQueue {
 	// do not use 'gi' -- global flag makes it start where it left off (end of the RegExp) so next test will fail
-	private static accountUriRegExp = new RegExp(`^https://[a-z0-9]{3,24}.queue.core.windows.net`, 'i');
+	private static accountUriRegExp = new RegExp(`^https://[a-z0-9]{3,24}.queue.core.windows.net/$`, 'i');
 
 	private static isValidString(s: unknown): boolean {
 		return !!s && typeof s === 'string' && s.length > 0;
@@ -62,7 +67,9 @@ export class AzureQueue {
 	}
 
 	private static getQueueClient(queueName: string): Result<QueueClient, InfrastructureErrors.EnvironmentError> {
-		const accountUri = process.env.AZURE_QUEUE_ACCOUNT_URI as string;
+		const envUri = <string>process.env.AZURE_QUEUE_ACCOUNT_URI;
+		// 8 because it must begin with at least http:// (7 char) and have something after it
+		const accountUri = envUri.length < 8 || envUri.slice(-1) === '/' ? envUri : envUri + '/';
 		if (
 			!this.isValidString(accountUri) ||
 			(process.env.AUTH_METHOD === 'ADCC' && !this.accountUriRegExp.test(accountUri))
@@ -77,9 +84,7 @@ export class AzureQueue {
 		const credentialResult = this.getCredential();
 		if (credentialResult.isErr()) return err(credentialResult.error as InfrastructureErrors.EnvironmentError);
 
-		// console.log('gqc credential ok');
-
-		const queueUri = accountUri.slice(-1) === '/' ? `${accountUri}${queueName}` : `${accountUri}/${queueName}`;
+		const queueUri = `${accountUri}${queueName}`;
 
 		const queueClientOptions = {
 			retryOptions: {
@@ -102,7 +107,12 @@ export class AzureQueue {
 	public static async sendMessage(
 		queueName: string,
 		messageText: string
-	): Promise<Result<QueueSendMessageResponse, RestError | Error>> {
+	): Promise<
+		Result<
+			AqQueueSendMessageResponse,
+			InfrastructureErrors.InputError | InfrastructureErrors.EnvironmentError | InfrastructureErrors.SDKError
+		>
+	> {
 		if (!this.isValidString(queueName))
 			return err(
 				new InfrastructureErrors.InputError(
@@ -126,15 +136,15 @@ export class AzureQueue {
 		try {
 			const sendRes = await queueClient.sendMessage(messageText);
 			console.log('sendMessage sendRes', JSON.stringify(sendRes, null, 3));
-			// return ok(sendRes);
+			return ok({ ...sendRes, responseStatus: sendRes._response.status, isSent: sendRes._response.status < 300 });
 		} catch (er) {
 			const error = er as RestError;
+			console.log('sendmessage er', error);
 			return err(
 				new InfrastructureErrors.SDKError(
-					`{ message: '${error.message}', name: '${error.name}', code: '${error.code}' }`
+					`{ msg: '${error.message}', name: '${error.name}', code: '${error.code}'}`
 				)
 			);
 		}
-		return ok({ messageId: 'bad ok' } as QueueSendMessageResponse);
 	}
 }
