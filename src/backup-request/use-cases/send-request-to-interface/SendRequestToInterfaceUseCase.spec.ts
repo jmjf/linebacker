@@ -53,7 +53,7 @@ describe('Send Request To Interface Use Case', () => {
 		replyMessageText: null,
 	};
 
-	const mockSendOK = {
+	const mockSendOk = {
 		expiresOn: new Date(new Date().setDate(new Date().getDate() + 7)),
 		insertedOn: new Date(),
 		messageId: 'mock message id',
@@ -69,6 +69,7 @@ describe('Send Request To Interface Use Case', () => {
 			request: {
 				requestId: 'mock Azure request id',
 			},
+			bodyAsText: '',
 		},
 	};
 
@@ -236,7 +237,17 @@ describe('Send Request To Interface Use Case', () => {
 		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
 		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
 
-		mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockResolvedValueOnce(mockSendOK);
+		mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockImplementation((message: string) => {
+			// Deep copy object
+			const mockResult = JSON.parse(JSON.stringify(mockSendOk));
+			// JSON stringify converts dates to strings, so make them dates again
+			mockResult.expiresOn = new Date(mockResult.expiresOn);
+			mockResult.insertedOn = new Date(mockResult.insertedOn);
+			mockResult.nextVisibleOn = new Date(mockResult.nextVisibleOn);
+			mockResult.date = new Date(mockResult.date);
+			mockResult._response.bodyAsText = message;
+			return mockResult;
+		});
 		const queueAdapter = new AzureBackupRequestSendQueueAdapter('test-queue');
 
 		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, sendQueueAdapter: queueAdapter });
@@ -252,6 +263,7 @@ describe('Send Request To Interface Use Case', () => {
 			// type guard makes the rest easier
 			expect(result.value.statusTypeCode).toBe(RequestStatusTypeValues.Sent);
 			expect(result.value.sentToInterfaceTimestamp.valueOf()).toBeGreaterThan(startTimestamp.valueOf());
+			// The use case doesn't check Base64 because it's tested in the adapter and the use case doesn't return bodyAsText to check
 		}
 	});
 

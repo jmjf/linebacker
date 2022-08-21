@@ -21,3 +21,11 @@ export function isDev(): boolean {
 export function isTest(): boolean {
 	return process.env.JEST_WORKER_ID !== undefined;
 }
+
+export function toBase64(s: string): string {
+	return Buffer.from(s).toString('base64');
+}
+
+export function fromBase64(s: string): string {
+	return Buffer.from(s, 'base64').toString('ascii');
+}

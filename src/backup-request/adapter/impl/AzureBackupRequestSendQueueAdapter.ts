@@ -6,18 +6,24 @@ import { SendMessageResponse } from '../IBackupRequestSendQueueAdapter';
 
 export class AzureBackupRequestSendQueueAdapter {
 	private queueName: string;
+	private useBase64: boolean;
 
-	constructor(queueName: string) {
+	constructor(queueName: string, useBase64 = false) {
 		this.queueName = queueName;
+		this.useBase64 = useBase64;
 	}
 
 	public async sendMessage(
 		backupRequest: BackupRequest
 	): Promise<Result<SendMessageResponse, AdapterErrors.SendQueueAdapterError>> {
-		const message = JSON.stringify(this.mapToQueue(backupRequest));
+		const messageText = JSON.stringify(this.mapToQueue(backupRequest));
 
 		const sendStart = new Date();
-		const sendResult = await AzureQueue.sendMessage(this.queueName, message);
+		const sendResult = await AzureQueue.sendMessage({
+			queueName: this.queueName,
+			messageText,
+			useBase64: this.useBase64,
+		});
 		const sendEnd = new Date();
 		if (sendResult.isErr()) {
 			return err(

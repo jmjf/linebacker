@@ -1,5 +1,6 @@
 import { DefaultAzureCredential } from '@azure/identity';
 import { QueueClient, QueueSendMessageResponse, RestError, StorageSharedKeyCredential } from '@azure/storage-queue';
+import { toBase64 } from '../../utils/utils';
 import { err, ok, Result } from '../core/Result';
 import * as InfrastructureErrors from './InfrastructureErrors';
 
@@ -7,10 +8,16 @@ export type CredentialType = 'ADCC' | 'SASK';
 // ADCC -> AD Client Credentials
 // SASK -> Storage Account Shared Key
 
-export interface AqQueueSendMessageResponse extends QueueSendMessageResponse {
+export interface AqSendMessageResponse extends QueueSendMessageResponse {
 	isSent: boolean;
 	responseStatus: number;
 	sendRequestId: string;
+}
+
+export interface AqSendMessageParams {
+	queueName: string;
+	messageText: string;
+	useBase64?: boolean;
 }
 
 export class AzureQueue {
@@ -103,14 +110,17 @@ export class AzureQueue {
 	}
 
 	public static async sendMessage(
-		queueName: string,
-		messageText: string
+		params: AqSendMessageParams
 	): Promise<
 		Result<
-			AqQueueSendMessageResponse,
+			AqSendMessageResponse,
 			InfrastructureErrors.InputError | InfrastructureErrors.EnvironmentError | InfrastructureErrors.SDKError
 		>
 	> {
+		const queueName = params.queueName;
+		const useBase64 = typeof params.useBase64 === 'boolean' ? params.useBase64 : false;
+		const messageText = !useBase64 ? params.messageText : toBase64(params.messageText);
+
 		if (!this.isValidString(queueName))
 			return err(
 				new InfrastructureErrors.InputError(

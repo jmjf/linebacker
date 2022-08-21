@@ -1,6 +1,7 @@
 // mock the @azure/storage-queue module so we can replace functions in it for testing
 jest.mock('@azure/storage-queue');
 import * as asq from '@azure/storage-queue';
+import { toBase64 } from '../../utils/utils';
 
 import { AzureQueue } from './AzureQueue';
 
@@ -38,7 +39,7 @@ describe('AzureQueue', () => {
 				const queueName = 'queueName';
 
 				// Act
-				const result = await AzureQueue.sendMessage(queueName, messageText);
+				const result = await AzureQueue.sendMessage({ queueName, messageText });
 
 				// Assert
 				expect(result.isErr()).toBe(true);
@@ -71,7 +72,7 @@ describe('AzureQueue', () => {
 				const queueName = 'queueName';
 
 				// Act
-				const result = await AzureQueue.sendMessage(queueName, messageText);
+				const result = await AzureQueue.sendMessage({ queueName, messageText });
 
 				// Assert
 				expect(result.isErr()).toBe(true);
@@ -93,7 +94,7 @@ describe('AzureQueue', () => {
 			const queueName = '';
 
 			// Act
-			const result = await AzureQueue.sendMessage(queueName, messageText);
+			const result = await AzureQueue.sendMessage({ queueName, messageText });
 
 			// Assert
 			expect(result.isErr()).toBe(true);
@@ -114,7 +115,7 @@ describe('AzureQueue', () => {
 			const messageText = ``;
 			const queueName = 'queueName';
 			// Act
-			const result = await AzureQueue.sendMessage(queueName, messageText);
+			const result = await AzureQueue.sendMessage({ queueName, messageText });
 			// Assert
 			expect(result.isErr()).toBe(true);
 			if (result.isErr()) {
@@ -138,7 +139,7 @@ describe('AzureQueue', () => {
 
 			// Act
 
-			const result = await AzureQueue.sendMessage(queueName, messageText);
+			const result = await AzureQueue.sendMessage({ queueName, messageText });
 
 			jest.resetAllMocks();
 			// // Assert
@@ -164,7 +165,7 @@ describe('AzureQueue', () => {
 
 			// Act
 
-			const result = await AzureQueue.sendMessage(queueName, messageText);
+			const result = await AzureQueue.sendMessage({ queueName, messageText });
 
 			jest.resetAllMocks();
 			// // Assert
@@ -175,55 +176,6 @@ describe('AzureQueue', () => {
 			}
 		});
 
-		test('when queueClient Promise.resolves with status < 300, it returns an ok with isSent true', async () => {
-			// Arrange
-			process.env.AUTH_METHOD = 'ADCC';
-			process.env.AZURE_TENANT_ID = 'tenant';
-			process.env.AZURE_CLIENT_ID = 'client';
-			process.env.AZURE_CLIENT_SECRET_ID = 'secret';
-			process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri; // not checked for SASK because SASK is local only
-			const messageText = `QueueClient rejects promise`;
-			const queueName = 'queueName';
-
-			const now = new Date();
-			const mockResolve = {
-				expiresOn: new Date(now.setDate(now.getDate() + 7)),
-				insertedOn: now,
-				messageId: 'mock message id',
-				nextVisibleOn: now,
-				popReceipt: 'mock pop receipt',
-				requestId: 'mock queue request id',
-				clientRequestId: 'mock client request id',
-				date: now,
-				version: '2009-09-19',
-				errorCode: '',
-				_response: {
-					status: 201,
-					request: {
-						requestId: 'mock Azure request id',
-					},
-				},
-			};
-			asq.QueueClient.prototype.sendMessage = jest.fn().mockResolvedValueOnce(mockResolve);
-
-			// Act
-
-			const result = await AzureQueue.sendMessage(queueName, messageText);
-
-			jest.resetAllMocks();
-			// // Assert
-			expect(result.isOk()).toBe(true);
-			if (result.isOk()) {
-				// values from original response
-				expect(result.value.messageId).toBe(mockResolve.messageId);
-				expect(result.value.insertedOn.valueOf()).toBe(mockResolve.insertedOn.valueOf());
-				// values we add
-				expect(result.value.isSent).toBe(true);
-				expect(result.value.responseStatus).toBe(mockResolve._response.status);
-				expect(result.value.sendRequestId).toBe(mockResolve._response.request.requestId);
-			}
-		});
-
 		test('when queueClient Promise.resolves with status > 299, it returns an ok with isSent false', async () => {
 			// Arrange
 			process.env.AUTH_METHOD = 'ADCC';
@@ -231,11 +183,11 @@ describe('AzureQueue', () => {
 			process.env.AZURE_CLIENT_ID = 'client';
 			process.env.AZURE_CLIENT_SECRET_ID = 'secret';
 			process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri; // not checked for SASK because SASK is local only
-			const messageText = `QueueClient rejects promise`;
+			const messageText = `QueueClient resolves promise; http status > 299`;
 			const queueName = 'queueName';
 
 			const now = new Date();
-			const mockResolve = {
+			const mockSendError = {
 				expiresOn: new Date(now.setDate(now.getDate() + 7)),
 				insertedOn: now,
 				messageId: 'mock message id',
@@ -253,23 +205,147 @@ describe('AzureQueue', () => {
 					},
 				},
 			};
-			asq.QueueClient.prototype.sendMessage = jest.fn().mockResolvedValueOnce(mockResolve);
+			asq.QueueClient.prototype.sendMessage = jest.fn().mockResolvedValueOnce(mockSendError);
 
 			// Act
 
-			const result = await AzureQueue.sendMessage(queueName, messageText);
+			const result = await AzureQueue.sendMessage({ queueName, messageText });
 
 			jest.resetAllMocks();
 			// // Assert
 			expect(result.isOk()).toBe(true);
 			if (result.isOk()) {
 				// values from original response
-				expect(result.value.messageId).toBe(mockResolve.messageId);
-				expect(result.value.insertedOn.valueOf()).toBe(mockResolve.insertedOn.valueOf());
+				expect(result.value.messageId).toBe(mockSendError.messageId);
+				expect(result.value.insertedOn.valueOf()).toBe(mockSendError.insertedOn.valueOf());
 				// values we add
 				expect(result.value.isSent).toBe(false);
-				expect(result.value.responseStatus).toBe(mockResolve._response.status);
-				expect(result.value.sendRequestId).toBe(mockResolve._response.request.requestId);
+				expect(result.value.responseStatus).toBe(mockSendError._response.status);
+				expect(result.value.sendRequestId).toBe(mockSendError._response.request.requestId);
+			}
+		});
+
+		test('when queueClient Promise.resolves with status < 300, it returns an ok with isSent true (not Base64)', async () => {
+			// Arrange
+			process.env.AUTH_METHOD = 'ADCC';
+			process.env.AZURE_TENANT_ID = 'tenant';
+			process.env.AZURE_CLIENT_ID = 'client';
+			process.env.AZURE_CLIENT_SECRET_ID = 'secret';
+			process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri; // not checked for SASK because SASK is local only
+			const messageText = `QueueClient resolves promise; staus < 300; not Base64`;
+			const queueName = 'queueName';
+
+			const now = new Date();
+			const mockSendOk = {
+				expiresOn: new Date(now.setDate(now.getDate() + 7)),
+				insertedOn: now,
+				messageId: 'mock message id',
+				nextVisibleOn: now,
+				popReceipt: 'mock pop receipt',
+				requestId: 'mock queue request id',
+				clientRequestId: 'mock client request id',
+				date: now,
+				version: '2009-09-19',
+				errorCode: '',
+				_response: {
+					status: 201,
+					request: {
+						requestId: 'mock Azure request id',
+					},
+					bodyAsText: '',
+				},
+			};
+			asq.QueueClient.prototype.sendMessage = jest.fn().mockImplementation((message: string) => {
+				// Deep copy object
+				const mockResult = JSON.parse(JSON.stringify(mockSendOk));
+				// JSON stringify converts dates to strings, so make them dates again
+				mockResult.expiresOn = new Date(mockResult.expiresOn);
+				mockResult.insertedOn = new Date(mockResult.insertedOn);
+				mockResult.nextVisibleOn = new Date(mockResult.nextVisibleOn);
+				mockResult.date = new Date(mockResult.date);
+				mockResult._response.bodyAsText = message;
+				return mockResult;
+			});
+
+			// Act
+
+			const result = await AzureQueue.sendMessage({ queueName, messageText });
+
+			jest.resetAllMocks();
+			// // Assert
+			expect(result.isOk()).toBe(true);
+			if (result.isOk()) {
+				// values from original response
+				expect(result.value.messageId).toBe(mockSendOk.messageId);
+				expect(result.value.insertedOn.valueOf()).toBe(mockSendOk.insertedOn.valueOf());
+				// values we add
+				expect(result.value.isSent).toBe(true);
+				expect(result.value.responseStatus).toBe(mockSendOk._response.status);
+				expect(result.value.sendRequestId).toBe(mockSendOk._response.request.requestId);
+				// message not Base64 encoded
+				expect(result.value._response.bodyAsText).toBe(messageText);
+			}
+		});
+
+		test('when queueClient Promise.resolves with status < 300, it returns an ok with isSent true (Base64)', async () => {
+			// Arrange
+			process.env.AUTH_METHOD = 'ADCC';
+			process.env.AZURE_TENANT_ID = 'tenant';
+			process.env.AZURE_CLIENT_ID = 'client';
+			process.env.AZURE_CLIENT_SECRET_ID = 'secret';
+			process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri; // not checked for SASK because SASK is local only
+			const messageText = `QueueClient resolves promise; status < 300; Base64`;
+			const queueName = 'queueName';
+
+			const now = new Date();
+			const mockSendOk = {
+				expiresOn: new Date(now.setDate(now.getDate() + 7)),
+				insertedOn: now,
+				messageId: 'mock message id',
+				nextVisibleOn: now,
+				popReceipt: 'mock pop receipt',
+				requestId: 'mock queue request id',
+				clientRequestId: 'mock client request id',
+				date: now,
+				version: '2009-09-19',
+				errorCode: '',
+				_response: {
+					status: 201,
+					request: {
+						requestId: 'mock Azure request id',
+					},
+					bodyAsText: '',
+				},
+			};
+			asq.QueueClient.prototype.sendMessage = jest.fn().mockImplementation((message: string) => {
+				// Deep copy object
+				const mockResult = JSON.parse(JSON.stringify(mockSendOk));
+				// JSON stringify converts dates to strings, so make them dates again
+				mockResult.expiresOn = new Date(mockResult.expiresOn);
+				mockResult.insertedOn = new Date(mockResult.insertedOn);
+				mockResult.nextVisibleOn = new Date(mockResult.nextVisibleOn);
+				mockResult.date = new Date(mockResult.date);
+				mockResult._response.bodyAsText = message;
+				return mockResult;
+			});
+
+			// Act
+
+			const result = await AzureQueue.sendMessage({ queueName, messageText, useBase64: true });
+
+			jest.resetAllMocks();
+			// // Assert
+			expect(result.isOk()).toBe(true);
+			if (result.isOk()) {
+				// values from original response
+				expect(result.value.messageId).toBe(mockSendOk.messageId);
+				expect(result.value.insertedOn.valueOf()).toBe(mockSendOk.insertedOn.valueOf());
+				// values we add
+				expect(result.value.isSent).toBe(true);
+				expect(result.value.responseStatus).toBe(mockSendOk._response.status);
+				expect(result.value.sendRequestId).toBe(mockSendOk._response.request.requestId);
+				// message Base64 encoded
+				expect(result.value._response.bodyAsText).toBe(toBase64(messageText));
 			}
 		});
 	});
