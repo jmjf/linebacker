@@ -10,6 +10,7 @@ export type CredentialType = 'ADCC' | 'SASK';
 export interface AqQueueSendMessageResponse extends QueueSendMessageResponse {
 	isSent: boolean;
 	responseStatus: number;
+	sendRequestId: string;
 }
 
 export class AzureQueue {
@@ -31,7 +32,7 @@ export class AzureQueue {
 		if (credentialType !== 'ADCC' && credentialType !== 'SASK')
 			return err(
 				new InfrastructureErrors.EnvironmentError(
-					`{msg: 'Invalid environment value', env: 'AUTH_METHOD', value: '${credentialType}'}`
+					`{message: 'Invalid environment value', env: 'AUTH_METHOD', value: '${credentialType}'}`
 				)
 			);
 
@@ -40,7 +41,7 @@ export class AzureQueue {
 				if (!this.isValidString(process.env[envName]))
 					return err(
 						new InfrastructureErrors.EnvironmentError(
-							`{msg: 'Invalid environment value', env: '${envName}', credentialType: 'ADCC'}`
+							`{message: 'Invalid environment value', env: '${envName}', credentialType: 'ADCC'}`
 						)
 					);
 			}
@@ -52,7 +53,7 @@ export class AzureQueue {
 			if (!this.isValidString(process.env[envName]))
 				return err(
 					new InfrastructureErrors.EnvironmentError(
-						`{msg: 'Invalid environment value', env: '${envName}', credentialType: 'SASK'}`
+						`{message: 'Invalid environment value', env: '${envName}', credentialType: 'SASK'}`
 					)
 				);
 		}
@@ -76,7 +77,7 @@ export class AzureQueue {
 		) {
 			return err(
 				new InfrastructureErrors.EnvironmentError(
-					`{msg: 'Invalid environment value', env: 'AZURE_QUEUE_ACCOUNT_URI'}`
+					`{message: 'Invalid environment value', env: 'AZURE_QUEUE_ACCOUNT_URI'}`
 				)
 			);
 		}
@@ -95,13 +96,10 @@ export class AzureQueue {
 
 		try {
 			const queueClient = new QueueClient(queueUri, credentialResult.value, queueClientOptions);
-			// console.log('gqc try');
 			return ok(queueClient);
 		} catch (e) {
-			// console.log('gqc error', JSON.stringify(e, null, 3));
+			return err(new InfrastructureErrors.SDKError(`{message: 'could not create QueueClient'}`));
 		}
-		// console.log('gqc final return');
-		return ok({} as QueueClient);
 	}
 
 	public static async sendMessage(
@@ -116,14 +114,14 @@ export class AzureQueue {
 		if (!this.isValidString(queueName))
 			return err(
 				new InfrastructureErrors.InputError(
-					`{msg: 'Invalid input value', name: 'queueName', value: '${queueName}'}`
+					`{message: 'Invalid input value', name: 'queueName', value: '${queueName}'}`
 				)
 			);
 
 		if (!this.isValidString(messageText))
 			return err(
 				new InfrastructureErrors.InputError(
-					`{msg: 'Invalid input value', name: 'messageText', value: '${messageText}'}`
+					`{message: 'Invalid input value', name: 'messageText', value: '${messageText}'}`
 				)
 			);
 
@@ -135,14 +133,17 @@ export class AzureQueue {
 
 		try {
 			const sendRes = await queueClient.sendMessage(messageText);
-			console.log('sendMessage sendRes', JSON.stringify(sendRes, null, 3));
-			return ok({ ...sendRes, responseStatus: sendRes._response.status, isSent: sendRes._response.status < 300 });
+			return ok({
+				...sendRes,
+				responseStatus: sendRes._response.status,
+				isSent: sendRes._response.status < 300,
+				sendRequestId: sendRes._response.request.requestId,
+			});
 		} catch (er) {
 			const error = er as RestError;
-			console.log('sendmessage er', error);
 			return err(
 				new InfrastructureErrors.SDKError(
-					`{ msg: '${error.message}', name: '${error.name}', code: '${error.code}'}`
+					`{ message: '${error.message}', name: '${error.name}', code: '${error.code}'}`
 				)
 			);
 		}

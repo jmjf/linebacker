@@ -7,6 +7,8 @@ services:
          - '5432:5432'
       env_file:
          - ../env/dev.env
+      volumes:
+         - ./postgres.db:/var/lib/postgresql
 
    admin:
       container_name: adminer

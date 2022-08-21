@@ -1,7 +1,11 @@
+// mock the Azure SDK
+jest.mock('@azure/storage-queue');
+import * as mockQueueSDK from '@azure/storage-queue';
+
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 
-import { MockBackupRequestSendQueueAdapter } from '../../adapter/impl/MockBackupRequestSendQueueAdapter';
+import { AzureBackupRequestSendQueueAdapter } from '../../adapter/impl/AzureBackupRequestSendQueueAdapter';
 
 import { SendRequestToInterfaceUseCase } from './SendRequestToInterfaceUseCase';
 import { SendRequestToInterfaceDTO } from './SendRequestToInterfaceDTO';
@@ -21,6 +25,10 @@ describe('Send Request To Interface Use Case', () => {
 	beforeEach(() => {
 		mockPrismaCtx = createMockPrismaContext();
 		prismaCtx = mockPrismaCtx as unknown as PrismaContext;
+	});
+
+	afterEach(() => {
+		jest.resetAllMocks();
 	});
 
 	const baseDto = {
@@ -45,31 +53,44 @@ describe('Send Request To Interface Use Case', () => {
 		replyMessageText: null,
 	};
 
-	test('when request is Allowed, it returns a BackupRequest in Sent status', async () => {
-		// Arrange
-		const startTimestamp = new Date();
+	const mockSendOK = {
+		expiresOn: new Date(new Date().setDate(new Date().getDate() + 7)),
+		insertedOn: new Date(),
+		messageId: 'mock message id',
+		nextVisibleOn: new Date(),
+		popReceipt: 'mock pop receipt',
+		requestId: 'mock queue request id',
+		clientRequestId: 'mock client request id',
+		date: new Date(),
+		version: '2009-09-19',
+		errorCode: '',
+		_response: {
+			status: 201,
+			request: {
+				requestId: 'mock Azure request id',
+			},
+		},
+	};
 
-		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
+	const mockSendError = {
+		requestId: 'mock queue request id',
+		clientRequestId: 'mock client request id',
+		date: new Date(),
+		version: '2009-09-19',
+		errorCode: '',
+		_response: {
+			status: 401,
+			request: {
+				requestId: 'mock Azure request id',
+			},
+		},
+	};
 
-		const repo = new PrismaBackupRequestRepo(prismaCtx);
-
-		const adapter = new MockBackupRequestSendQueueAdapter({ sendMessageResult: true });
-
-		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: repo, sendQueueAdapter: adapter });
-		const dto = { ...baseDto };
-
-		// Act
-		const result = await useCase.execute(dto);
-
-		// Assert
-		expect(result.isOk()).toBe(true);
-		if (result.isOk()) {
-			// type guard makes the rest easier
-			expect(result.value.statusTypeCode).toBe(RequestStatusTypeValues.Sent);
-			expect(result.value.sentToInterfaceTimestamp.valueOf()).toBeGreaterThan(startTimestamp.valueOf());
-		}
-	});
+	// mock environment -- use SASK because it's easier; other parts of queue framework covered in AzureQueue.spec.ts
+	process.env.AUTH_METHOD = 'SASK';
+	process.env.SASK_ACCOUNT_NAME = 'accountName';
+	process.env.SASK_ACCOUNT_KEY = 'accountKey';
+	process.env.AZURE_QUEUE_ACCOUNT_URI = 'uri';
 
 	test.each([
 		{ status: RequestStatusTypeValues.Sent, timestampName: 'sentToInterfaceTimestamp' },
@@ -90,11 +111,15 @@ describe('Send Request To Interface Use Case', () => {
 			// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest as BackupRequest);
 
-			const repo = new PrismaBackupRequestRepo(prismaCtx);
+			const brRepo = new PrismaBackupRequestRepo(prismaCtx);
 
-			const adapter = new MockBackupRequestSendQueueAdapter({ sendMessageResult: true });
+			// should not call adapter, so no need to mock SDK
+			const queueAdapter = new AzureBackupRequestSendQueueAdapter('test-queue');
 
-			const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: repo, sendQueueAdapter: adapter });
+			const useCase = new SendRequestToInterfaceUseCase({
+				backupRequestRepo: brRepo,
+				sendQueueAdapter: queueAdapter,
+			});
 			const dto = { ...baseDto };
 
 			// Act
@@ -102,6 +127,7 @@ describe('Send Request To Interface Use Case', () => {
 
 			// Assert
 			expect(result.isOk()).toBe(true);
+			expect(mockQueueSDK.QueueClient.prototype.sendMessage).toBeCalledTimes(0);
 			if (result.isOk()) {
 				// type guard
 				const value: { [index: string]: any } = result.value;
@@ -118,11 +144,12 @@ describe('Send Request To Interface Use Case', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(null as unknown as BackupRequest);
 
-		const repo = new PrismaBackupRequestRepo(prismaCtx);
+		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
 
-		const adapter = new MockBackupRequestSendQueueAdapter({ sendMessageResult: true });
+		// should not call adapter, so no need to mock SDK
+		const queueAdapter = new AzureBackupRequestSendQueueAdapter('test-queue');
 
-		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: repo, sendQueueAdapter: adapter });
+		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, sendQueueAdapter: queueAdapter });
 		const dto = { ...baseDto };
 
 		// Act
@@ -130,6 +157,7 @@ describe('Send Request To Interface Use Case', () => {
 
 		// Assert
 		expect(result.isErr()).toBe(true);
+		expect(mockQueueSDK.QueueClient.prototype.sendMessage).toBeCalledTimes(0);
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('NotFoundError');
@@ -137,7 +165,7 @@ describe('Send Request To Interface Use Case', () => {
 		}
 	});
 
-	test('when request is in NotAllowed status, it returns failure', async () => {
+	test('when request is NotAllowed, it returns failure', async () => {
 		// Arrange
 		const resultBackupRequest: BackupRequest = {
 			...dbBackupRequest,
@@ -149,11 +177,12 @@ describe('Send Request To Interface Use Case', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest);
 
-		const repo = new PrismaBackupRequestRepo(prismaCtx);
+		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
 
-		const adapter = new MockBackupRequestSendQueueAdapter({ sendMessageResult: true });
+		// should not call adapter, so no need to mock SDK
+		const queueAdapter = new AzureBackupRequestSendQueueAdapter('test-queue');
 
-		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: repo, sendQueueAdapter: adapter });
+		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, sendQueueAdapter: queueAdapter });
 		const dto = { ...baseDto };
 
 		// Act
@@ -161,6 +190,7 @@ describe('Send Request To Interface Use Case', () => {
 
 		// Assert
 		expect(result.isErr()).toBe(true);
+		expect(mockQueueSDK.QueueClient.prototype.sendMessage).toBeCalledTimes(0);
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('BackupRequestStatusError');
@@ -168,7 +198,7 @@ describe('Send Request To Interface Use Case', () => {
 		}
 	});
 
-	test('when send message fails, it returns failure', async () => {
+	test('when request is allowed and sendMessage fails, it returns failure', async () => {
 		// Arrange
 		const resultBackupRequest: BackupRequest = {
 			...dbBackupRequest,
@@ -178,11 +208,12 @@ describe('Send Request To Interface Use Case', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest);
 
-		const repo = new PrismaBackupRequestRepo(prismaCtx);
+		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
 
-		const adapter = new MockBackupRequestSendQueueAdapter({ sendMessageResult: false });
+		mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockResolvedValueOnce(mockSendError);
+		const queueAdapter = new AzureBackupRequestSendQueueAdapter('test-queue');
 
-		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: repo, sendQueueAdapter: adapter });
+		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, sendQueueAdapter: queueAdapter });
 		const dto = { ...baseDto };
 
 		// Act
@@ -190,9 +221,37 @@ describe('Send Request To Interface Use Case', () => {
 
 		// Assert
 		expect(result.isErr()).toBe(true);
+		expect(mockQueueSDK.QueueClient.prototype.sendMessage).toBeCalledTimes(1);
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('SendToInterfaceError');
+		}
+	});
+
+	test('when request is Allowed and sendMessage succeeds, it returns a BackupRequest in Sent status', async () => {
+		// Arrange
+		const startTimestamp = new Date();
+
+		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
+		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
+		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
+
+		mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockResolvedValueOnce(mockSendOK);
+		const queueAdapter = new AzureBackupRequestSendQueueAdapter('test-queue');
+
+		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, sendQueueAdapter: queueAdapter });
+		const dto = { ...baseDto };
+
+		// Act
+		const result = await useCase.execute(dto);
+
+		// Assert
+		expect(result.isOk()).toBe(true);
+		expect(mockQueueSDK.QueueClient.prototype.sendMessage).toBeCalledTimes(1);
+		if (result.isOk()) {
+			// type guard makes the rest easier
+			expect(result.value.statusTypeCode).toBe(RequestStatusTypeValues.Sent);
+			expect(result.value.sentToInterfaceTimestamp.valueOf()).toBeGreaterThan(startTimestamp.valueOf());
 		}
 	});
 

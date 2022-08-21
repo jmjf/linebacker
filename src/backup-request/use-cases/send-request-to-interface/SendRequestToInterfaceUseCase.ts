@@ -2,7 +2,7 @@ import { UseCase } from '../../../common/application/UseCase';
 import { Result, ok, err } from '../../../common/core/Result';
 import * as ApplicationErrors from '../../../common/application/ApplicationErrors';
 
-import { IBackupRequestSendQueueAdapter } from '../../adapter/BackupRequestSendQueueAdapter';
+import { IBackupRequestSendQueueAdapter } from '../../adapter/IBackupRequestSendQueueAdapter';
 import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
 import { BackupRequest } from '../../domain/BackupRequest';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
@@ -59,11 +59,13 @@ export class SendRequestToInterfaceUseCase implements UseCase<SendRequestToInter
 				)
 			);
 		}
-		if (sendResult.value === false) {
+		if (sendResult.value.isSent === false) {
 			// LOG
 			return err(
 				new SendRequestToInterfaceErrors.SendToInterfaceError(
-					`{ message: 'Send to backup interface ${this.sendQueueAdapter.constructor.name} failed', requestId: '${backupRequestId}'`
+					`{ message: 'Send to backup interface ${
+						this.sendQueueAdapter.constructor.name
+					} failed', backupRequestId: '${backupRequestId}', response: ${JSON.stringify(sendResult.value)}`
 				)
 			);
 		}

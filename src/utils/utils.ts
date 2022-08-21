@@ -14,7 +14,10 @@ export function delay(ms: number): Promise<unknown> {
 export function isDev(): boolean {
 	return (
 		!process.env.APP_ENV ||
-		(!!process.env.APP_ENV &&
-			['dev', 'development'].includes(process.env.APP_ENV.toLowerCase()))
+		(!!process.env.APP_ENV && ['dev', 'development'].includes(process.env.APP_ENV.toLowerCase()))
 	);
+}
+
+export function isTest(): boolean {
+	return process.env.JEST_WORKER_ID !== undefined;
 }

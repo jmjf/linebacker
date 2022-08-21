@@ -6,7 +6,7 @@ import { PrismaContext } from '../../common/infrastructure/database/prismaContex
 import { ExpressCreateBackupRequestController } from '../adapter/impl/ExpressCreateBackupRequestController';
 
 import { FastifyCreateBackupRequestController } from '../adapter/impl/FastifyCreateBackupRequestController';
-import { MockBackupRequestSendQueueAdapter } from '../adapter/impl/MockBackupRequestSendQueueAdapter';
+import { AzureBackupRequestSendQueueAdapter } from '../adapter/impl/AzureBackupRequestSendQueueAdapter';
 import { PrismaBackupRequestRepo } from '../adapter/impl/PrismaBackupRequestRepo';
 import { BackupRequestCreatedSubscriber } from '../use-cases/check-request-allowed/BackupRequestCreatedSubscriber';
 import { CheckRequestAllowedUseCase } from '../use-cases/check-request-allowed/CheckRequestAllowedUseCase';
@@ -29,7 +29,7 @@ export const initBackupRequestModule = (prismaCtx: PrismaContext, controllerType
 	new BackupRequestCreatedSubscriber(checkRequestAllowedUseCase);
 
 	// subscribe BackupRequestAllowedSubscriber
-	const sendQueueAdapter = new MockBackupRequestSendQueueAdapter({ sendMessageResult: true });
+	const sendQueueAdapter = new AzureBackupRequestSendQueueAdapter('allowed-backup-requests');
 	const sendRequestToInterfaceUseCase = new SendRequestToInterfaceUseCase({
 		backupRequestRepo,
 		sendQueueAdapter,

@@ -197,7 +197,12 @@ describe('AzureQueue', () => {
 				date: now,
 				version: '2009-09-19',
 				errorCode: '',
-				_response: { status: 200 },
+				_response: {
+					status: 201,
+					request: {
+						requestId: 'mock Azure request id',
+					},
+				},
 			};
 			asq.QueueClient.prototype.sendMessage = jest.fn().mockResolvedValueOnce(mockResolve);
 
@@ -215,7 +220,8 @@ describe('AzureQueue', () => {
 				// values we add
 				expect(result.value.isSent).toBe(true);
 				expect(result.value.responseStatus).toBe(mockResolve._response.status);
-			} //
+				expect(result.value.sendRequestId).toBe(mockResolve._response.request.requestId);
+			}
 		});
 
 		test('when queueClient Promise.resolves with status > 299, it returns an ok with isSent false', async () => {
@@ -240,14 +246,18 @@ describe('AzureQueue', () => {
 				date: now,
 				version: '2009-09-19',
 				errorCode: '',
-				_response: { status: 401 },
+				_response: {
+					status: 401,
+					request: {
+						requestId: 'mock Azure request id',
+					},
+				},
 			};
 			asq.QueueClient.prototype.sendMessage = jest.fn().mockResolvedValueOnce(mockResolve);
 
 			// Act
 
 			const result = await AzureQueue.sendMessage(queueName, messageText);
-			console.log('test result', result);
 
 			jest.resetAllMocks();
 			// // Assert
@@ -259,6 +269,7 @@ describe('AzureQueue', () => {
 				// values we add
 				expect(result.value.isSent).toBe(false);
 				expect(result.value.responseStatus).toBe(mockResolve._response.status);
+				expect(result.value.sendRequestId).toBe(mockResolve._response.request.requestId);
 			}
 		});
 	});

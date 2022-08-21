@@ -6,7 +6,7 @@ import { BackupRequest } from '../../domain/BackupRequest';
 
 //import { delay } from '../../../utils/utils';
 
-import { IBackupRequestSendQueueAdapter } from '../BackupRequestSendQueueAdapter';
+import { IBackupRequestSendQueueAdapter, SendMessageResponse } from '../IBackupRequestSendQueueAdapter';
 
 export interface IMockBRSQAdapterOptions {
 	sendMessageResult?: boolean;
@@ -22,7 +22,10 @@ export class MockBackupRequestSendQueueAdapter implements IBackupRequestSendQueu
 		this.sendMessageError = opts.sendMessageError;
 	}
 
-	async sendMessage(backupRequest: BackupRequest): Promise<Result<boolean, AdapterErrors.SendQueueAdapterError>> {
+	async sendMessage(
+		backupRequest: BackupRequest
+	): Promise<Result<SendMessageResponse, AdapterErrors.SendQueueAdapterError>> {
+		const sendStart = new Date();
 		//await delay(10000);
 		logger.info({
 			context: 'MockBRSQA.sendMessage',
@@ -30,7 +33,15 @@ export class MockBackupRequestSendQueueAdapter implements IBackupRequestSendQueu
 			backupJobId: backupRequest.backupJobId.value,
 			msg: 'sendMessage',
 		});
-		if (typeof this.sendMessageResult === 'boolean') return ok(this.sendMessageResult);
+		const sendEnd = new Date();
+		if (typeof this.sendMessageResult === 'boolean')
+			return ok({
+				backupRequestId: backupRequest.backupRequestId.value,
+				isSent: this.sendMessageResult,
+				sendStart,
+				sendEnd,
+				responseStatus: 201,
+			});
 		if (this.sendMessageError) return err(this.sendMessageError);
 		return err(new AdapterErrors.SendQueueAdapterError(`{msg: 'no error provided'}`));
 	}

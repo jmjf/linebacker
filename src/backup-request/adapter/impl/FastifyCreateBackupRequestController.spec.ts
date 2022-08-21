@@ -21,7 +21,7 @@ describe('FastifyCreateBackupRequestController', () => {
 		prismaCtx = mockPrismaCtx as unknown as PrismaContext;
 	});
 
-	const testUrl = '/backup-requests';
+	const testUrl = '/api/backup-requests';
 
 	const basePayload = {
 		apiVersion: '2022-05-22',
@@ -56,11 +56,7 @@ describe('FastifyCreateBackupRequestController', () => {
 		// simulate a database error
 		const prismaCode = 'P1012';
 		mockPrismaCtx.prisma.backupRequest.upsert.mockRejectedValue(
-			new PrismaClientKnownRequestError(
-				'Key is already defined',
-				prismaCode,
-				'2'
-			)
+			new PrismaClientKnownRequestError('Key is already defined', prismaCode, '2')
 		);
 		const app = buildApp(prismaCtx);
 
@@ -129,11 +125,7 @@ describe('FastifyCreateBackupRequestController', () => {
 		expect(payload.backupJobId).toBe(basePayload.backupJobId);
 		expect(payload.preparedDataPathName).toBe(basePayload.backupDataLocation);
 		expect(payload.dataDate).toBe(basePayload.dataDate);
-		expect(receivedTimestamp.valueOf()).toBeGreaterThanOrEqual(
-			startTime.valueOf()
-		);
-		expect(receivedTimestamp.valueOf()).toBeLessThanOrEqual(
-			endTime.valueOf()
-		);
+		expect(receivedTimestamp.valueOf()).toBeGreaterThanOrEqual(startTime.valueOf());
+		expect(receivedTimestamp.valueOf()).toBeLessThanOrEqual(endTime.valueOf());
 	});
 });
