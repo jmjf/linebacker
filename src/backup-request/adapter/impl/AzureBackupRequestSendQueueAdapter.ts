@@ -40,7 +40,7 @@ export class AzureBackupRequestSendQueueAdapter {
 			sendEnd,
 			insertedOn: sendResult.value.insertedOn,
 			messageId: sendResult.value.messageId,
-			sendRequestId: sendResult.value.sendRequestId,
+			sendRequestId: sendResult.value.requestId,
 		};
 		return ok(response);
 	}

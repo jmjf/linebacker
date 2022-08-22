@@ -1,6 +1,7 @@
 import { DefaultAzureCredential } from '@azure/identity';
 import {
 	QueueClient,
+	QueueDeleteMessageResponse,
 	QueueReceiveMessageResponse,
 	QueueSendMessageResponse,
 	RestError,
@@ -17,26 +18,27 @@ export type CredentialType = 'ADCC' | 'SASK';
 export interface AqSendMessageResponse extends QueueSendMessageResponse {
 	isSent: boolean;
 	responseStatus: number;
-	sendRequestId: string;
 }
 
-export interface AqReceiveResponse extends QueueReceiveMessageResponse {
+export interface AQReceiveResponse extends QueueReceiveMessageResponse {
 	responseStatus: number;
-	receiveRequestId: string;
 }
 
-export interface AqMethodParams {
+export interface AQDeleteResponse extends QueueDeleteMessageResponse {
+	responseStatus: number;
+}
+
+export interface AQMethodParams {
 	queueName: string;
 	messageText?: string;
 	useBase64?: boolean;
 	messageCount?: number;
+	messageId?: string;
+	popReceipt?: string;
 }
 
-interface AqInit {
+interface AqInit extends AQMethodParams {
 	queueClient: QueueClient;
-	messageText: string;
-	messageCount: number;
-	useBase64: boolean;
 }
 
 export class AzureQueue {
@@ -129,29 +131,38 @@ export class AzureQueue {
 	}
 
 	private static initMethod(
-		params: AqMethodParams
+		params: AQMethodParams
 	): Result<AqInit, InfrastructureErrors.InputError | InfrastructureErrors.EnvironmentError> {
 		const queueName = params.queueName;
-		const useBase64 = typeof params.useBase64 === 'boolean' ? params.useBase64 : false;
-		const messageText = !useBase64 ? params.messageText || '' : toBase64(params.messageText || '');
-		const messageCount = typeof params.messageCount === 'number' ? Math.min(params.messageCount, 1) : 1;
-
 		if (!this.isValidString(queueName))
 			return err(
 				new InfrastructureErrors.InputError(
 					`{message: 'Invalid input value', name: 'queueName', value: '${queueName}'}`
 				)
 			);
+		const useBase64 = typeof params.useBase64 === 'boolean' ? params.useBase64 : false;
+		const messageText = !useBase64 ? params.messageText || '' : toBase64(params.messageText || '');
+		const messageCount = typeof params.messageCount === 'number' ? Math.min(params.messageCount, 1) : 1;
+		const messageId = params.messageId || '';
+		const popReceipt = params.popReceipt || '';
 
 		const queueClientResult = this.getQueueClient(queueName);
 		if (queueClientResult.isErr()) {
 			return err(queueClientResult.error);
 		}
-		return ok({ queueClient: queueClientResult.value, messageText, messageCount, useBase64 });
+		return ok({
+			queueClient: queueClientResult.value,
+			queueName,
+			messageText,
+			messageCount,
+			useBase64,
+			messageId,
+			popReceipt,
+		});
 	}
 
 	public static async sendMessage(
-		params: AqMethodParams
+		params: AQMethodParams
 	): Promise<
 		Result<
 			AqSendMessageResponse,
@@ -172,12 +183,11 @@ export class AzureQueue {
 			);
 
 		try {
-			const sendRes = await queueClient.sendMessage(messageText);
+			const sendRes = await queueClient.sendMessage(<string>messageText);
 			return ok({
 				...sendRes,
 				responseStatus: sendRes._response.status,
 				isSent: sendRes._response.status < 300,
-				sendRequestId: sendRes._response.request.requestId,
 			});
 		} catch (er) {
 			const error = er as RestError;
@@ -190,10 +200,10 @@ export class AzureQueue {
 	}
 
 	public static async receiveMessages(
-		params: AqMethodParams
+		params: AQMethodParams
 	): Promise<
 		Result<
-			AqReceiveResponse,
+			AQReceiveResponse,
 			InfrastructureErrors.InputError | InfrastructureErrors.EnvironmentError | InfrastructureErrors.SDKError
 		>
 	> {
@@ -216,7 +226,36 @@ export class AzureQueue {
 				...receiveRes,
 				receivedMessageItems: messageItems,
 				responseStatus: receiveRes._response.status,
-				receiveRequestId: receiveRes.requestId || '',
+			});
+		} catch (er) {
+			const error = er as RestError;
+			return err(
+				new InfrastructureErrors.SDKError(
+					`{ message: '${error.message}', name: '${error.name}', code: '${error.code}, statusCode: ${error.statusCode}, httpRequestId: ${error.request?.requestId}'}`
+				)
+			);
+		}
+	}
+
+	public static async deleteMessage(
+		params: AQMethodParams
+	): Promise<
+		Result<
+			AQDeleteResponse,
+			InfrastructureErrors.InputError | InfrastructureErrors.EnvironmentError | InfrastructureErrors.SDKError
+		>
+	> {
+		const initResult = this.initMethod(params);
+		if (initResult.isErr()) {
+			return err(initResult.error);
+		}
+		const { queueClient, messageId, popReceipt } = initResult.value;
+
+		try {
+			const deleteRes = await queueClient.deleteMessage(<string>messageId, <string>popReceipt);
+			return ok({
+				...deleteRes,
+				responseStatus: deleteRes._response.status,
 			});
 		} catch (er) {
 			const error = er as RestError;

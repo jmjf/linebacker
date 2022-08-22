@@ -13,6 +13,9 @@ describe('AzureQueue', () => {
 	// for ADCC tests, AZURE_QUEUE_ACCOUNT_URI must be a valid queue account URI
 	const queueAccountUri = `https://test123.queue.core.windows.net`;
 
+	const now = new Date();
+	const oneWeekMs = 7 * 24 * 60 * 1000;
+
 	beforeEach(() => {
 		jest.resetAllMocks();
 	});
@@ -111,13 +114,11 @@ describe('AzureQueue', () => {
 	});
 
 	describe('sendMessage', () => {
-		const now = new Date();
-
 		const mockSendOk = {
-			expiresOn: new Date(now.setDate(now.getDate() + 7)),
-			insertedOn: now,
+			expiresOn: new Date(now.valueOf() + oneWeekMs),
+			insertedOn: new Date(now.valueOf() - oneWeekMs),
 			messageId: 'mock message id',
-			nextVisibleOn: now,
+			nextVisibleOn: new Date(now.valueOf() + 30 * 1000),
 			popReceipt: 'mock pop receipt',
 			requestId: 'mock queue request id',
 			clientRequestId: 'mock client request id',
@@ -242,7 +243,6 @@ describe('AzureQueue', () => {
 				// values we add
 				expect(result.value.isSent).toBe(false);
 				expect(result.value.responseStatus).toBe(mockSendError._response.status);
-				expect(result.value.sendRequestId).toBe(mockSendError._response.request.requestId);
 			}
 		});
 
@@ -280,7 +280,6 @@ describe('AzureQueue', () => {
 				// values we add
 				expect(result.value.isSent).toBe(true);
 				expect(result.value.responseStatus).toBe(mockSendOk._response.status);
-				expect(result.value.sendRequestId).toBe(mockSendOk._response.request.requestId);
 				// message is not Base64 encoded
 				expect(result.value._response.parsedBody[0]).toBe(messageText);
 			}
@@ -320,17 +319,13 @@ describe('AzureQueue', () => {
 				// values we add
 				expect(result.value.isSent).toBe(true);
 				expect(result.value.responseStatus).toBe(mockSendOk._response.status);
-				expect(result.value.sendRequestId).toBe(mockSendOk._response.request.requestId);
 				// message Base64 encoded
 				expect(result.value._response.parsedBody[0]).toBe(toBase64(messageText));
 			}
 		});
 	});
 
-	describe('receiveMessage', () => {
-		const now = new Date();
-		const oneWeekMs = 7 * 24 * 60 * 1000;
-
+	describe('receiveMessages', () => {
 		const mockReceiveOk = {
 			receivedMessageItems: [] as mockQueueSDK.ReceivedMessageItem[],
 			requestId: 'request-id',
@@ -426,7 +421,7 @@ describe('AzureQueue', () => {
 			expect(result.isOk()).toBe(true);
 			if (result.isOk()) {
 				expect(result.value.responseStatus).toBe(mockReceiveOk._response.status);
-				expect(result.value.receiveRequestId).toBe(mockReceiveOk.requestId);
+				expect(result.value.requestId).toBe(mockReceiveOk.requestId);
 
 				expect(result.value.receivedMessageItems.length).toBe(1);
 				expect(result.value.receivedMessageItems[0].messageId).toBe(messageItem.messageId);
@@ -460,7 +455,7 @@ describe('AzureQueue', () => {
 			expect(result.isOk()).toBe(true);
 			if (result.isOk()) {
 				expect(result.value.responseStatus).toBe(mockReceiveOk._response.status);
-				expect(result.value.receiveRequestId).toBe(mockReceiveOk.requestId);
+				expect(result.value.requestId).toBe(mockReceiveOk.requestId);
 
 				expect(result.value.receivedMessageItems.length).toBe(1);
 				expect(result.value.receivedMessageItems[0].messageId).toBe(messageItem.messageId);
@@ -494,9 +489,95 @@ describe('AzureQueue', () => {
 			expect(result.isOk()).toBe(true);
 			if (result.isOk()) {
 				expect(result.value.responseStatus).toBe(mockReceiveOk._response.status);
-				expect(result.value.receiveRequestId).toBe(mockReceiveOk.requestId);
+				expect(result.value.requestId).toBe(mockReceiveOk.requestId);
 
 				expect(result.value.receivedMessageItems.length).toBe(0);
+			}
+		});
+	});
+
+	describe('deleteMessage', () => {
+		const mockDeleteOk = {
+			requestId: 'request-id',
+			version: '2022-08-15',
+			date: now,
+			_response: {
+				status: 200,
+			},
+		};
+
+		const messageId = 'mock-messageid';
+		const popReceipt = 'pop-receipt';
+
+		test('when queueClient throws, it returns an err (SDKError)', async () => {
+			// Arrange
+			process.env.AUTH_METHOD = 'ADCC';
+			process.env.AZURE_TENANT_ID = 'tenant';
+			process.env.AZURE_CLIENT_ID = 'client';
+			process.env.AZURE_CLIENT_SECRET_ID = 'secret';
+			process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri;
+			const queueName = 'queueName';
+
+			mockQueueSDK.QueueClient.prototype.deleteMessage = jest.fn().mockImplementationOnce(() => {
+				throw new Error('simulated thrown error');
+			});
+
+			// Act
+			const result = await AzureQueue.deleteMessage({ queueName, messageId, popReceipt });
+
+			jest.resetAllMocks();
+			// // Assert
+			expect(result.isErr()).toBe(true);
+			if (result.isErr()) {
+				expect(result.error.name).toBe('SDKError');
+				expect(result.error.message).toContain('simulated thrown error');
+			}
+		});
+
+		test('when queueClient Promise.rejects, it returns an err (SDKError)', async () => {
+			// Arrange
+			process.env.AUTH_METHOD = 'ADCC';
+			process.env.AZURE_TENANT_ID = 'tenant';
+			process.env.AZURE_CLIENT_ID = 'client';
+			process.env.AZURE_CLIENT_SECRET_ID = 'secret';
+			process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri;
+			const queueName = 'queueName';
+
+			mockQueueSDK.QueueClient.prototype.deleteMessage = jest
+				.fn()
+				.mockRejectedValueOnce(new Error('simulated SDK Promise.reject()'));
+
+			// Act
+			const result = await AzureQueue.deleteMessage({ queueName, messageId, popReceipt });
+
+			jest.resetAllMocks();
+			// // Assert
+			expect(result.isErr()).toBe(true);
+			if (result.isErr()) {
+				expect(result.error.name).toBe('SDKError');
+				expect(result.error.message).toContain('simulated SDK Promise.reject()');
+			}
+		});
+
+		test('when queueClient Promise.resolves with status < 300, it returns an ok', async () => {
+			// Arrange
+			process.env.AUTH_METHOD = 'ADCC';
+			process.env.AZURE_TENANT_ID = 'tenant';
+			process.env.AZURE_CLIENT_ID = 'client';
+			process.env.AZURE_CLIENT_SECRET_ID = 'secret';
+			process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri; // not checked for SASK because SASK is local only
+			const queueName = 'queueName';
+
+			mockQueueSDK.QueueClient.prototype.deleteMessage = jest.fn().mockResolvedValue(mockDeleteOk);
+
+			// Act
+			const result = await AzureQueue.deleteMessage({ queueName, messageId, popReceipt });
+
+			// Assert
+			expect(result.isOk()).toBe(true);
+			if (result.isOk()) {
+				expect(result.value.responseStatus).toBe(mockDeleteOk._response.status);
+				expect(result.value.requestId).toBe(mockDeleteOk.requestId);
 			}
 		});
 	});
