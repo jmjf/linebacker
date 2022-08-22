@@ -4,7 +4,6 @@ import dotenv from 'dotenv';
 dotenv.config({ path: './env/dev.env' });
 
 async function main() {
-	console.log(process.env);
 	const accountName = (process.env.SASK_ACCOUNT_NAME || '').trim();
 	const accountKey = (process.env.SASK_ACCOUNT_KEY || '').trim();
 
@@ -18,8 +17,13 @@ async function main() {
 
 	let res: QueueReceiveMessageResponse;
 	do {
-		res = await queueClient.receiveMessages();
-		console.log(res.receivedMessageItems);
+		try {
+			res = await queueClient.receiveMessages();
+			console.log(res.receivedMessageItems);
+		} catch (e) {
+			console.log(e);
+			return;
+		}
 	} while (res.receivedMessageItems.length >= 1);
 }
 

@@ -1,6 +1,12 @@
 import { DefaultAzureCredential } from '@azure/identity';
-import { QueueClient, QueueSendMessageResponse, RestError, StorageSharedKeyCredential } from '@azure/storage-queue';
-import { toBase64 } from '../../utils/utils';
+import {
+	QueueClient,
+	QueueReceiveMessageResponse,
+	QueueSendMessageResponse,
+	RestError,
+	StorageSharedKeyCredential,
+} from '@azure/storage-queue';
+import { fromBase64, toBase64 } from '../../utils/utils';
 import { err, ok, Result } from '../core/Result';
 import * as InfrastructureErrors from './InfrastructureErrors';
 
@@ -14,10 +20,23 @@ export interface AqSendMessageResponse extends QueueSendMessageResponse {
 	sendRequestId: string;
 }
 
-export interface AqSendMessageParams {
+export interface AqReceiveResponse extends QueueReceiveMessageResponse {
+	responseStatus: number;
+	receiveRequestId: string;
+}
+
+export interface AqMethodParams {
 	queueName: string;
-	messageText: string;
+	messageText?: string;
 	useBase64?: boolean;
+	messageCount?: number;
+}
+
+interface AqInit {
+	queueClient: QueueClient;
+	messageText: string;
+	messageCount: number;
+	useBase64: boolean;
 }
 
 export class AzureQueue {
@@ -109,17 +128,13 @@ export class AzureQueue {
 		}
 	}
 
-	public static async sendMessage(
-		params: AqSendMessageParams
-	): Promise<
-		Result<
-			AqSendMessageResponse,
-			InfrastructureErrors.InputError | InfrastructureErrors.EnvironmentError | InfrastructureErrors.SDKError
-		>
-	> {
+	private static initMethod(
+		params: AqMethodParams
+	): Result<AqInit, InfrastructureErrors.InputError | InfrastructureErrors.EnvironmentError> {
 		const queueName = params.queueName;
 		const useBase64 = typeof params.useBase64 === 'boolean' ? params.useBase64 : false;
-		const messageText = !useBase64 ? params.messageText : toBase64(params.messageText);
+		const messageText = !useBase64 ? params.messageText || '' : toBase64(params.messageText || '');
+		const messageCount = typeof params.messageCount === 'number' ? Math.min(params.messageCount, 1) : 1;
 
 		if (!this.isValidString(queueName))
 			return err(
@@ -128,18 +143,33 @@ export class AzureQueue {
 				)
 			);
 
+		const queueClientResult = this.getQueueClient(queueName);
+		if (queueClientResult.isErr()) {
+			return err(queueClientResult.error);
+		}
+		return ok({ queueClient: queueClientResult.value, messageText, messageCount, useBase64 });
+	}
+
+	public static async sendMessage(
+		params: AqMethodParams
+	): Promise<
+		Result<
+			AqSendMessageResponse,
+			InfrastructureErrors.InputError | InfrastructureErrors.EnvironmentError | InfrastructureErrors.SDKError
+		>
+	> {
+		const initResult = this.initMethod(params);
+		if (initResult.isErr()) {
+			return err(initResult.error);
+		}
+		const { queueClient, messageText } = initResult.value;
+
 		if (!this.isValidString(messageText))
 			return err(
 				new InfrastructureErrors.InputError(
 					`{message: 'Invalid input value', name: 'messageText', value: '${messageText}'}`
 				)
 			);
-
-		const queueClientResult = this.getQueueClient(queueName);
-		if (queueClientResult.isErr()) {
-			return err(queueClientResult.error);
-		}
-		const queueClient = queueClientResult.value;
 
 		try {
 			const sendRes = await queueClient.sendMessage(messageText);
@@ -153,7 +183,46 @@ export class AzureQueue {
 			const error = er as RestError;
 			return err(
 				new InfrastructureErrors.SDKError(
-					`{ message: '${error.message}', name: '${error.name}', code: '${error.code}'}`
+					`{ message: '${error.message}', name: '${error.name}', code: '${error.code}, statusCode: ${error.statusCode}, httpRequestId: ${error.request?.requestId}'}`
+				)
+			);
+		}
+	}
+
+	public static async receiveMessages(
+		params: AqMethodParams
+	): Promise<
+		Result<
+			AqReceiveResponse,
+			InfrastructureErrors.InputError | InfrastructureErrors.EnvironmentError | InfrastructureErrors.SDKError
+		>
+	> {
+		const initResult = this.initMethod(params);
+		if (initResult.isErr()) {
+			return err(initResult.error);
+		}
+		const { queueClient, messageCount, useBase64 } = initResult.value;
+
+		try {
+			const receiveRes = await queueClient.receiveMessages({
+				numberOfMessages: messageCount,
+				timeout: 15 * 1000,
+				visibilityTimeout: 60,
+			});
+			const messageItems = receiveRes.receivedMessageItems.map((item) => {
+				return { ...item, messageText: useBase64 ? fromBase64(item.messageText) : item.messageText };
+			});
+			return ok({
+				...receiveRes,
+				receivedMessageItems: messageItems,
+				responseStatus: receiveRes._response.status,
+				receiveRequestId: receiveRes.requestId || '',
+			});
+		} catch (er) {
+			const error = er as RestError;
+			return err(
+				new InfrastructureErrors.SDKError(
+					`{ message: '${error.message}', name: '${error.name}', code: '${error.code}, statusCode: ${error.statusCode}, httpRequestId: ${error.request?.requestId}'}`
 				)
 			);
 		}
