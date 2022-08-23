@@ -4,7 +4,7 @@ import * as ApplicationErrors from '../../../common/application/ApplicationError
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 
 import { IBackupJobServiceAdapter } from '../../../backup-job/adapter/BackupJobServiceAdapter';
-import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
+import { IBackupRequestRepo } from '../../adapter/IBackupRequestRepo';
 import { BackupRequest } from '../../domain/BackupRequest';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { CheckRequestAllowedDTO } from './CheckRequestAllowedDTO';
@@ -17,16 +17,11 @@ type Response = Result<
 	| Error
 >;
 
-export class CheckRequestAllowedUseCase
-	implements UseCase<CheckRequestAllowedDTO, Promise<Response>>
-{
+export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDTO, Promise<Response>> {
 	private backupRequestRepo: IBackupRequestRepo;
 	private backupJobServiceAdapter: IBackupJobServiceAdapter;
 
-	constructor(injected: {
-		backupRequestRepo: IBackupRequestRepo;
-		backupJobServiceAdapter: IBackupJobServiceAdapter;
-	}) {
+	constructor(injected: { backupRequestRepo: IBackupRequestRepo; backupJobServiceAdapter: IBackupJobServiceAdapter }) {
 		this.backupRequestRepo = injected.backupRequestRepo;
 		this.backupJobServiceAdapter = injected.backupJobServiceAdapter;
 	}
@@ -35,24 +30,14 @@ export class CheckRequestAllowedUseCase
 		// Get request from repository (returns a BackupRequest)
 		const { backupRequestId } = request;
 
-		const backupRequestResult = await this.backupRequestRepo.getById(
-			backupRequestId
-		);
+		const backupRequestResult = await this.backupRequestRepo.getById(backupRequestId);
 		if (backupRequestResult.isErr()) {
 			return backupRequestResult;
 		}
 		const backupRequest = backupRequestResult.value;
 
 		// Already past this state
-		if (
-			backupRequest.isChecked() ||
-			backupRequest.isSentToInterface() ||
-			backupRequest.isReplied()
-		) {
-			return ok(backupRequest);
-		}
-
-		if (backupRequest.statusTypeCode !== RequestStatusTypeValues.Received) {
+		if (!backupRequest.isReceived()) {
 			return err(
 				new ApplicationErrors.BackupRequestStatusError(
 					`{ message: 'Must be in Received status', backupRequestId: '${backupRequestId}', statusTypeCode: '${backupRequest.statusTypeCode}'`

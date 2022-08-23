@@ -11,7 +11,7 @@ import { BackupProviderType } from '../../../backup-job/domain/BackupProviderTyp
 
 import { BackupRequest } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
-import { IBackupRequestRepo } from '../BackupRequestRepo';
+import { IBackupRequestRepo } from '../IBackupRequestRepo';
 
 export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 	private prisma;
@@ -20,9 +20,7 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 		this.prisma = ctx.prisma;
 	}
 
-	public async exists(
-		backupRequestId: string
-	): Promise<Result<boolean, AdapterErrors.DatabaseError>> {
+	public async exists(backupRequestId: string): Promise<Result<boolean, AdapterErrors.DatabaseError>> {
 		// count the number of rows that meet the condition
 		try {
 			const count = await this.prisma.backupRequest.count({
@@ -40,12 +38,7 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 	public async getById(
 		backupRequestId: string
 	): Promise<
-		Result<
-			BackupRequest,
-			| AdapterErrors.DatabaseError
-			| AdapterErrors.NotFoundError
-			| DomainErrors.PropsError
-		>
+		Result<BackupRequest, AdapterErrors.DatabaseError | AdapterErrors.NotFoundError | DomainErrors.PropsError>
 	> {
 		try {
 			const data = await this.prisma.backupRequest.findUnique({
@@ -55,11 +48,7 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 			});
 
 			if (data === null) {
-				return err(
-					new AdapterErrors.NotFoundError(
-						`Backup request not found |${backupRequestId}|`
-					)
-				);
+				return err(new AdapterErrors.NotFoundError(`Backup request not found |${backupRequestId}|`));
 			}
 
 			return this.mapToDomain(data);
@@ -68,9 +57,7 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 		}
 	}
 
-	public async save(
-		backupRequest: BackupRequest
-	): Promise<Result<BackupRequest, AdapterErrors.DatabaseError>> {
+	public async save(backupRequest: BackupRequest): Promise<Result<BackupRequest, AdapterErrors.DatabaseError>> {
 		const raw = this.mapToDb(backupRequest);
 
 		try {
@@ -99,9 +86,7 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 	}
 
 	// this may belong in a mapper
-	private mapToDomain(
-		raw: any
-	): Result<BackupRequest, DomainErrors.PropsError> {
+	private mapToDomain(raw: any): Result<BackupRequest, DomainErrors.PropsError> {
 		const backupRequestId = new UniqueIdentifier(raw.backupRequestId);
 		const backupRequestResult = BackupRequest.create(
 			{

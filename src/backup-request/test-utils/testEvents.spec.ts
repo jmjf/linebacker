@@ -1,10 +1,13 @@
+// mock the Azure SDK
+jest.mock('@azure/storage-queue');
+import * as mockQueueSDK from '@azure/storage-queue';
+
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
 
 import { RequestTransportTypeValues } from '../domain/RequestTransportType';
 import { RequestStatusTypeValues } from '../domain/RequestStatusType';
 
 import { BackupJob, IBackupJobProps } from '../../backup-job/domain/BackupJob';
-//import { backupJobServiceAdapterFactory } from '../../backup-job/test-utils/backupJobServiceAdapterFactory.ts.zzz';
 import { MockBackupJobServiceAdapter } from '../../backup-job/adapter/impl/MockBackupJobServiceAdapter';
 
 import { SendRequestToInterfaceUseCase } from '../use-cases/send-request-to-interface/SendRequestToInterfaceUseCase';
@@ -12,12 +15,9 @@ import { BackupRequestAllowedSubscriber } from '../use-cases/send-request-to-int
 
 import { BackupRequestCreatedSubscriber } from '../use-cases/check-request-allowed/BackupRequestCreatedSubscriber';
 import { CheckRequestAllowedUseCase } from '../use-cases/check-request-allowed/CheckRequestAllowedUseCase';
-
 import { CreateBackupRequestUseCase } from '../use-cases/create-backup-request/CreateBackupRequestUseCase';
 
-import { MockBackupRequestSendQueueAdapter } from '../adapter/impl/MockBackupRequestSendQueueAdapter';
-
-//import { backupInterfaceAdapterFactory } from './backupInterfaceAdapterFactory';
+import { AzureBackupInterfaceStoreAdapter } from '../adapter/impl/AzureBackupInterfaceStoreAdapter';
 
 import {
 	MockPrismaContext,
@@ -27,7 +27,7 @@ import {
 import { BackupRequest } from '@prisma/client';
 import { PrismaBackupRequestRepo } from '../adapter/impl/PrismaBackupRequestRepo';
 
-const TEST_EVENTS = false;
+const TEST_EVENTS = true;
 
 if (TEST_EVENTS) {
 	describe('Events: create -> check allowed -> send to interface', () => {
@@ -40,8 +40,8 @@ if (TEST_EVENTS) {
 		});
 
 		const dbBackupRequest: BackupRequest = {
-			backupRequestId: 'dbBackupRequestId',
-			backupJobId: 'dbBackupJobId',
+			backupRequestId: 'event-test-backup-request-id',
+			backupJobId: 'event-test-backup-job-id',
 			dataDate: new Date(),
 			preparedDataPathName: 'db/prepared/data/path/name',
 			getOnStartFlag: true,
@@ -65,6 +65,26 @@ if (TEST_EVENTS) {
 			holdFlag: false,
 		} as IBackupJobProps;
 
+		const interfaceSendOk = {
+			expiresOn: new Date(new Date().setDate(new Date().getDate() + 7)),
+			insertedOn: new Date(),
+			messageId: 'mock message id',
+			nextVisibleOn: new Date(),
+			popReceipt: 'mock pop receipt',
+			requestId: 'mock queue request id',
+			clientRequestId: 'mock client request id',
+			date: new Date(),
+			version: '2009-09-19',
+			errorCode: '',
+			_response: {
+				status: 201,
+				request: {
+					requestId: 'mock Azure request id',
+				},
+				bodyAsText: '',
+			},
+		};
+
 		const resultBackupJob = BackupJob.create(backupJobProps, new UniqueIdentifier());
 		if (resultBackupJob.isErr()) {
 			console.log('create BackupJob failed', JSON.stringify(resultBackupJob.error, null, 4));
@@ -83,13 +103,21 @@ if (TEST_EVENTS) {
 
 		test('when a backup request is created, events run', async () => {
 			// Arrange
+			jest.resetAllMocks();
+
+			// environment setup for queue adapter
+			process.env.AUTH_METHOD = 'SASK';
+			process.env.SASK_ACCOUNT_NAME = 'accountName';
+			process.env.SASK_ACCOUNT_KEY = 'accountKey';
+			process.env.AZURE_QUEUE_ACCOUNT_URI = 'uri';
 
 			// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest); // default after responses below
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValueOnce(dbBackupRequest); // first response -- for check allowed
+			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue({ ...dbBackupRequest }); // default after responses below
+			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValueOnce({ ...dbBackupRequest }); // first response -- for check allowed
 			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValueOnce({
 				...dbBackupRequest,
 				statusTypeCode: RequestStatusTypeValues.Allowed,
+				checkedTimestamp: new Date(),
 			}); // second reponse -- for send to interface
 
 			// save() just needs to succeed; result value doesn't affect outcome
@@ -104,10 +132,16 @@ if (TEST_EVENTS) {
 					backupJobServiceAdapter: backupJobServiceAdapter,
 				})
 			);
+
+			// can mockResolvedValue here because we don't reuse the data structure, so no problem if it gets changed
+			mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockResolvedValue(interfaceSendOk);
+			const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+			const sendSpy = jest.spyOn(qAdapter, 'send');
+
 			new BackupRequestAllowedSubscriber(
 				new SendRequestToInterfaceUseCase({
 					backupRequestRepo: repo,
-					sendQueueAdapter: new MockBackupRequestSendQueueAdapter({ sendMessageResult: true }),
+					interfaceStoreAdapter: qAdapter,
 				})
 			);
 
@@ -124,28 +158,12 @@ if (TEST_EVENTS) {
 			// Act
 			const result = await useCase.execute(dto);
 			// give events time to run before continuing
-			await (() => new Promise((resolve) => setTimeout(resolve, 1000)))();
+			await (() => new Promise((resolve) => setTimeout(resolve, 1 * 1000)))();
 
 			// Assert
 			expect(result.isOk()).toBe(true);
-			expect(saveSpy).toBeCalled();
-
-			console.log(
-				' *'.repeat(35),
-				'\n',
-				' *'.repeat(35),
-				'\n',
-				' *'.repeat(35),
-				'\n',
-				'***** Check output from event runs to ensure all events ran *****',
-				'\n',
-				' *'.repeat(35),
-				'\n',
-				' *'.repeat(35),
-				'\n',
-				' *'.repeat(35),
-				'\n'
-			);
+			expect(saveSpy).toHaveBeenCalledTimes(3); // create, check, send
+			expect(sendSpy).toHaveBeenCalledTimes(1);
 		});
 	});
 } else {

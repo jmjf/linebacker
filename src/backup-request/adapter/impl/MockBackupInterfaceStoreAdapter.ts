@@ -6,14 +6,14 @@ import { BackupRequest } from '../../domain/BackupRequest';
 
 //import { delay } from '../../../utils/utils';
 
-import { IBackupRequestSendQueueAdapter, SendMessageResponse } from '../IBackupRequestSendQueueAdapter';
+import { IBackupInterfaceStoreAdapter, SendMessageResponse } from '../IBackupInterfaceStoreAdapter';
 
 export interface IMockBRSQAdapterOptions {
 	sendMessageResult?: boolean;
 	sendMessageError?: AdapterErrors.SendQueueAdapterError;
 }
 
-export class MockBackupRequestSendQueueAdapter implements IBackupRequestSendQueueAdapter {
+export class MockBackupInterfaceStoreAdapter implements IBackupInterfaceStoreAdapter {
 	sendMessageResult: boolean | undefined;
 	sendMessageError: AdapterErrors.SendQueueAdapterError | undefined;
 

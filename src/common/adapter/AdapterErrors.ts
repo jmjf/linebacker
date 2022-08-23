@@ -45,9 +45,9 @@ export class BadDataError extends BaseError {
 	}
 }
 
-export class SendQueueAdapterError extends BaseError {
+export class StoreAdapterError extends BaseError {
 	constructor(message: string) {
 		super(message);
-		this.name = 'SendQueueAdapterError';
+		this.name = 'StoreAdapterError';
 	}
 }

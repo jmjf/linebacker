@@ -9,7 +9,7 @@ import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 import * as DomainErrors from '../../../common/domain/DomainErrors';
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 
-import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
+import { IBackupRequestRepo } from '../../adapter/IBackupRequestRepo';
 import { BackupRequest } from '../../domain/BackupRequest';
 import { BackupResultTypeValues, validBackupResultTypes } from '../../domain/BackupResultType';
 import { CreateBackupReplyDTO } from './CreateBackupReplyDTO';

@@ -2,8 +2,8 @@ import { UseCase } from '../../../common/application/UseCase';
 import { Result, ok, err } from '../../../common/core/Result';
 import * as ApplicationErrors from '../../../common/application/ApplicationErrors';
 
-import { IBackupRequestSendQueueAdapter } from '../../adapter/IBackupRequestSendQueueAdapter';
-import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
+import { IBackupInterfaceStoreAdapter } from '../../adapter/IBackupInterfaceStoreAdapter';
+import { IBackupRequestRepo } from '../../adapter/IBackupRequestRepo';
 import { BackupRequest } from '../../domain/BackupRequest';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { SendRequestToInterfaceDTO } from './SendRequestToInterfaceDTO';
@@ -19,11 +19,11 @@ type Response = Result<
 
 export class SendRequestToInterfaceUseCase implements UseCase<SendRequestToInterfaceDTO, Promise<Response>> {
 	private backupRequestRepo: IBackupRequestRepo;
-	private sendQueueAdapter: IBackupRequestSendQueueAdapter;
+	private interfaceStoreAdapter: IBackupInterfaceStoreAdapter;
 
-	constructor(deps: { backupRequestRepo: IBackupRequestRepo; sendQueueAdapter: IBackupRequestSendQueueAdapter }) {
+	constructor(deps: { backupRequestRepo: IBackupRequestRepo; interfaceStoreAdapter: IBackupInterfaceStoreAdapter }) {
 		this.backupRequestRepo = deps.backupRequestRepo;
-		this.sendQueueAdapter = deps.sendQueueAdapter;
+		this.interfaceStoreAdapter = deps.interfaceStoreAdapter;
 	}
 
 	public async execute(request: SendRequestToInterfaceDTO): Promise<Response> {
@@ -36,12 +36,7 @@ export class SendRequestToInterfaceUseCase implements UseCase<SendRequestToInter
 		}
 		const backupRequest = backupRequestResult.value;
 
-		if (backupRequest.isSentToInterface() || backupRequest.isReplied()) {
-			// NEED TO LOG
-			return ok(backupRequest);
-		}
-
-		if (backupRequest.statusTypeCode !== RequestStatusTypeValues.Allowed) {
+		if (!backupRequest.isAllowed()) {
 			return err(
 				new ApplicationErrors.BackupRequestStatusError(
 					`{ message: 'Must be in Allowed status', requestId: '${backupRequestId}', statusTypeCode: '${backupRequest.statusTypeCode}'`
@@ -50,12 +45,12 @@ export class SendRequestToInterfaceUseCase implements UseCase<SendRequestToInter
 		}
 
 		// Send request to backup store interface -- need to handle this better
-		const sendResult = await this.sendQueueAdapter.sendMessage(backupRequest);
+		const sendResult = await this.interfaceStoreAdapter.send(backupRequest);
 		if (sendResult.isErr()) {
 			// LOG
 			return err(
 				new SendRequestToInterfaceErrors.SendToInterfaceError(
-					`{ message: 'Send to backup interface ${this.sendQueueAdapter.constructor.name} failed', requestId: '${backupRequestId}', error: '${sendResult.error.message}'`
+					`{ message: 'Send to backup interface ${this.interfaceStoreAdapter.constructor.name} failed', requestId: '${backupRequestId}', error: '${sendResult.error.message}'`
 				)
 			);
 		}
@@ -64,7 +59,7 @@ export class SendRequestToInterfaceUseCase implements UseCase<SendRequestToInter
 			return err(
 				new SendRequestToInterfaceErrors.SendToInterfaceError(
 					`{ message: 'Send to backup interface ${
-						this.sendQueueAdapter.constructor.name
+						this.interfaceStoreAdapter.constructor.name
 					} failed', backupRequestId: '${backupRequestId}', response: ${JSON.stringify(sendResult.value)}`
 				)
 			);

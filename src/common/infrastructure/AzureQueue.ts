@@ -15,7 +15,7 @@ export type CredentialType = 'ADCC' | 'SASK';
 // ADCC -> AD Client Credentials
 // SASK -> Storage Account Shared Key
 
-export interface AqSendMessageResponse extends QueueSendMessageResponse {
+export interface AQSendResponse extends QueueSendMessageResponse {
 	isSent: boolean;
 	responseStatus: number;
 }
@@ -165,7 +165,7 @@ export class AzureQueue {
 		params: AQMethodParams
 	): Promise<
 		Result<
-			AqSendMessageResponse,
+			AQSendResponse,
 			InfrastructureErrors.InputError | InfrastructureErrors.EnvironmentError | InfrastructureErrors.SDKError
 		>
 	> {

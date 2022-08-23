@@ -5,7 +5,7 @@ import * as mockQueueSDK from '@azure/storage-queue';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 
-import { AzureBackupRequestSendQueueAdapter } from '../../adapter/impl/AzureBackupRequestSendQueueAdapter';
+import { AzureBackupInterfaceStoreAdapter } from '../../adapter/impl/AzureBackupInterfaceStoreAdapter';
 
 import { SendRequestToInterfaceUseCase } from './SendRequestToInterfaceUseCase';
 import { SendRequestToInterfaceDTO } from './SendRequestToInterfaceDTO';
@@ -23,12 +23,9 @@ describe('Send Request To Interface Use Case', () => {
 	let prismaCtx: PrismaContext;
 
 	beforeEach(() => {
+		jest.resetAllMocks();
 		mockPrismaCtx = createMockPrismaContext();
 		prismaCtx = mockPrismaCtx as unknown as PrismaContext;
-	});
-
-	afterEach(() => {
-		jest.resetAllMocks();
 	});
 
 	const baseDto = {
@@ -97,46 +94,45 @@ describe('Send Request To Interface Use Case', () => {
 		{ status: RequestStatusTypeValues.Sent, timestampName: 'sentToInterfaceTimestamp' },
 		{ status: RequestStatusTypeValues.Failed, timestampName: 'replyTimestamp' },
 		{ status: RequestStatusTypeValues.Succeeded, timestampName: 'replyTimestamp' },
-	])(
-		'when request is $status, it returns a BackupRequest in $status status with $timestampName unchanged',
-		async ({ status, timestampName }) => {
-			// Arrange
-			const resultBackupRequest: { [index: string]: any } = {
-				...dbBackupRequest,
-				backupJobId: 'request is sent job id',
-				statusTypeCode: status,
-			};
-			resultBackupRequest[timestampName] = new Date();
-			const expectedTimestamp = new Date(resultBackupRequest[timestampName]); // ensure we have a separate instance
+	])('when request is $status, it returns err (BackupRequestStatusError)', async ({ status, timestampName }) => {
+		// Arrange
+		const resultBackupRequest: { [index: string]: any } = {
+			...dbBackupRequest,
+			backupJobId: 'request is sent job id',
+			statusTypeCode: status,
+		};
+		resultBackupRequest[timestampName] = new Date();
+		const expectedTimestamp = new Date(resultBackupRequest[timestampName]); // ensure we have a separate instance
 
-			// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest as BackupRequest);
+		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
+		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest as BackupRequest);
 
-			const brRepo = new PrismaBackupRequestRepo(prismaCtx);
+		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
+		const saveSpy = jest.spyOn(brRepo, 'save');
 
-			// should not call adapter, so no need to mock SDK
-			const queueAdapter = new AzureBackupRequestSendQueueAdapter('test-queue');
+		// should not call adapter, so no need to mock SDK
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const sendSpy = jest.spyOn(qAdapter, 'send');
 
-			const useCase = new SendRequestToInterfaceUseCase({
-				backupRequestRepo: brRepo,
-				sendQueueAdapter: queueAdapter,
-			});
-			const dto = { ...baseDto };
+		const useCase = new SendRequestToInterfaceUseCase({
+			backupRequestRepo: brRepo,
+			interfaceStoreAdapter: qAdapter,
+		});
+		const dto = { ...baseDto };
 
-			// Act
-			const result = await useCase.execute(dto);
+		// Act
+		const result = await useCase.execute(dto);
 
-			// Assert
-			expect(result.isOk()).toBe(true);
-			expect(mockQueueSDK.QueueClient.prototype.sendMessage).toBeCalledTimes(0);
-			if (result.isOk()) {
-				// type guard
-				const value: { [index: string]: any } = result.value;
-				expect(value.statusTypeCode).toBe(status);
-				expect(value[timestampName].valueOf()).toBe(expectedTimestamp.valueOf());
-			}
+		// Assert
+		expect(result.isErr()).toBe(true);
+		expect(saveSpy).toBeCalledTimes(0);
+		expect(sendSpy).toBeCalledTimes(0);
+		if (result.isErr()) {
+			// type guard
+			expect(result.error.name).toBe('BackupRequestStatusError');
+			expect(result.error.message).toContain(status);
 		}
-	);
+	});
 
 	test('when backup request does not exist, it returns failure', async () => {
 		// Arrange
@@ -146,11 +142,13 @@ describe('Send Request To Interface Use Case', () => {
 		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(null as unknown as BackupRequest);
 
 		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
+		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
-		const queueAdapter = new AzureBackupRequestSendQueueAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const sendSpy = jest.spyOn(qAdapter, 'send');
 
-		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, sendQueueAdapter: queueAdapter });
+		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, interfaceStoreAdapter: qAdapter });
 		const dto = { ...baseDto };
 
 		// Act
@@ -158,7 +156,8 @@ describe('Send Request To Interface Use Case', () => {
 
 		// Assert
 		expect(result.isErr()).toBe(true);
-		expect(mockQueueSDK.QueueClient.prototype.sendMessage).toBeCalledTimes(0);
+		expect(saveSpy).toBeCalledTimes(0);
+		expect(sendSpy).toBeCalledTimes(0);
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('NotFoundError');
@@ -179,11 +178,13 @@ describe('Send Request To Interface Use Case', () => {
 		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest);
 
 		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
+		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
-		const queueAdapter = new AzureBackupRequestSendQueueAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const sendSpy = jest.spyOn(qAdapter, 'send');
 
-		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, sendQueueAdapter: queueAdapter });
+		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, interfaceStoreAdapter: qAdapter });
 		const dto = { ...baseDto };
 
 		// Act
@@ -191,7 +192,8 @@ describe('Send Request To Interface Use Case', () => {
 
 		// Assert
 		expect(result.isErr()).toBe(true);
-		expect(mockQueueSDK.QueueClient.prototype.sendMessage).toBeCalledTimes(0);
+		expect(saveSpy).toBeCalledTimes(0);
+		expect(sendSpy).toBeCalledTimes(0);
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('BackupRequestStatusError');
@@ -210,11 +212,13 @@ describe('Send Request To Interface Use Case', () => {
 		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest);
 
 		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
+		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockResolvedValueOnce(mockSendError);
-		const queueAdapter = new AzureBackupRequestSendQueueAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const sendSpy = jest.spyOn(qAdapter, 'send');
 
-		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, sendQueueAdapter: queueAdapter });
+		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, interfaceStoreAdapter: qAdapter });
 		const dto = { ...baseDto };
 
 		// Act
@@ -222,7 +226,8 @@ describe('Send Request To Interface Use Case', () => {
 
 		// Assert
 		expect(result.isErr()).toBe(true);
-		expect(mockQueueSDK.QueueClient.prototype.sendMessage).toBeCalledTimes(1);
+		expect(saveSpy).toBeCalledTimes(0);
+		expect(sendSpy).toBeCalledTimes(1);
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('SendToInterfaceError');
@@ -236,6 +241,7 @@ describe('Send Request To Interface Use Case', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
 		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
+		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockImplementation((message: string) => {
 			// Deep copy object
@@ -248,9 +254,10 @@ describe('Send Request To Interface Use Case', () => {
 			mockResult._response.bodyAsText = message;
 			return mockResult;
 		});
-		const queueAdapter = new AzureBackupRequestSendQueueAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const sendSpy = jest.spyOn(qAdapter, 'send');
 
-		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, sendQueueAdapter: queueAdapter });
+		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, interfaceStoreAdapter: qAdapter });
 		const dto = { ...baseDto };
 
 		// Act
@@ -258,7 +265,8 @@ describe('Send Request To Interface Use Case', () => {
 
 		// Assert
 		expect(result.isOk()).toBe(true);
-		expect(mockQueueSDK.QueueClient.prototype.sendMessage).toBeCalledTimes(1);
+		expect(saveSpy).toBeCalledTimes(1);
+		expect(sendSpy).toBeCalledTimes(1);
 		if (result.isOk()) {
 			// type guard makes the rest easier
 			expect(result.value.statusTypeCode).toBe(RequestStatusTypeValues.Sent);

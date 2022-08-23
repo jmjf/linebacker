@@ -2,9 +2,9 @@ import { err, ok, Result } from '../../../common/core/Result';
 import { AzureQueue } from '../../../common/infrastructure/AzureQueue';
 import { BackupRequest } from '../../domain/BackupRequest';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
-import { SendMessageResponse } from '../IBackupRequestSendQueueAdapter';
+import { StoreDeleteResponse, StoreReceiveResponse, StoreSendResponse } from '../IBackupInterfaceStoreAdapter';
 
-export class AzureBackupRequestSendQueueAdapter {
+export class AzureBackupInterfaceStoreAdapter {
 	private queueName: string;
 	private useBase64: boolean;
 
@@ -13,9 +13,9 @@ export class AzureBackupRequestSendQueueAdapter {
 		this.useBase64 = useBase64;
 	}
 
-	public async sendMessage(
+	public async send(
 		backupRequest: BackupRequest
-	): Promise<Result<SendMessageResponse, AdapterErrors.SendQueueAdapterError>> {
+	): Promise<Result<StoreSendResponse, AdapterErrors.StoreAdapterError>> {
 		const messageText = JSON.stringify(this.mapToQueue(backupRequest));
 
 		const sendStart = new Date();
@@ -25,14 +25,16 @@ export class AzureBackupRequestSendQueueAdapter {
 			useBase64: this.useBase64,
 		});
 		const sendEnd = new Date();
+
 		if (sendResult.isErr()) {
 			return err(
-				new AdapterErrors.SendQueueAdapterError(
+				new AdapterErrors.StoreAdapterError(
 					`{message: '${sendResult.error.message}', name: '${sendResult.error.name}', code: '${sendResult.error.code}'}`
 				)
 			);
 		}
-		const response: SendMessageResponse = {
+
+		const response: StoreSendResponse = {
 			backupRequestId: backupRequest.backupRequestId.value,
 			isSent: sendResult.value.isSent,
 			responseStatus: sendResult.value.responseStatus,
@@ -43,6 +45,21 @@ export class AzureBackupRequestSendQueueAdapter {
 			sendRequestId: sendResult.value.requestId,
 		};
 		return ok(response);
+	}
+
+	public async receive(messageCount: number): Promise<Result<StoreReceiveResponse, AdapterErrors.StoreAdapterError>> {
+		return ok({} as StoreReceiveResponse);
+	}
+
+	public async delete(
+		messageId: string,
+		popReceipt: string
+	): Promise<Result<StoreDeleteResponse, AdapterErrors.StoreAdapterError>> {
+		return ok({} as StoreDeleteResponse);
+	}
+
+	public async isReady(): Promise<Result<boolean, AdapterErrors.StoreAdapterError>> {
+		return ok(true);
 	}
 
 	private mapToQueue(backupRequest: BackupRequest) {

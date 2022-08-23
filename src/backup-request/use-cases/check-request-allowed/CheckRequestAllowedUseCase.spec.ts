@@ -205,7 +205,7 @@ describe('CheckRequestAllowedUseCase', () => {
 		{ status: RequestStatusTypeValues.Failed, timestamp: 'replyTimestamp' },
 	];
 	test.each(statusTestCases)(
-		'when backup request is in $status status, it returns an unchanged BackupRequest',
+		'when backup request is in $status status, it returns an err (must be Received)',
 		async ({ status, timestamp }) => {
 			// Arrange
 			// timestamp that matters is defined in inputs, so need to add it after setting up base props
@@ -219,6 +219,7 @@ describe('CheckRequestAllowedUseCase', () => {
 			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest as BackupRequest);
 
 			const repo = new PrismaBackupRequestRepo(prismaCtx);
+			const saveSpy = jest.spyOn(repo, 'save');
 
 			const adapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });
 
@@ -229,16 +230,15 @@ describe('CheckRequestAllowedUseCase', () => {
 			const dto = { ...baseDto };
 
 			// Act
-			const startTimestamp = new Date();
 			const result = await useCase.execute(dto);
 
 			// Assert
-			expect(result.isOk()).toBe(true);
-			if (result.isOk()) {
+			expect(result.isErr()).toBe(true);
+			expect(saveSpy).toHaveBeenCalledTimes(0);
+			if (result.isErr()) {
 				// type guard
-				const value = result.value as { [index: string]: any }; // required for value[timestamp]
-				expect(value.statusTypeCode).toBe(status);
-				expect((value[timestamp] as Date).valueOf()).toBeLessThanOrEqual(startTimestamp.valueOf());
+				expect(result.error.name).toBe('BackupRequestStatusError');
+				expect(result.error.message).toContain(status);
 			}
 		}
 	);
