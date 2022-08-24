@@ -11,7 +11,7 @@ import { BackupProviderType } from '../../backup-job/domain/BackupProviderType';
 
 import { BackupRequestAllowed } from './BackupRequestAllowed';
 import { BackupRequestCreated } from './BackupRequestCreated';
-import { BackupResultType } from './BackupResultType';
+import { StoreResultType } from './StoreResultType';
 import { RequestStatusType, RequestStatusTypeValues } from './RequestStatusType';
 import { RequestTransportType, validRequestTransportTypes } from './RequestTransportType';
 
@@ -156,7 +156,7 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 		}
 	}
 
-	public setStatusReplied(status: BackupResultType, message?: string): void {
+	public setStatusReplied(status: StoreResultType, message?: string): void {
 		this.props.statusTypeCode = status;
 		this.props.replyMessageText = message ? message : '';
 		this.props.replyTimestamp = new Date();

@@ -7,7 +7,7 @@ import {
 } from '../../../backup-job/adapter/impl/MockBackupJobServiceAdapter';
 import { BackupProviderTypeValues } from '../../../backup-job/domain/BackupProviderType';
 
-import { BackupResultTypeValues } from '../../domain/BackupResultType';
+import { StoreResultTypeValues } from '../../domain/StoreResultType';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 
@@ -38,7 +38,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 	const createBackupReply: CreateBackupReplyDTO = {
 		backupRequestId: 'backup request',
 		storagePathName: '/path/to/backup/storage',
-		resultTypeCode: BackupResultTypeValues.Succeeded,
+		resultTypeCode: StoreResultTypeValues.Succeeded,
 		backupByteCount: 1000000,
 		copyStartTimestamp: '2022-05-06T00:20:03.111Z',
 		copyEndTimestamp: '2022-05-06T00:32:23.888Z',
@@ -274,7 +274,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 				backupJobServiceAdapter,
 			});
 			const dto = { ...createBackupReply };
-			dto.resultTypeCode = BackupResultTypeValues.Succeeded;
+			dto.resultTypeCode = StoreResultTypeValues.Succeeded;
 
 			// Act
 			const result = await useCase.execute(dto);
@@ -317,7 +317,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 				backupJobServiceAdapter,
 			});
 			const dto = { ...createBackupReply };
-			dto.resultTypeCode = BackupResultTypeValues.Succeeded;
+			dto.resultTypeCode = StoreResultTypeValues.Succeeded;
 
 			// Act
 			const result = await useCase.execute(dto);
@@ -359,7 +359,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 				backupJobServiceAdapter,
 			});
 			const dto = { ...createBackupReply };
-			dto.resultTypeCode = BackupResultTypeValues.Succeeded;
+			dto.resultTypeCode = StoreResultTypeValues.Succeeded;
 
 			// Act
 			const result = await useCase.execute(dto);
@@ -398,7 +398,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 				backupJobServiceAdapter,
 			});
 			const dto = { ...createBackupReply };
-			dto.resultTypeCode = BackupResultTypeValues.Failed;
+			dto.resultTypeCode = StoreResultTypeValues.Failed;
 
 			// Act
 			const result = await useCase.execute(dto);
@@ -442,7 +442,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 				backupJobServiceAdapter,
 			});
 			const dto = { ...createBackupReply };
-			dto.resultTypeCode = BackupResultTypeValues.Succeeded;
+			dto.resultTypeCode = StoreResultTypeValues.Succeeded;
 
 			// Act
 			const result = await useCase.execute(dto);
@@ -462,30 +462,30 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 		test.each([
 			{
 				requestStatus: RequestStatusTypeValues.Sent,
-				resultStatus: BackupResultTypeValues.Succeeded,
+				resultStatus: StoreResultTypeValues.Succeeded,
 			},
 			{
 				requestStatus: RequestStatusTypeValues.Sent,
-				resultStatus: BackupResultTypeValues.Failed,
+				resultStatus: StoreResultTypeValues.Failed,
 			},
 			{
 				requestStatus: RequestStatusTypeValues.Succeeded,
-				resultStatus: BackupResultTypeValues.Succeeded,
+				resultStatus: StoreResultTypeValues.Succeeded,
 			},
 			{
 				requestStatus: RequestStatusTypeValues.Succeeded,
-				resultStatus: BackupResultTypeValues.Failed,
+				resultStatus: StoreResultTypeValues.Failed,
 			},
 			{
 				requestStatus: RequestStatusTypeValues.Failed,
-				resultStatus: BackupResultTypeValues.Succeeded,
+				resultStatus: StoreResultTypeValues.Succeeded,
 			},
 			{
 				requestStatus: RequestStatusTypeValues.Failed,
-				resultStatus: BackupResultTypeValues.Failed,
+				resultStatus: StoreResultTypeValues.Failed,
 			},
 		])(
-			'when BackupRequest status is $requestStatus, BackupResult status $resultStatus, and BackupRequest.save() succeeds, it returns a BackupRequest (Succeeded status) and does not call Backup.save()',
+			'when BackupRequest status is $requestStatus, StoreResult status $resultStatus, and BackupRequest.save() succeeds, it returns a BackupRequest (Succeeded status) and does not call Backup.save()',
 			async ({ requestStatus, resultStatus }) => {
 				// Arrange
 

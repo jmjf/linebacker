@@ -15,7 +15,7 @@ export interface StoreSendResponse {
 }
 
 export interface StoreReceiveResponse {
-	messageText: string; // won't be this, but putting something here for now
+	messages: unknown[];
 }
 
 export interface StoreDeleteResponse {
@@ -32,11 +32,14 @@ export interface StoreIsReadyResponse {
 
 export interface IBackupInterfaceStoreAdapter {
 	// may be void if circuit breaker keeps a list of messages
-	send(backupRequest: BackupRequest): Promise<Result<StoreSendResponse, AdapterErrors.StoreAdapterError>>;
+	send(backupRequest: BackupRequest): Promise<Result<StoreSendResponse, AdapterErrors.InterfaceAdapterError>>;
 
-	receive(messageCount: number): Promise<Result<StoreReceiveResponse, AdapterErrors.StoreAdapterError>>;
+	receive(messageCount: number): Promise<Result<StoreReceiveResponse, AdapterErrors.InterfaceAdapterError>>;
 
-	delete(messageId: string, popReceipt: string): Promise<Result<StoreDeleteResponse, AdapterErrors.StoreAdapterError>>;
+	delete(
+		messageId: string,
+		popReceipt: string
+	): Promise<Result<StoreDeleteResponse, AdapterErrors.InterfaceAdapterError>>;
 
-	isReady(): Promise<Result<boolean, AdapterErrors.StoreAdapterError>>;
+	isReady(): Promise<Result<boolean, AdapterErrors.InterfaceAdapterError>>;
 }

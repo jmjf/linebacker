@@ -18,7 +18,7 @@ export class BackupRequestAllowedSubscriber implements IDomainEventSubscriber<Ba
 	async onBackupRequestAllowed(event: BackupRequestAllowed): Promise<void> {
 		const backupRequestId = event.getAggregateId();
 		const logContext = {
-			context: 'check-request-allowed subscriber',
+			context: 'send-request-to-interface subscriber',
 			backupRequestId: backupRequestId.value,
 			eventName: event.constructor.name,
 		};

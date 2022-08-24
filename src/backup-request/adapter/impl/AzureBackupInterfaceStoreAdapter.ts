@@ -15,7 +15,7 @@ export class AzureBackupInterfaceStoreAdapter {
 
 	public async send(
 		backupRequest: BackupRequest
-	): Promise<Result<StoreSendResponse, AdapterErrors.StoreAdapterError>> {
+	): Promise<Result<StoreSendResponse, AdapterErrors.InterfaceAdapterError>> {
 		const messageText = JSON.stringify(this.mapToQueue(backupRequest));
 
 		const sendStart = new Date();
@@ -28,8 +28,10 @@ export class AzureBackupInterfaceStoreAdapter {
 
 		if (sendResult.isErr()) {
 			return err(
-				new AdapterErrors.StoreAdapterError(
-					`{message: '${sendResult.error.message}', name: '${sendResult.error.name}', code: '${sendResult.error.code}'}`
+				new AdapterErrors.InterfaceAdapterError(
+					`{message: '${sendResult.error.message}', name: '${sendResult.error.name}', code: '${
+						sendResult.error.code
+					}, sendStart: '${sendStart.toISOString()}', sendEnd: '${sendEnd.toISOString()}' }`
 				)
 			);
 		}
@@ -47,18 +49,41 @@ export class AzureBackupInterfaceStoreAdapter {
 		return ok(response);
 	}
 
-	public async receive(messageCount: number): Promise<Result<StoreReceiveResponse, AdapterErrors.StoreAdapterError>> {
-		return ok({} as StoreReceiveResponse);
+	public async receive(
+		messageCount: number
+	): Promise<Result<StoreReceiveResponse, AdapterErrors.InterfaceAdapterError>> {
+		// ensure messageCount is usable
+		if (typeof messageCount !== 'number' || messageCount < 1) messageCount = 1;
+
+		const rcvStart = new Date();
+		const rcvResult = await AzureQueue.receiveMessages({
+			queueName: this.queueName,
+			useBase64: this.useBase64,
+			messageCount,
+		});
+		const rcvEnd = new Date();
+
+		if (rcvResult.isErr()) {
+			return err(
+				new AdapterErrors.InterfaceAdapterError(
+					`{message: '${rcvResult.error.message}', name: '${rcvResult.error.name}', code: '${
+						rcvResult.error.code
+					}, rcvStart: '${rcvStart.toISOString()}', rcvEnd: '${rcvEnd.toISOString()}' }`
+				)
+			);
+		}
+
+		return ok({ messages: rcvResult.value.receivedMessageItems } as StoreReceiveResponse);
 	}
 
 	public async delete(
 		messageId: string,
 		popReceipt: string
-	): Promise<Result<StoreDeleteResponse, AdapterErrors.StoreAdapterError>> {
+	): Promise<Result<StoreDeleteResponse, AdapterErrors.InterfaceAdapterError>> {
 		return ok({} as StoreDeleteResponse);
 	}
 
-	public async isReady(): Promise<Result<boolean, AdapterErrors.StoreAdapterError>> {
+	public async isReady(): Promise<Result<boolean, AdapterErrors.InterfaceAdapterError>> {
 		return ok(true);
 	}
 

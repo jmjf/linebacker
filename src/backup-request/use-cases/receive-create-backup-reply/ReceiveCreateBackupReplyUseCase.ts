@@ -11,7 +11,7 @@ import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 
 import { IBackupRequestRepo } from '../../adapter/IBackupRequestRepo';
 import { BackupRequest } from '../../domain/BackupRequest';
-import { BackupResultTypeValues, validBackupResultTypes } from '../../domain/BackupResultType';
+import { StoreResultTypeValues, validStoreResultTypes } from '../../domain/StoreResultType';
 import { CreateBackupReplyDTO } from './CreateBackupReplyDTO';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 
@@ -42,7 +42,7 @@ export class ReceiveCreateBackupReplyUseCase implements UseCase<CreateBackupRepl
 	async execute(reply: CreateBackupReplyDTO): Promise<Response> {
 		const { resultTypeCode, backupRequestId, ...restOfReply } = reply;
 
-		const resultTypeCodeGuardResult = Guard.isOneOf(resultTypeCode, validBackupResultTypes, 'resultTypeCode');
+		const resultTypeCodeGuardResult = Guard.isOneOf(resultTypeCode, validStoreResultTypes, 'resultTypeCode');
 		if (resultTypeCodeGuardResult.isErr()) {
 			return err(new DomainErrors.PropsError(`{ message: ${resultTypeCodeGuardResult.error.message}}`));
 		}
@@ -77,7 +77,7 @@ export class ReceiveCreateBackupReplyUseCase implements UseCase<CreateBackupRepl
 		let backup: Backup = {} as Backup;
 		if (existingBackupResult.isOk()) {
 			backup = existingBackupResult.value;
-		} else if (resultTypeCode === BackupResultTypeValues.Succeeded) {
+		} else if (resultTypeCode === StoreResultTypeValues.Succeeded) {
 			// Any isErr() that makes it here it must be NotFoundError -- create and save the backup
 
 			// create backup aggregate from data in request, reply, and job
@@ -108,7 +108,7 @@ export class ReceiveCreateBackupReplyUseCase implements UseCase<CreateBackupRepl
 		if (backup.backupId?.value.length > 0) {
 			// if we have a Backup, it succeeded at some point
 			backupRequest.setStatusReplied(RequestStatusTypeValues.Succeeded, reply.messageText);
-		} else if (resultTypeCode === BackupResultTypeValues.Failed) {
+		} else if (resultTypeCode === StoreResultTypeValues.Failed) {
 			// if no Backup exists and the reply says it failed, it failed
 			backupRequest.setStatusReplied(RequestStatusTypeValues.Failed, reply.messageText);
 		} // otherwise, don't change request status because it doesn't make sense
