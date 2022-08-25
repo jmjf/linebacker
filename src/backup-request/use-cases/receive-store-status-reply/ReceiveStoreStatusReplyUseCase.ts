@@ -12,7 +12,7 @@ import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 import { IBackupRequestRepo } from '../../adapter/IBackupRequestRepo';
 import { BackupRequest } from '../../domain/BackupRequest';
 import { StoreResultTypeValues, validStoreResultTypes } from '../../domain/StoreResultType';
-import { CreateBackupReplyDTO } from './CreateBackupReplyDTO';
+import { StoreStatusReplyDTO } from './StoreStatusReplyDTO';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 
 // add errors when you define them
@@ -24,7 +24,7 @@ type Response = Result<
 /**
  * Class representing a use case to create a new backup request and store it in the request log
  */
-export class ReceiveCreateBackupReplyUseCase implements UseCase<CreateBackupReplyDTO, Promise<Response>> {
+export class ReceiveStoreStatusReplyUseCase implements UseCase<StoreStatusReplyDTO, Promise<Response>> {
 	private backupRequestRepo: IBackupRequestRepo;
 	private backupRepo: IBackupRepo;
 	private backupJobServiceAdapter: IBackupJobServiceAdapter;
@@ -39,7 +39,8 @@ export class ReceiveCreateBackupReplyUseCase implements UseCase<CreateBackupRepl
 		this.backupJobServiceAdapter = inject.backupJobServiceAdapter;
 	}
 
-	async execute(reply: CreateBackupReplyDTO): Promise<Response> {
+	async execute(reply: StoreStatusReplyDTO): Promise<Response> {
+		// console.log('rssruc start', reply);
 		const { resultTypeCode, backupRequestId, ...restOfReply } = reply;
 
 		const resultTypeCodeGuardResult = Guard.isOneOf(resultTypeCode, validStoreResultTypes, 'resultTypeCode');

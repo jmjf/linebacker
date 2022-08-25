@@ -31,7 +31,7 @@ export class StoreStatusReceived implements IDomainEvent {
 		this.messageItem = messageItem;
 
 		// temporary, for early testing
-		console.log('StoreStatusReceived constructor called with messageItem', messageItem);
+		// console.log('StoreStatusReceived constructor called with messageItem', messageItem);
 	}
 
 	// this event isn't related to an aggregate

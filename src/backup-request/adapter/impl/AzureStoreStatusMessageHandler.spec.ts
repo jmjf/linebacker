@@ -153,7 +153,6 @@ describe('AzureBackupInterfaceStoreAdapter -- will move to receive status use ca
 
 		// Act
 		const result = await storeAdapter.receive(1);
-		console.log('ABISA receive ok 3 result', result);
 
 		// Assert
 		expect(result.isOk()).toBe(true);
@@ -182,7 +181,6 @@ describe('AzureBackupInterfaceStoreAdapter -- will move to receive status use ca
 
 		// Act
 		const result = await storeAdapter.receive(1);
-		console.log('ABISA receive ok 0 result', result);
 
 		// Assert
 		expect(result.isOk()).toBe(true);

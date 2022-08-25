@@ -35,6 +35,8 @@ export class AzureStoreStatusMessageHandler implements IStoreStatusMessageHandle
 			);
 		}
 
+		// console.log('message handler for', messageObject.backupRequestId);
+
 		// JSON parsed successfully
 		const eventMessage: StoreStatusMessageItem = {
 			messageId: message.messageId,
@@ -42,6 +44,7 @@ export class AzureStoreStatusMessageHandler implements IStoreStatusMessageHandle
 			dequeueCount: message.dequeueCount,
 			messageObject: messageObject,
 		};
+		//console.log('assmh eventMessage', eventMessage);
 
 		const event = new StoreStatusReceived(eventMessage);
 

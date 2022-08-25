@@ -18,20 +18,22 @@ export class AzureBackupInterfaceStoreAdapter {
 	): Promise<Result<StoreSendResponse, AdapterErrors.InterfaceAdapterError>> {
 		const messageText = JSON.stringify(this.mapToQueue(backupRequest));
 
-		const sendStart = new Date();
+		const startTime = new Date();
 		const sendResult = await AzureQueue.sendMessage({
 			queueName: this.queueName,
 			messageText,
 			useBase64: this.useBase64,
 		});
-		const sendEnd = new Date();
+		const endTime = new Date();
 
 		if (sendResult.isErr()) {
 			return err(
 				new AdapterErrors.InterfaceAdapterError(
-					`{message: '${sendResult.error.message}', name: '${sendResult.error.name}', code: '${
+					`{context: 'AzureBackupInterfaceStoreAdapter.send', message: '${sendResult.error.message}', name: '${
+						sendResult.error.name
+					}', code: '${
 						sendResult.error.code
-					}, sendStart: '${sendStart.toISOString()}', sendEnd: '${sendEnd.toISOString()}' }`
+					}, startTime: '${startTime.toISOString()}', endTime: '${endTime.toISOString()}' }`
 				)
 			);
 		}
@@ -40,8 +42,8 @@ export class AzureBackupInterfaceStoreAdapter {
 			backupRequestId: backupRequest.backupRequestId.value,
 			isSent: sendResult.value.isSent,
 			responseStatus: sendResult.value.responseStatus,
-			sendStart,
-			sendEnd,
+			startTime,
+			endTime,
 			insertedOn: sendResult.value.insertedOn,
 			messageId: sendResult.value.messageId,
 			sendRequestId: sendResult.value.requestId,
@@ -55,32 +57,50 @@ export class AzureBackupInterfaceStoreAdapter {
 		// ensure messageCount is usable
 		if (typeof messageCount !== 'number' || messageCount < 1) messageCount = 1;
 
-		const rcvStart = new Date();
+		const startTime = new Date();
 		const rcvResult = await AzureQueue.receiveMessages({
 			queueName: this.queueName,
 			useBase64: this.useBase64,
 			messageCount,
 		});
-		const rcvEnd = new Date();
+		const endTime = new Date();
 
 		if (rcvResult.isErr()) {
 			return err(
 				new AdapterErrors.InterfaceAdapterError(
-					`{message: '${rcvResult.error.message}', name: '${rcvResult.error.name}', code: '${
+					`{context: 'AzureBackupInterfaceStoreAdapter.receive', message: '${rcvResult.error.message}', name: '${
+						rcvResult.error.name
+					}', code: '${
 						rcvResult.error.code
-					}, rcvStart: '${rcvStart.toISOString()}', rcvEnd: '${rcvEnd.toISOString()}' }`
+					}, startTime: '${startTime.toISOString()}', endTime: '${endTime.toISOString()}' }`
 				)
 			);
 		}
 
-		return ok({ messages: rcvResult.value.receivedMessageItems } as StoreReceiveResponse);
+		return ok({ messages: rcvResult.value.receivedMessageItems, startTime, endTime } as StoreReceiveResponse);
 	}
 
 	public async delete(
 		messageId: string,
 		popReceipt: string
 	): Promise<Result<StoreDeleteResponse, AdapterErrors.InterfaceAdapterError>> {
-		return ok({} as StoreDeleteResponse);
+		const startTime = new Date();
+		const deleteResult = await AzureQueue.deleteMessage({ queueName: this.queueName, messageId, popReceipt });
+		const endTime = new Date();
+
+		if (deleteResult.isErr()) {
+			return err(
+				new AdapterErrors.InterfaceAdapterError(
+					`{context: 'AzureBackupInterfaceStoreAdapter.delete', message: '${deleteResult.error.message}', name: '${
+						deleteResult.error.name
+					}', code: '${
+						deleteResult.error.code
+					}, startTime: '${startTime.toISOString()}', endTime: '${endTime.toISOString()}' }`
+				)
+			);
+		}
+
+		return ok({ responseStatus: deleteResult.value.responseStatus, startTime, endTime });
 	}
 
 	public async isReady(): Promise<Result<boolean, AdapterErrors.InterfaceAdapterError>> {

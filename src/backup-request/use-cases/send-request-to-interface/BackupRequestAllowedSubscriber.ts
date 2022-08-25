@@ -4,11 +4,11 @@ import { BackupRequestAllowed } from '../../domain/BackupRequestAllowed';
 import { SendRequestToInterfaceUseCase } from './SendRequestToInterfaceUseCase';
 
 export class BackupRequestAllowedSubscriber implements IDomainEventSubscriber<BackupRequestAllowed> {
-	private sendRequestToInterfaceUseCase: SendRequestToInterfaceUseCase;
+	private useCase: SendRequestToInterfaceUseCase;
 
-	constructor(sendRequestToInterfaceUseCase: SendRequestToInterfaceUseCase) {
+	constructor(useCase: SendRequestToInterfaceUseCase) {
 		this.setupSubscriptions();
-		this.sendRequestToInterfaceUseCase = sendRequestToInterfaceUseCase;
+		this.useCase = useCase;
 	}
 
 	setupSubscriptions(): void {
@@ -18,14 +18,14 @@ export class BackupRequestAllowedSubscriber implements IDomainEventSubscriber<Ba
 	async onBackupRequestAllowed(event: BackupRequestAllowed): Promise<void> {
 		const backupRequestId = event.getAggregateId();
 		const logContext = {
-			context: 'send-request-to-interface subscriber',
+			context: 'BackupRequestAllowedSubscriber',
 			backupRequestId: backupRequestId.value,
 			eventName: event.constructor.name,
 		};
 
 		try {
 			logger.debug({ ...logContext, msg: 'execute use case' });
-			const res = await this.sendRequestToInterfaceUseCase.execute({
+			const res = await this.useCase.execute({
 				backupRequestId: backupRequestId.value,
 			});
 			logger.info({

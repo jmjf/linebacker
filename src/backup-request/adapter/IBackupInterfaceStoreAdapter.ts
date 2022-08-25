@@ -7,23 +7,23 @@ export interface StoreSendResponse {
 	backupRequestId: string;
 	isSent: boolean;
 	responseStatus: number;
-	sendStart: Date;
-	sendEnd: Date;
 	insertedOn?: Date;
 	messageId?: string;
 	sendRequestId?: string;
+	startTime: Date;
+	endTime: Date;
 }
 
 export interface StoreReceiveResponse {
 	messages: unknown[];
+	startTime: Date;
+	endTime: Date;
 }
 
 export interface StoreDeleteResponse {
-	messageText: string; // won't be this, but putting something here for now
-}
-
-export interface StoreDeleteResponse {
-	messageText: string; // won't be this, but putting something here for now
+	responseStatus: number;
+	startTime: Date;
+	endTime: Date;
 }
 
 export interface StoreIsReadyResponse {

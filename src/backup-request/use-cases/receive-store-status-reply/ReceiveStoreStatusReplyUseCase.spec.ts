@@ -11,8 +11,8 @@ import { StoreResultTypeValues } from '../../domain/StoreResultType';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 
-import { CreateBackupReplyDTO } from './CreateBackupReplyDTO';
-import { ReceiveCreateBackupReplyUseCase } from './ReceiveCreateBackupReplyUseCase';
+import { StoreStatusReplyDTO } from './StoreStatusReplyDTO';
+import { ReceiveStoreStatusReplyUseCase } from './ReceiveStoreStatusReplyUseCase';
 
 import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
 import { PrismaBackupRepo } from '../../../backup/adapter/impl/PrismaBackupRepo';
@@ -26,7 +26,7 @@ import { Backup, BackupRequest } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 
-describe('ReceiveCreateBackupReplyUseCase', () => {
+describe('ReceiveStoreStatusReplyUseCase', () => {
 	let mockPrismaCtx: MockPrismaContext;
 	let prismaCtx: PrismaContext;
 
@@ -35,7 +35,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 		prismaCtx = mockPrismaCtx as unknown as PrismaContext;
 	});
 
-	const createBackupReply: CreateBackupReplyDTO = {
+	const createBackupReply: StoreStatusReplyDTO = {
 		backupRequestId: 'backup request',
 		storagePathName: '/path/to/backup/storage',
 		resultTypeCode: StoreResultTypeValues.Succeeded,
@@ -105,7 +105,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...mockBackupJobProps } });
 
-			const useCase = new ReceiveCreateBackupReplyUseCase({
+			const useCase = new ReceiveStoreStatusReplyUseCase({
 				backupRequestRepo,
 				backupRepo,
 				backupJobServiceAdapter,
@@ -142,7 +142,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 				getByIdError: new AdapterErrors.BackupJobServiceError(`{msg: 'backup job not found'}`),
 			});
 
-			const useCase = new ReceiveCreateBackupReplyUseCase({
+			const useCase = new ReceiveStoreStatusReplyUseCase({
 				backupRequestRepo,
 				backupRepo,
 				backupJobServiceAdapter,
@@ -179,7 +179,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({});
 
-			const useCase = new ReceiveCreateBackupReplyUseCase({
+			const useCase = new ReceiveStoreStatusReplyUseCase({
 				backupRequestRepo,
 				backupRepo,
 				backupJobServiceAdapter,
@@ -223,7 +223,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobDTO } });
 
-			const useCase = new ReceiveCreateBackupReplyUseCase({
+			const useCase = new ReceiveStoreStatusReplyUseCase({
 				backupRequestRepo,
 				backupRepo,
 				backupJobServiceAdapter,
@@ -268,7 +268,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobDTO } });
 
-			const useCase = new ReceiveCreateBackupReplyUseCase({
+			const useCase = new ReceiveStoreStatusReplyUseCase({
 				backupRequestRepo,
 				backupRepo,
 				backupJobServiceAdapter,
@@ -311,7 +311,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobDTO } });
 
-			const useCase = new ReceiveCreateBackupReplyUseCase({
+			const useCase = new ReceiveStoreStatusReplyUseCase({
 				backupRequestRepo,
 				backupRepo,
 				backupJobServiceAdapter,
@@ -353,7 +353,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobDTO } });
 
-			const useCase = new ReceiveCreateBackupReplyUseCase({
+			const useCase = new ReceiveStoreStatusReplyUseCase({
 				backupRequestRepo,
 				backupRepo,
 				backupJobServiceAdapter,
@@ -392,7 +392,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobDTO } });
 
-			const useCase = new ReceiveCreateBackupReplyUseCase({
+			const useCase = new ReceiveStoreStatusReplyUseCase({
 				backupRequestRepo,
 				backupRepo,
 				backupJobServiceAdapter,
@@ -436,7 +436,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobDTO } });
 
-			const useCase = new ReceiveCreateBackupReplyUseCase({
+			const useCase = new ReceiveStoreStatusReplyUseCase({
 				backupRequestRepo,
 				backupRepo,
 				backupJobServiceAdapter,
@@ -507,7 +507,7 @@ describe('ReceiveCreateBackupReplyUseCase', () => {
 
 				const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobDTO } });
 
-				const useCase = new ReceiveCreateBackupReplyUseCase({
+				const useCase = new ReceiveStoreStatusReplyUseCase({
 					backupRequestRepo,
 					backupRepo,
 					backupJobServiceAdapter,
