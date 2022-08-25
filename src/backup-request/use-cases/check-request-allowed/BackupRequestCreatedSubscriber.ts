@@ -1,41 +1,33 @@
-import {
-	DomainEventBus,
-	IDomainEventSubscriber,
-} from '../../../common/domain/DomainEventBus';
+import { DomainEventBus, IDomainEventSubscriber } from '../../../common/domain/DomainEventBus';
 import { logger } from '../../../common/infrastructure/pinoLogger';
 import { BackupRequestCreated } from '../../domain/BackupRequestCreated';
 import { CheckRequestAllowedUseCase } from './CheckRequestAllowedUseCase';
 
-export class BackupRequestCreatedSubscriber
-	implements IDomainEventSubscriber<BackupRequestCreated>
-{
-	private CheckRequestAllowedUseCase: CheckRequestAllowedUseCase;
+export class BackupRequestCreatedSubscriber implements IDomainEventSubscriber<BackupRequestCreated> {
+	private useCase: CheckRequestAllowedUseCase;
 
-	constructor(CheckRequestAllowedUseCase: CheckRequestAllowedUseCase) {
+	constructor(useCase: CheckRequestAllowedUseCase) {
 		this.setupSubscriptions();
-		this.CheckRequestAllowedUseCase = CheckRequestAllowedUseCase;
+		this.useCase = useCase;
 	}
 
 	setupSubscriptions(): void {
-		DomainEventBus.subscribe(
-			BackupRequestCreated.name,
-			this.onBackupRequestCreated.bind(this)
-		);
+		DomainEventBus.subscribe(BackupRequestCreated.name, this.onBackupRequestCreated.bind(this));
 	}
 
 	async onBackupRequestCreated(event: BackupRequestCreated): Promise<void> {
-		const backupRequest = event.backupRequest;
+		const backupRequestId = event.getAggregateId();
 		const eventName = event.constructor.name;
 		const logContext = {
-			context: 'check-request-allowed subscriber',
-			backupRequestId: backupRequest.idValue,
+			context: 'CheckRequestAllowedSubscriber',
+			backupRequestId: backupRequestId.value,
 			eventName: eventName,
 		};
 
 		try {
 			logger.debug({ ...logContext, msg: 'execute use case' });
-			const res = await this.CheckRequestAllowedUseCase.execute({
-				backupRequestId: backupRequest.idValue,
+			const res = await this.useCase.execute({
+				backupRequestId: backupRequestId.value,
 			});
 			logger.info({
 				...logContext,

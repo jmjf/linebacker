@@ -1,5 +1,5 @@
 import pino from 'pino';
-import { isDev } from '../../utils/utils';
+import { isDev, isTest } from '../../utils/utils';
 
 const baseOptions = {
 	name: 'linebacker',
@@ -23,5 +23,6 @@ const pinoOptions = isDev()
 				},
 			},
 	  };
+if (isTest()) pinoOptions.level = 'fatal';
 
 export const logger = pino(pinoOptions);

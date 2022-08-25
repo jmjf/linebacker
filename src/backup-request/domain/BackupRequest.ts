@@ -11,15 +11,9 @@ import { BackupProviderType } from '../../backup-job/domain/BackupProviderType';
 
 import { BackupRequestAllowed } from './BackupRequestAllowed';
 import { BackupRequestCreated } from './BackupRequestCreated';
-import { BackupResultType } from './BackupResultType';
-import {
-	RequestStatusType,
-	RequestStatusTypeValues,
-} from './RequestStatusType';
-import {
-	RequestTransportType,
-	validRequestTransportTypes,
-} from './RequestTransportType';
+import { StoreResultType } from './StoreResultType';
+import { RequestStatusType, RequestStatusTypeValues } from './RequestStatusType';
+import { RequestTransportType, validRequestTransportTypes } from './RequestTransportType';
 
 export interface IBackupRequestProps {
 	backupJobId: UniqueIdentifier;
@@ -105,6 +99,10 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 		return this.props.replyMessageText as string;
 	}
 
+	public isReceived(): boolean {
+		return this.props.statusTypeCode === 'Received' && isDate(this.receivedTimestamp);
+	}
+
 	/**
 	 * returns true if the `BackupRequest` has been checked to see if it is allowed
 	 * @returns `boolean`
@@ -112,13 +110,13 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 	public isChecked(): boolean {
 		return (
 			this.statusTypeCode &&
-			(
-				RequestStatusTypeValues.Allowed +
-				'| ' +
-				RequestStatusTypeValues.NotAllowed
-			).includes(this.statusTypeCode) &&
+			(RequestStatusTypeValues.Allowed + '| ' + RequestStatusTypeValues.NotAllowed).includes(this.statusTypeCode) &&
 			isDate(this.checkedTimestamp)
 		);
+	}
+
+	public isAllowed(): boolean {
+		return this.props.statusTypeCode === 'Allowed' && isDate(this.checkedTimestamp);
 	}
 
 	/**
@@ -140,11 +138,7 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 	public isReplied(): boolean {
 		return (
 			this.statusTypeCode &&
-			(
-				RequestStatusTypeValues.Succeeded +
-				'|' +
-				RequestStatusTypeValues.Failed
-			).includes(this.statusTypeCode) &&
+			(RequestStatusTypeValues.Succeeded + '|' + RequestStatusTypeValues.Failed).includes(this.statusTypeCode) &&
 			isDate(this.replyTimestamp)
 		);
 	}
@@ -155,16 +149,14 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 	}
 
 	public setStatusChecked(isAllowed: boolean): void {
-		this.props.statusTypeCode = isAllowed
-			? RequestStatusTypeValues.Allowed
-			: RequestStatusTypeValues.NotAllowed;
+		this.props.statusTypeCode = isAllowed ? RequestStatusTypeValues.Allowed : RequestStatusTypeValues.NotAllowed;
 		this.props.checkedTimestamp = new Date();
 		if (isAllowed) {
 			this.addDomainEvent(new BackupRequestAllowed(this));
 		}
 	}
 
-	public setStatusReplied(status: BackupResultType, message?: string): void {
+	public setStatusReplied(status: StoreResultType, message?: string): void {
 		this.props.statusTypeCode = status;
 		this.props.replyMessageText = message ? message : '';
 		this.props.replyTimestamp = new Date();
@@ -203,25 +195,13 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 
 		const propsGuardResult = Guard.againstNullOrUndefinedBulk(guardArgs);
 		if (propsGuardResult.isErr()) {
-			return err(
-				new DomainErrors.PropsError(
-					`{ message: '${propsGuardResult.error.message}'}`
-				)
-			);
+			return err(new DomainErrors.PropsError(`{ message: '${propsGuardResult.error.message}'}`));
 		}
 
 		// ensure transport type is valid
-		const transportGuardResult = Guard.isOneOf(
-			props.transportTypeCode,
-			validRequestTransportTypes,
-			'transportType'
-		);
+		const transportGuardResult = Guard.isOneOf(props.transportTypeCode, validRequestTransportTypes, 'transportType');
 		if (transportGuardResult.isErr()) {
-			return err(
-				new DomainErrors.PropsError(
-					`{ message: '${transportGuardResult.error.message}'}`
-				)
-			);
+			return err(new DomainErrors.PropsError(`{ message: '${transportGuardResult.error.message}'}`));
 		}
 
 		// I could do a similar test on status, but that would make certain tests fail before the test
@@ -231,11 +211,7 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 		// ensure dataDate is a date
 		const dataDateGuardResult = Guard.isValidDate(props.dataDate, 'dataDate');
 		if (dataDateGuardResult.isErr()) {
-			return err(
-				new DomainErrors.PropsError(
-					`{ message: '${dataDateGuardResult.error.message}'}`
-				)
-			);
+			return err(new DomainErrors.PropsError(`{ message: '${dataDateGuardResult.error.message}'}`));
 		}
 		const dataDateAsDate = new Date(props.dataDate);
 
@@ -243,21 +219,13 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 		const defaultValues: IBackupRequestProps = {
 			...props,
 			dataDate: dataDateAsDate, // override value from props with known-good value
-			backupProviderCode: props.backupProviderCode
-				? props.backupProviderCode
-				: '',
+			backupProviderCode: props.backupProviderCode ? props.backupProviderCode : '',
 			storagePathName: props.storagePathName ? props.storagePathName : '',
 			requesterId: props.requesterId ? props.requesterId : '',
 			// timestamps below are only set by code, so are not checked for validity
-			checkedTimestamp: props.checkedTimestamp
-				? props.checkedTimestamp
-				: undefined,
-			sentToInterfaceTimestamp: props.sentToInterfaceTimestamp
-				? props.sentToInterfaceTimestamp
-				: undefined,
-			replyTimestamp: props.replyTimestamp
-				? props.replyTimestamp
-				: undefined,
+			checkedTimestamp: props.checkedTimestamp ? props.checkedTimestamp : undefined,
+			sentToInterfaceTimestamp: props.sentToInterfaceTimestamp ? props.sentToInterfaceTimestamp : undefined,
+			replyTimestamp: props.replyTimestamp ? props.replyTimestamp : undefined,
 		};
 
 		const backupRequest = new BackupRequest(defaultValues, id);

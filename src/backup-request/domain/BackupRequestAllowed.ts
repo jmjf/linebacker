@@ -3,15 +3,15 @@ import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
 import { BackupRequest } from './BackupRequest';
 
 export class BackupRequestAllowed implements IDomainEvent {
-   public eventTimestamp: Date;
-   public backupRequest: BackupRequest;
+	public eventTimestamp: Date;
+	public backupRequestId: UniqueIdentifier;
 
-   constructor(backupRequest: BackupRequest) {
-      this.eventTimestamp = new Date();
-      this.backupRequest = backupRequest;
-   }
+	constructor(backupRequest: BackupRequest) {
+		this.eventTimestamp = new Date();
+		this.backupRequestId = backupRequest.id;
+	}
 
-   getAggregateId(): UniqueIdentifier {
-      return this.backupRequest.id;
-   }
-};
+	getAggregateId(): UniqueIdentifier {
+		return this.backupRequestId;
+	}
+}

@@ -44,3 +44,17 @@ export class BadDataError extends BaseError {
 		this.name = 'BadDataError';
 	}
 }
+
+export class InterfaceAdapterError extends BaseError {
+	constructor(message: string) {
+		super(message);
+		this.name = 'InterfaceAdapterError';
+	}
+}
+
+export class StatusJsonError extends BaseError {
+	constructor(message: string) {
+		super(message);
+		this.name = 'StatusJsonError';
+	}
+}

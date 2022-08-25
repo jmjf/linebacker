@@ -5,24 +5,18 @@ import { UseCase } from '../../../common/application/UseCase';
 import * as ApplicationErrors from '../../../common/application/ApplicationErrors';
 
 import { CreateBackupRequestDTO } from './CreateBackupRequestDTO';
-import { IBackupRequestRepo } from '../../adapter/BackupRequestRepo';
+import { IBackupRequestRepo } from '../../adapter/IBackupRequestRepo';
 import { BackupRequest, IBackupRequestProps } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 
-
 // add errors when you define them
-type Response = Result<BackupRequest, 
-	DomainErrors.PropsError
-	| ApplicationErrors.UnexpectedError
-	| Error>;
+type Response = Result<BackupRequest, DomainErrors.PropsError | ApplicationErrors.UnexpectedError | Error>;
 
 /**
  * Class representing a use case to create a new backup request and store it in the request log
  */
-export class CreateBackupRequestUseCase
-	implements UseCase<CreateBackupRequestDTO, Promise<Response>>
-{
+export class CreateBackupRequestUseCase implements UseCase<CreateBackupRequestDTO, Promise<Response>> {
 	private backupRequestRepo: IBackupRequestRepo;
 
 	constructor(backupRequestRepo: IBackupRequestRepo) {
@@ -30,7 +24,6 @@ export class CreateBackupRequestUseCase
 	}
 
 	async execute(request: CreateBackupRequestDTO): Promise<Response> {
-
 		// initialize props
 		const requestProps: IBackupRequestProps = {
 			backupJobId: new UniqueIdentifier(request.backupJobId),
@@ -39,9 +32,9 @@ export class CreateBackupRequestUseCase
 			getOnStartFlag: request.getOnStartFlag,
 			transportTypeCode: request.transportType as RequestTransportType,
 			statusTypeCode: RequestStatusTypeValues.Received,
-			receivedTimestamp: (new Date())
+			receivedTimestamp: new Date(),
 		};
-		
+
 		// get a new BackupRequest (or handle error)
 		const backupRequestResult = BackupRequest.create(requestProps);
 		if (backupRequestResult.isErr()) {
