@@ -42,12 +42,12 @@ export class MockBackupJobServiceAdapter implements IBackupJobServiceAdapter {
 		Result<BackupJob, AdapterErrors.BackupJobServiceError | AdapterErrors.NotFoundError | DomainErrors.PropsError>
 	> {
 		//await delay(10000);
-		logger.info({
-			context: 'MockBJSA.getById',
-			backupRequestId: backupRequestId,
-			backupJobId: backupJobId,
-			msg: 'getById',
-		});
+		// logger.info({
+		// 	context: 'MockBJSA.getById',
+		// 	backupRequestId: backupRequestId,
+		// 	backupJobId: backupJobId,
+		// 	msg: 'getById',
+		// });
 		if (this.getByIdResult) return this.mapToDomain({ ...this.getByIdResult, backupJobId });
 		if (this.getByIdError) return err(this.getByIdError);
 		return err(new AdapterErrors.BackupJobServiceError(`{msg: 'unknown'}`));

@@ -1,4 +1,4 @@
-// mock the Azure SDK
+// mock the Azure SDK -- this test suite uses an adapter that connects to an Azure Storage queue
 jest.mock('@azure/storage-queue');
 import * as mockQueueSDK from '@azure/storage-queue';
 
@@ -11,28 +11,27 @@ import { SendRequestToInterfaceUseCase } from './SendRequestToInterfaceUseCase';
 import { SendRequestToInterfaceDTO } from './SendRequestToInterfaceDTO';
 
 import {
-	MockPrismaContext,
-	PrismaContext,
-	createMockPrismaContext,
-} from '../../../common/infrastructure/database/prismaContext';
-import { BackupRequest } from '@prisma/client';
-import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
+	MockTypeormContext,
+	TypeormContext,
+	createMockTypeormContext,
+} from '../../../common/infrastructure/database/typeormContext';
+import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
+import { TypeormBackupRequest } from '../../../typeorm/entity/TypeormBackupRequest.entity';
 
-describe('Send Request To Interface Use Case', () => {
-	let mockPrismaCtx: MockPrismaContext;
-	let prismaCtx: PrismaContext;
+describe('SendRequestToInterfaceUseCase - typeorm', () => {
+	let mockTypeormCtx: MockTypeormContext;
+	let typeormCtx: TypeormContext;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
-		mockPrismaCtx = createMockPrismaContext();
-		prismaCtx = mockPrismaCtx as unknown as PrismaContext;
+		mockTypeormCtx = createMockTypeormContext();
+		typeormCtx = mockTypeormCtx as unknown as TypeormContext;
 	});
 
 	const baseDto = {
 		backupRequestId: 'sendToInterfaceRequestId',
 	} as SendRequestToInterfaceDTO;
 
-	const dbBackupRequest: BackupRequest = {
+	const dbBackupRequest: TypeormBackupRequest = {
 		backupRequestId: 'dbBackupRequestId',
 		backupJobId: 'dbBackupJobId',
 		dataDate: new Date(),
@@ -102,12 +101,11 @@ describe('Send Request To Interface Use Case', () => {
 			statusTypeCode: status,
 		};
 		resultBackupRequest[timestampName] = new Date();
-		const expectedTimestamp = new Date(resultBackupRequest[timestampName]); // ensure we have a separate instance
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest as BackupRequest);
+		mockTypeormCtx.manager.findOne.mockResolvedValue(resultBackupRequest as TypeormBackupRequest);
 
-		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
@@ -139,9 +137,9 @@ describe('Send Request To Interface Use Case', () => {
 
 		// findUnique() returns null if not found
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(null as unknown as BackupRequest);
+		mockTypeormCtx.manager.findOne.mockResolvedValue(null as unknown as TypeormBackupRequest);
 
-		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
@@ -167,7 +165,7 @@ describe('Send Request To Interface Use Case', () => {
 
 	test('when request is NotAllowed, it returns failure', async () => {
 		// Arrange
-		const resultBackupRequest: BackupRequest = {
+		const resultBackupRequest: TypeormBackupRequest = {
 			...dbBackupRequest,
 			backupJobId: 'request NotAllowed job id',
 			statusTypeCode: 'NotAllowed',
@@ -175,9 +173,9 @@ describe('Send Request To Interface Use Case', () => {
 		};
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest);
+		mockTypeormCtx.manager.findOne.mockResolvedValue(resultBackupRequest);
 
-		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
@@ -203,15 +201,15 @@ describe('Send Request To Interface Use Case', () => {
 
 	test('when request is allowed and sendMessage fails, it returns failure', async () => {
 		// Arrange
-		const resultBackupRequest: BackupRequest = {
+		const resultBackupRequest: TypeormBackupRequest = {
 			...dbBackupRequest,
 			backupJobId: 'send fails job id',
 		};
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest);
+		mockTypeormCtx.manager.findOne.mockResolvedValue(resultBackupRequest);
 
-		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockResolvedValueOnce(mockSendError);
@@ -239,8 +237,8 @@ describe('Send Request To Interface Use Case', () => {
 		const startTimestamp = new Date();
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
-		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
+		mockTypeormCtx.manager.findOne.mockResolvedValue(dbBackupRequest);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockImplementation((message: string) => {

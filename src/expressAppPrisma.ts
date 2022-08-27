@@ -1,7 +1,7 @@
 import express from 'express';
 import { morganMiddleware } from './morgan.middleware';
 
-import { addBackupRequestRoutes } from './backup-request/infrastructure/expressRoutes';
+import { addBackupRequestRoutes } from './backup-request/infrastructure/expressRoutesPrisma';
 import { PrismaContext } from './common/infrastructure/database/prismaContext';
 
 export function buildApp(prismaCtx: PrismaContext) {

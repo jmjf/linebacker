@@ -1,6 +1,4 @@
-import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
-
-import { BackupJob, IBackupJobProps } from '../../../backup-job/domain/BackupJob';
+import { IBackupJobProps } from '../../../backup-job/domain/BackupJob';
 import {
 	mockBackupJobProps,
 	MockBackupJobServiceAdapter,
@@ -14,25 +12,26 @@ import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 import { StoreStatusReplyDTO } from './StoreStatusReplyDTO';
 import { ReceiveStoreStatusReplyUseCase } from './ReceiveStoreStatusReplyUseCase';
 
-import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
-import { PrismaBackupRepo } from '../../../backup/adapter/impl/PrismaBackupRepo';
-
-import {
-	MockPrismaContext,
-	PrismaContext,
-	createMockPrismaContext,
-} from '../../../common/infrastructure/database/prismaContext';
-import { Backup, BackupRequest } from '@prisma/client';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 
+import {
+	MockTypeormContext,
+	TypeormContext,
+	createMockTypeormContext,
+} from '../../../common/infrastructure/database/typeormContext';
+import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
+import { TypeormBackupRequest } from '../../../typeorm/entity/TypeormBackupRequest.entity';
+import { TypeormBackupRepo } from '../../../backup/adapter/impl/TypeormBackupRepo';
+import { TypeormBackup } from '../../../typeorm/entity/TypeormBackup.entity';
+import { TypeORMError } from 'typeorm';
+
 describe('ReceiveStoreStatusReplyUseCase', () => {
-	let mockPrismaCtx: MockPrismaContext;
-	let prismaCtx: PrismaContext;
+	let mockTypeormCtx: MockTypeormContext;
+	let typeormCtx: TypeormContext;
 
 	beforeEach(() => {
-		mockPrismaCtx = createMockPrismaContext();
-		prismaCtx = mockPrismaCtx as unknown as PrismaContext;
+		mockTypeormCtx = createMockTypeormContext();
+		typeormCtx = mockTypeormCtx as unknown as TypeormContext;
 	});
 
 	const createBackupReply: StoreStatusReplyDTO = {
@@ -52,7 +51,7 @@ describe('ReceiveStoreStatusReplyUseCase', () => {
 		holdFlag: false,
 	};
 
-	const dbBackupRequest: BackupRequest = {
+	const dbBackupRequest: TypeormBackupRequest = {
 		backupRequestId: 'dbBackupRequestId',
 		backupJobId: 'dbBackupJobId',
 		dataDate: new Date(),
@@ -70,37 +69,34 @@ describe('ReceiveStoreStatusReplyUseCase', () => {
 		replyMessageText: null,
 	};
 
-	const prismaBackup: Backup = {
+	const dbBackup: TypeormBackup = {
 		backupId: 'backupId',
 		backupRequestId: 'dbBackupRequestId',
 		backupJobId: 'dbBackupJobId',
 		dataDate: new Date('2022-05-30'),
 		backupProviderCode: 'CloudA',
-		storagePathName: 'path/to/backup/storage/prisma',
+		storagePathName: 'path/to/backup/storage',
 		daysToKeepCount: 42,
 		holdFlag: false,
-		backupByteCount: BigInt(9999999),
+		backupByteCount: Number.MAX_SAFE_INTEGER,
 		copyStartTimestamp: new Date('2022-05-30T20:00:00Z'),
 		copyEndTimestamp: new Date('2022-05-30T20:11:11Z'),
 		verifyStartTimestamp: new Date('2022-05-30T20:11:33Z'),
 		verifyEndTimestamp: new Date('2022-05-30T20:20:44Z'),
 		verifyHashText: 'verifyHash',
 		dueToDeleteDate: new Date('2029-04-30'),
-		deletedTimestamp: null as unknown as Date,
+		deletedTimestamp: null,
 	};
-
-	const prismaCode = 'P1010';
 
 	describe('Prerequisites for any update (BackupRequest and BackupJob must exist)', () => {
 		test(`when the BackupRequest doesn't exist, it returns a NotFoundError`, async () => {
 			// Arrange
 
-			// VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
-			// findUnique() returns null if not found
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(null as unknown as BackupRequest);
-			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+			// findOne() returns null if not found, no other database calls should happen
+			mockTypeormCtx.manager.findOne.mockResolvedValue(null);
+			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
 
-			const backupRepo = new PrismaBackupRepo(prismaCtx);
+			const backupRepo = new TypeormBackupRepo(typeormCtx);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...mockBackupJobProps } });
@@ -131,11 +127,11 @@ describe('ReceiveStoreStatusReplyUseCase', () => {
 		test(`when the BackupJob doesn't exist, it returns a BackupJobServiceError`, async () => {
 			// Arrange
 
-			// VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
-			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+			// BackupJob get will fail, so only need to mock BackupRequest return
+			mockTypeormCtx.manager.findOne.mockResolvedValue(dbBackupRequest);
+			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
 
-			const backupRepo = new PrismaBackupRepo(prismaCtx);
+			const backupRepo = new TypeormBackupRepo(typeormCtx);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({
@@ -170,11 +166,11 @@ describe('ReceiveStoreStatusReplyUseCase', () => {
 		test('when reply status is invalid, it returns a PropsError', async () => {
 			// Arrange
 
-			// VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
-			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+			// Will fail before we call BackupRepo, so no need for other mocks
+			mockTypeormCtx.manager.findOne.mockResolvedValue(dbBackupRequest);
+			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
 
-			const backupRepo = new PrismaBackupRepo(prismaCtx);
+			const backupRepo = new TypeormBackupRepo(typeormCtx);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({});
@@ -202,7 +198,7 @@ describe('ReceiveStoreStatusReplyUseCase', () => {
 			}
 		});
 
-		// Can test attributes in BackupRequestReplyDTO because other values are set from retrieved data in the use case
+		// Only test attributes in BackupRequestReplyDTO because other values are set from retrieved data in the use case
 		test.each([
 			{ propName: 'backupRequestId' },
 			{ propName: 'storagePathName' },
@@ -212,13 +208,19 @@ describe('ReceiveStoreStatusReplyUseCase', () => {
 		])('when required reply attribute $propName is missing, it returns a PropsError', async ({ propName }) => {
 			// Arrange
 
-			// VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
-			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+			// I need to return different results from TypeORM for different calls. Prisma
+			// puts the methods on the entity type, but TypeORM puts them on the manager.
+			mockTypeormCtx.manager.findOne.mockResolvedValue(null); // default return after mock once used up
+			mockTypeormCtx.manager.findOne.mockResolvedValueOnce(dbBackupRequest); // first return (backup request read first)
+			mockTypeormCtx.manager.findOne.mockResolvedValueOnce(null); // second return (backup read -> none found)
 
-			mockPrismaCtx.prisma.backup.findFirst.mockResolvedValue(null as unknown as Backup);
-			mockPrismaCtx.prisma.backup.upsert.mockResolvedValue({} as Backup);
-			const backupRepo = new PrismaBackupRepo(prismaCtx);
+			// Should never call save, so no need for extra mocks
+			mockTypeormCtx.manager.save.mockResolvedValue(null); // default return after mock once used up
+
+			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
+			const backupRequestRepoSaveSpy = jest.spyOn(backupRequestRepo, 'save');
+
+			const backupRepo = new TypeormBackupRepo(typeormCtx);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobDTO } });
@@ -239,6 +241,7 @@ describe('ReceiveStoreStatusReplyUseCase', () => {
 			// Assert
 			expect(result.isErr()).toBe(true);
 			expect(backupRepoSaveSpy).not.toBeCalled();
+			expect(backupRequestRepoSaveSpy).not.toBeCalled();
 			if (result.isErr()) {
 				// type guard
 				expect(result.error.name).toBe('PropsError');
@@ -251,19 +254,21 @@ describe('ReceiveStoreStatusReplyUseCase', () => {
 		test(`when reply is Succeeded but BackupRepo.save() fails, it doesn't save the BackupRequest and returns a DatabaseError`, async () => {
 			// Arrange
 
-			// VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
+			// I need to return different results from TypeORM for different calls. Prisma
+			// puts the methods on the entity type, but TypeORM puts them on the manager.
+			mockTypeormCtx.manager.findOne.mockResolvedValue(null); // default return after mock once used up
+			mockTypeormCtx.manager.findOne.mockResolvedValueOnce(dbBackupRequest); // first return (backup request read first)
+			mockTypeormCtx.manager.findOne.mockResolvedValueOnce(null); // second return (backup read second)
 
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
-			// BackupRequest save() should never be called, so don't need a mock result
-			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+			mockTypeormCtx.manager.save.mockResolvedValue(null); // default return after mock once used up
+			// Backup save() will fail
+			mockTypeormCtx.manager.save.mockRejectedValueOnce(new TypeORMError('some save failure')); // first return (backup saved first)
+			// BackupRequest save should never be called, so no extra mock needed for it
+
+			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
 			const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-			// Backup save() will fail
-			mockPrismaCtx.prisma.backup.findFirst.mockResolvedValue(null as unknown as Backup);
-			mockPrismaCtx.prisma.backup.upsert.mockRejectedValue(
-				new PrismaClientKnownRequestError('Some upsert failure', prismaCode, '2')
-			);
-			const backupRepo = new PrismaBackupRepo(prismaCtx);
+			const backupRepo = new TypeormBackupRepo(typeormCtx);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobDTO } });
@@ -287,26 +292,28 @@ describe('ReceiveStoreStatusReplyUseCase', () => {
 				// type guard
 				expect(result.error.name).toBe('DatabaseError');
 				// ensure it fails in the BackupRepo.save, not some other DatabaseError
-				expect((result.error as AdapterErrors.DatabaseError).functionName).toBe('PrismaBackupRepo.save');
+				expect((result.error as AdapterErrors.DatabaseError).functionName).toBe('TypeormBackupRepo.save');
 			}
 		});
 
 		test(`when reply is Succeeded and BackupRepo.save() succeeds but BackupRequestRepo.save() fails, it returns a DatabaseError`, async () => {
 			// Arrange
 
-			// VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
+			// I need to return different results from TypeORM for different calls. Prisma
+			// puts the methods on the entity type, but TypeORM puts them on the manager.
+			mockTypeormCtx.manager.findOne.mockResolvedValue(null); // default return after mock once used up
+			mockTypeormCtx.manager.findOne.mockResolvedValueOnce(dbBackupRequest); // first return (backup request read first)
+			mockTypeormCtx.manager.findOne.mockResolvedValueOnce(null); // second return (backup read second -> not found, try to create)
 
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
+			mockTypeormCtx.manager.save.mockResolvedValue(null); // default return after mock once used up
+			mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackup); // first return (backup saved first)
 			// BackupRequest save() will fail
-			mockPrismaCtx.prisma.backupRequest.upsert.mockRejectedValue(
-				new PrismaClientKnownRequestError('Some upsert failure', prismaCode, '2')
-			);
-			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+			mockTypeormCtx.manager.save.mockRejectedValueOnce(new TypeORMError('some save failure')); // second return (backup request saved second)
+
+			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
 			const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-			mockPrismaCtx.prisma.backup.findFirst.mockResolvedValue(null as unknown as Backup);
-			mockPrismaCtx.prisma.backup.upsert.mockResolvedValue({} as Backup);
-			const backupRepo = new PrismaBackupRepo(prismaCtx);
+			const backupRepo = new TypeormBackupRepo(typeormCtx);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobDTO } });
@@ -330,7 +337,7 @@ describe('ReceiveStoreStatusReplyUseCase', () => {
 				// type guard
 				expect(result.error.name).toBe('DatabaseError');
 				// ensure it fails in the BackupRequestRepo.save, not some other DatabaseError
-				expect((result.error as AdapterErrors.DatabaseError).functionName).toBe('PrismaBackupRequestRepo.save');
+				expect((result.error as AdapterErrors.DatabaseError).functionName).toBe('TypeormBackupRequestRepo.save');
 			}
 		});
 	});
@@ -339,16 +346,21 @@ describe('ReceiveStoreStatusReplyUseCase', () => {
 		test('when reply is Succeeded and Backup does not exist, both repo save()s are called and it returns a BackupRequest (Succeeded status)', async () => {
 			// Arrange
 
-			// VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
+			// I need to return different results from TypeORM for different calls. Prisma
+			// puts the methods on the entity type, but TypeORM puts them on the manager.
+			mockTypeormCtx.manager.findOne.mockResolvedValue(null); // default return after mock once used up
+			mockTypeormCtx.manager.findOne.mockResolvedValueOnce(dbBackupRequest); // first return (backup request read first)
+			// Backup read returns no result for this test case, so no need for another mock
 
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
-			mockPrismaCtx.prisma.backupRequest.upsert.mockResolvedValue({} as BackupRequest);
-			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+			mockTypeormCtx.manager.save.mockResolvedValue(null); // default return after mock once used up
+			mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackup); // first return (backup saved first)
+			// BackupRequest save() will fail
+			mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackupRequest); // second return (backup request saved second)
+
+			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
 			const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-			mockPrismaCtx.prisma.backup.findFirst.mockResolvedValue(null as unknown as Backup);
-			mockPrismaCtx.prisma.backup.upsert.mockResolvedValue({} as Backup);
-			const backupRepo = new PrismaBackupRepo(prismaCtx);
+			const backupRepo = new TypeormBackupRepo(typeormCtx);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobDTO } });
@@ -378,16 +390,20 @@ describe('ReceiveStoreStatusReplyUseCase', () => {
 		test('when reply is Failed and a Backup does not exist, only BackupRequest.save() is called and it returns a BackupRequest (Failed status)', async () => {
 			// Arrange
 
-			// VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
+			// I need to return different results from TypeORM for different calls. Prisma
+			// puts the methods on the entity type, but TypeORM puts them on the manager.
+			mockTypeormCtx.manager.findOne.mockResolvedValue(null); // default return after mock once used up
+			mockTypeormCtx.manager.findOne.mockResolvedValueOnce(dbBackupRequest); // first return (backup request read first)
+			mockTypeormCtx.manager.findOne.mockResolvedValueOnce(null); // second return (backup read second)
 
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
-			mockPrismaCtx.prisma.backupRequest.upsert.mockResolvedValue({} as BackupRequest);
-			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+			mockTypeormCtx.manager.save.mockResolvedValue(null); // default return after mock once used up
+			// Backup save should not be called for this test, so don't mock it (will mess up order of returns)
+			mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackupRequest); // second return (backup request saved second)
+
+			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
 			const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-			mockPrismaCtx.prisma.backup.findFirst.mockResolvedValue(null as unknown as Backup);
-			mockPrismaCtx.prisma.backup.upsert.mockResolvedValue({} as Backup);
-			const backupRepo = new PrismaBackupRepo(prismaCtx);
+			const backupRepo = new TypeormBackupRepo(typeormCtx);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobDTO } });
@@ -419,19 +435,25 @@ describe('ReceiveStoreStatusReplyUseCase', () => {
 		test('when BackupRequest.save() fails, it returns a DatabaseError and does not call Backup.save()', async () => {
 			// Arrange
 
-			// VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
+			// If we get a second status reply for a backup request for which we've already created a Backup instance,
+			// and if the backup request's status is still Sent, update the backup request.
+			// This test is that case failing to update the request.
 
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
-			mockPrismaCtx.prisma.backupRequest.upsert.mockRejectedValue(
-				new PrismaClientKnownRequestError('rejected', prismaCode, '2')
-			);
-			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+			// I need to return different results from TypeORM for different calls. Prisma
+			// puts the methods on the entity type, but TypeORM puts them on the manager.
+			mockTypeormCtx.manager.findOne.mockResolvedValue(null); // default return after mock once used up
+			mockTypeormCtx.manager.findOne.mockResolvedValueOnce(dbBackupRequest); // first return (backup request read first)
+			mockTypeormCtx.manager.findOne.mockResolvedValueOnce(dbBackup); // second return (backup read second)
+
+			mockTypeormCtx.manager.save.mockResolvedValue(null); // default return after mock once used up
+			// should not call Backup save, so no need to mock it
+			// BackupRequest save() will fail
+			mockTypeormCtx.manager.save.mockRejectedValueOnce(new TypeORMError('some save failure')); // second return (backup request saved second)
+
+			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
 			const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-			// findFirst() for getByBackupRequestId()
-			mockPrismaCtx.prisma.backup.findFirst.mockResolvedValue(prismaBackup as Backup);
-			mockPrismaCtx.prisma.backup.upsert.mockResolvedValue({} as Backup); // succeed if called, shouldn't be called
-			const backupRepo = new PrismaBackupRepo(prismaCtx);
+			const backupRepo = new TypeormBackupRepo(typeormCtx);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobDTO } });
@@ -449,16 +471,19 @@ describe('ReceiveStoreStatusReplyUseCase', () => {
 
 			// Assert
 			expect(result.isErr()).toBe(true);
-			expect(backupRequestSaveSpy).toBeCalledTimes(1);
 			expect(backupRepoSaveSpy).not.toBeCalled();
+			expect(backupRequestSaveSpy).toBeCalledTimes(1);
+
 			if (result.isErr()) {
 				// type guard
 				expect(result.error.name).toBe('DatabaseError');
 				// ensure it fails in the BackupRequestRepo.save, not some other DatabaseError
-				expect((result.error as AdapterErrors.DatabaseError).functionName).toBe('PrismaBackupRequestRepo.save');
+				expect((result.error as AdapterErrors.DatabaseError).functionName).toBe('TypeormBackupRequestRepo.save');
 			}
 		});
 
+		// Need to rethink this test and this part of the use case
+		// Should not update the request after it is Succeeded or Failed
 		test.each([
 			{
 				requestStatus: RequestStatusTypeValues.Sent,
@@ -489,20 +514,23 @@ describe('ReceiveStoreStatusReplyUseCase', () => {
 			async ({ requestStatus, resultStatus }) => {
 				// Arrange
 
-				// VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
+				// I need to redo this part of the use case logic and this test, but for now, get it running with TypeORM as is
 
-				mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue({
-					...dbBackupRequest,
-					statusTypeCode: requestStatus,
-				});
-				mockPrismaCtx.prisma.backupRequest.upsert.mockResolvedValue({} as BackupRequest);
-				const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+				// I need to return different results from TypeORM for different calls. Prisma
+				// puts the methods on the entity type, but TypeORM puts them on the manager.
+				mockTypeormCtx.manager.findOne.mockResolvedValue(null); // default return after mock once used up
+				// first return (backup request read first)
+				mockTypeormCtx.manager.findOne.mockResolvedValueOnce({ ...dbBackupRequest, statusTypeCode: requestStatus });
+				mockTypeormCtx.manager.findOne.mockResolvedValueOnce(dbBackup); // second return (backup read second)
+
+				mockTypeormCtx.manager.save.mockResolvedValue(null); // default return after mock once used up
+				// should not call Backup save because getById will return an existing backup
+				mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackupRequest); // second return (backup request saved second)
+
+				const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
 				const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-				// findFirst() for getByBackupRequestId()
-				mockPrismaCtx.prisma.backup.findFirst.mockResolvedValue(prismaBackup as Backup);
-				mockPrismaCtx.prisma.backup.upsert.mockResolvedValue({} as Backup); // succeed if called, shouldn't be called
-				const backupRepo = new PrismaBackupRepo(prismaCtx);
+				const backupRepo = new TypeormBackupRepo(typeormCtx);
 				const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
 				const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobDTO } });

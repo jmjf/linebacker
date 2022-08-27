@@ -10,7 +10,8 @@
 		"pretty": "prettier --write \"src/**/*.ts\"",
 		"fastify:dev": "APP_ENV=dev ts-node src/fastifyServer.ts",
 		"fastify:uat": "APP_ENV=uat ts-node src/fastifyServer.ts",
-		"express:dev": "APP_ENV=dev ts-node src/expressServer.ts"
+		"express:dev:prisma": "APP_ENV=dev ts-node src/expressServerPrisma.ts",
+		"express:dev:typeorm": "APP_ENV=dev ts-node src/expressServerTypeorm.ts"
 	},
 	"author": "Jamee Mikell",
 	"license": "MIT",
@@ -22,7 +23,10 @@
 		"express": "^4.17.3",
 		"fastify": "^3.29.0",
 		"morgan": "^1.10.0",
+		"mssql": "^7.3.5",
 		"pino": "^8.4.0",
+		"reflect-metadata": "^0.1.13",
+		"typeorm": "^0.3.7",
 		"uuid": "^8.3.2",
 		"winston": "^3.8.1"
 	},

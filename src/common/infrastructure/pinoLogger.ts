@@ -23,6 +23,6 @@ const pinoOptions = isDev()
 				},
 			},
 	  };
-if (isTest()) pinoOptions.level = 'fatal';
+//if (isTest()) pinoOptions.level = 'fatal';
 
 export const logger = pino(pinoOptions);
