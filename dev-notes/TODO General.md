@@ -15,6 +15,10 @@ I use explict `any` rarely and always in the external facing adapter code, so th
 -  requestId -> backupRequestId to avoid future confusion
 -  Consider adding some kind of context for the log to make the code findable
 
+## Better env management
+
+-  I'd like something more like a JSON file or an object specification.
+
 ## Managing queue credential and URI data
 
 See notes in 8.3 about `DefaultAzureCredential` "AzureQueue env considerations" and potential challenges with using environment variables or injecting into `process.env`.

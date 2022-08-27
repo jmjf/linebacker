@@ -3,13 +3,14 @@ services:
    mssql:
       container_name: mssql
       image: mcr.microsoft.com/mssql/server:2019-latest
+      user: root # so we can use volumes
       ports:
          - '1433:1433'
       env_file:
          - ../env/dev.env
-   #      volumes:
-   #         - ./mssql.db/data:/var/opt/mssql/data
-   #         - ./mssql.db/log:/var/opt/mssql/log
+      volumes:
+         - ./mssql.db:/var/opt/mssql
+   #         - ./mssql.db/log:/var/opt/mssql/loog
    #         - ./mssql.db/secrets:/var/opt/mssql/secrets
 
    admin:
