@@ -52,5 +52,5 @@ export class TypeormBackupRequest {
 	requesterId: string | null | undefined;
 
 	@Column({ name: 'ReplyMessageText', type: 'varchar', length: 250, nullable: true })
-	replyMessageText: Date | null | undefined;
+	replyMessageText: string | null | undefined;
 }

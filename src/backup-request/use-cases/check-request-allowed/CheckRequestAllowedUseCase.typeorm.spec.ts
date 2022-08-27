@@ -207,7 +207,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 	test('when backup job for request meets allowed rules, it returns a BackupRequest in Allowed status', async () => {
 		// Arrange
 		mockTypeormCtx.manager.findOne.mockResolvedValueOnce(dbBackupRequest);
-		mockTypeormCtx.manager.save.mockResolvedValueOnce(dbBackupRequest);
+		mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackupRequest);
 
 		const repo = new TypeormBackupRequestRepo(typeormCtx);
 

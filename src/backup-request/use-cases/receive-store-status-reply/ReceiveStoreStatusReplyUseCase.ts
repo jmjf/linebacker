@@ -40,7 +40,7 @@ export class ReceiveStoreStatusReplyUseCase implements UseCase<StoreStatusReplyD
 	}
 
 	async execute(reply: StoreStatusReplyDTO): Promise<Response> {
-		// console.log('rssruc start', reply);
+		// // console.log('RSSRUC start', reply);
 		const { resultTypeCode, backupRequestId, ...restOfReply } = reply;
 
 		const resultTypeCodeGuardResult = Guard.isOneOf(resultTypeCode, validStoreResultTypes, 'resultTypeCode');
@@ -53,6 +53,7 @@ export class ReceiveStoreStatusReplyUseCase implements UseCase<StoreStatusReplyD
 			return err(new DomainErrors.PropsError(`{ message: ${backupRequestIdGuardResult.error.message}}`));
 		}
 
+		// // console.log('RSSRUC get backup request');
 		// backup request must exist or we can't do anything
 		const backupRequestResult = await this.backupRequestRepo.getById(backupRequestId);
 		if (backupRequestResult.isErr()) {
@@ -60,6 +61,7 @@ export class ReceiveStoreStatusReplyUseCase implements UseCase<StoreStatusReplyD
 		}
 		const backupRequest = backupRequestResult.value;
 
+		// console.log('RSSRUC get backup job');
 		// backup job must exist or we can't do anything
 		const backupJobResult = await this.backupJobServiceAdapter.getById(backupRequest.backupJobId.value);
 		if (backupJobResult.isErr()) {
@@ -67,8 +69,11 @@ export class ReceiveStoreStatusReplyUseCase implements UseCase<StoreStatusReplyD
 		}
 		const backupJob = backupJobResult.value;
 
+		// console.log('RSSRUC get backup');
 		// get any existing Backup for this BackupRequest
 		const existingBackupResult = await this.backupRepo.getByBackupRequestId(backupRequestId);
+
+		// console.log('RSSRUC existingBackupResult', existingBackupResult);
 
 		// If an error isn't a NotFoundError, fail the use case -- it's probably a DatabaseError, but use !== 'NotFoundError' so nothing slips through
 		if (existingBackupResult.isErr() && existingBackupResult.error.name !== 'NotFoundError') {
@@ -80,6 +85,7 @@ export class ReceiveStoreStatusReplyUseCase implements UseCase<StoreStatusReplyD
 			backup = existingBackupResult.value;
 		} else if (resultTypeCode === StoreResultTypeValues.Succeeded) {
 			// Any isErr() that makes it here it must be NotFoundError -- create and save the backup
+			// console.log('RSSRUC creating Backup');
 
 			// create backup aggregate from data in request, reply, and job
 			const requestProps: IBackupProps = {

@@ -13,8 +13,7 @@ import { BackupRequest } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
 import { IBackupRequestRepo } from '../IBackupRequestRepo';
 
-// use when deep testing
-import { logger } from '../../../common/infrastructure/pinoLogger';
+import { RequestStatusType } from '../../domain/RequestStatusType';
 
 export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 	private typeormCtx: TypeormContext;
@@ -51,7 +50,6 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 					backupRequestId: backupRequestId,
 				},
 			});
-			logger.info({ msg: 'Typeorm getById', data: data });
 
 			if (data === null) {
 				return err(new AdapterErrors.NotFoundError(`Backup request not found |${backupRequestId}|`));
@@ -59,7 +57,6 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 
 			return this.mapToDomain(data);
 		} catch (e) {
-			logger.error({ msg: 'Typeorm getById error', error: e });
 			return err(new AdapterErrors.DatabaseError(`${JSON.stringify(e)}`));
 		}
 	}
@@ -70,7 +67,6 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 		try {
 			await this.typeormCtx.manager.save(TypeormBackupRequest, { ...raw });
 		} catch (e) {
-			logger.error({ msg: 'Typeorm save error', error: e });
 			return err(new AdapterErrors.DatabaseError(`${JSON.stringify(e)}`));
 		}
 
@@ -84,7 +80,7 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 	}
 
 	// this may belong in a mapper
-	private mapToDomain(raw: any): Result<BackupRequest, DomainErrors.PropsError> {
+	private mapToDomain(raw: TypeormBackupRequest): Result<BackupRequest, DomainErrors.PropsError> {
 		const backupRequestId = new UniqueIdentifier(raw.backupRequestId);
 		const backupRequestResult = BackupRequest.create(
 			{
@@ -94,25 +90,37 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 				getOnStartFlag: raw.getOnStartFlag,
 				transportTypeCode: raw.transportTypeCode as RequestTransportType,
 				backupProviderCode: raw.backupProviderCode as BackupProviderType,
-				storagePathName: raw.storagePathName,
-				statusTypeCode: raw.statusTypeCode,
+				storagePathName: raw.storagePathName === null ? undefined : raw.storagePathName,
+				statusTypeCode: raw.statusTypeCode as RequestStatusType,
 				receivedTimestamp: raw.receivedTimestamp,
-				checkedTimestamp: raw.checkedTimestamp,
-				sentToInterfaceTimestamp: raw.sentToInterfaceTimestamp,
-				replyTimestamp: raw.replyTimestamp,
-				requesterId: raw.requesterId,
-				replyMessageText: raw.replyMessageText,
+				checkedTimestamp: raw.checkedTimestamp === null ? undefined : raw.checkedTimestamp,
+				sentToInterfaceTimestamp: raw.sentToInterfaceTimestamp === null ? undefined : raw.sentToInterfaceTimestamp,
+				replyTimestamp: raw.replyTimestamp === null ? undefined : raw.replyTimestamp,
+				requesterId: raw.requesterId === null ? undefined : raw.requesterId,
+				replyMessageText: raw.replyMessageText === null ? undefined : raw.replyMessageText,
 			},
 			backupRequestId
 		);
 		return backupRequestResult;
 	}
 
-	private mapToDb(backupRequest: BackupRequest): any {
+	private mapToDb(backupRequest: BackupRequest): TypeormBackupRequest {
 		return {
 			backupRequestId: backupRequest.idValue,
-			...backupRequest.props,
 			backupJobId: backupRequest.backupJobId.value,
+			dataDate: backupRequest.dataDate,
+			preparedDataPathName: backupRequest.preparedDataPathName,
+			getOnStartFlag: backupRequest.getOnStartFlag,
+			transportTypeCode: backupRequest.transportTypeCode,
+			backupProviderCode: backupRequest.backupProviderCode,
+			storagePathName: backupRequest.storagePathName,
+			statusTypeCode: backupRequest.statusTypeCode,
+			receivedTimestamp: backupRequest.receivedTimestamp,
+			checkedTimestamp: backupRequest.checkedTimestamp,
+			sentToInterfaceTimestamp: backupRequest.sentToInterfaceTimestamp,
+			replyTimestamp: backupRequest.replyTimestamp,
+			replyMessageText: backupRequest.replyMessageText,
+			requesterId: backupRequest.requesterId,
 		};
 	}
 }

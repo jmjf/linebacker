@@ -101,7 +101,6 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 			statusTypeCode: status,
 		};
 		resultBackupRequest[timestampName] = new Date();
-		const expectedTimestamp = new Date(resultBackupRequest[timestampName]); // ensure we have a separate instance
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockTypeormCtx.manager.findOne.mockResolvedValue(resultBackupRequest as TypeormBackupRequest);

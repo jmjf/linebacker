@@ -26,3 +26,13 @@ See notes in 8.3 about `DefaultAzureCredential` "AzureQueue env considerations" 
 ## Add Prisma prefix on Prisma entities
 
 Avoid confusion with my entities/aggregates with the same name.
+
+Also, make mapping functions explicit to avoid possible issues with data types.
+
+## ReceiveStoreStatusReplyUseCase
+
+Need to revisit the logic
+
+-  If the backup exists, do not save it again
+-  If the backup request is already succeeded or failed, do not save again
+-  Adjust tests

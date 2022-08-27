@@ -14,12 +14,12 @@ export interface IBackupProps {
 	dataDate: string | Date;
 	backupProviderCode: BackupProviderType;
 	daysToKeepCount: number;
-	dueToDeleteDate?: string | Date;
 	holdFlag: boolean;
 	storagePathName: string;
 	backupByteCount: number;
 	copyStartTimestamp: string | Date;
 	copyEndTimestamp: string | Date;
+	dueToDeleteDate?: string | Date;
 	verifyStartTimestamp?: string | Date;
 	verifyEndTimestamp?: string | Date;
 	verifyHashText?: string;
@@ -111,19 +111,13 @@ export class Backup extends AggregateRoot<IBackupProps> {
 	}
 
 	// used in create() so must be static, which means it can't reference this.props (not static)
-	public static calculateDueToDeleteDate(
-		dataDate: Date,
-		daysToKeepCount: number
-	): Date {
+	public static calculateDueToDeleteDate(dataDate: Date, daysToKeepCount: number): Date {
 		const deleteDate = new Date(dataDate);
 		deleteDate.setDate(dataDate.getDate() + daysToKeepCount);
 		return deleteDate;
 	}
 
-	public static create(
-		props: IBackupProps,
-		id?: UniqueIdentifier
-	): Result<Backup, DomainErrors.PropsError> {
+	public static create(props: IBackupProps, id?: UniqueIdentifier): Result<Backup, DomainErrors.PropsError> {
 		// check required props are not null or undefined
 		// if result !succeeded return Result.fail<>()
 
@@ -144,11 +138,7 @@ export class Backup extends AggregateRoot<IBackupProps> {
 
 		const propsGuardResult = Guard.againstNullOrUndefinedBulk(guardArgs);
 		if (propsGuardResult.isErr()) {
-			return err(
-				new DomainErrors.PropsError(
-					`{ message: '${propsGuardResult.error.message}'}`
-				)
-			);
+			return err(new DomainErrors.PropsError(`{ message: '${propsGuardResult.error.message}'}`));
 		}
 
 		// Guard: resultTypeCode is in the list of RequestStatusTypes
@@ -161,10 +151,7 @@ export class Backup extends AggregateRoot<IBackupProps> {
 		const defaultValues: IBackupProps = {
 			...props,
 			dataDate: new Date(props.dataDate),
-			dueToDeleteDate: this.calculateDueToDeleteDate(
-				new Date(props.dataDate),
-				props.daysToKeepCount
-			),
+			dueToDeleteDate: this.calculateDueToDeleteDate(new Date(props.dataDate), props.daysToKeepCount),
 			storagePathName: props.storagePathName,
 			backupByteCount: props.backupByteCount,
 			copyStartTimestamp,
