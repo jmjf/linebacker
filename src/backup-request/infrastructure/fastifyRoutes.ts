@@ -2,7 +2,7 @@ import { PrismaContext } from '../../common/infrastructure/database/prismaContex
 
 import { FastifyCreateBackupRequestController } from '../adapter/impl/FastifyCreateBackupRequestController';
 import { RealFastifyReply, RealFastifyRequest, RealFastifyInstance } from '../../common/adapter/FastifyController';
-import { initBackupRequestModule } from './initBackupRequestModule';
+import { initBackupRequestModule } from './initBackupRequestModulePrisma';
 
 export function addBackupRequestRoutes(app: RealFastifyInstance, prismaCtx: PrismaContext) {
 	const { createBackupRequestController } = initBackupRequestModule(prismaCtx, 'Fastify');
