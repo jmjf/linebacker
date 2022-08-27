@@ -22,3 +22,7 @@ I use explict `any` rarely and always in the external facing adapter code, so th
 ## Managing queue credential and URI data
 
 See notes in 8.3 about `DefaultAzureCredential` "AzureQueue env considerations" and potential challenges with using environment variables or injecting into `process.env`.
+
+## Add Prisma prefix on Prisma entities
+
+Avoid confusion with my entities/aggregates with the same name.

@@ -1,14 +1,14 @@
 import dotenv from 'dotenv';
 dotenv.config({ path: './env/dev.env' });
 
-import { BackupRequest } from './typeorm/entity/BackupRequest.entity';
-import { toDataSource } from './typeorm/toDataSource';
+import { TypeormBackupRequest } from './typeorm/entity/TypeormBackupRequest.entity';
+import { typeormDataSource } from './typeorm/typeormDataSource';
 
 async function main() {
-	await toDataSource.initialize();
-	console.log('toDataSource initialized');
+	await typeormDataSource.initialize();
+	console.log('typeormDataSource initialized');
 
-	const find1 = await toDataSource.manager.find(BackupRequest);
+	const find1 = await typeormDataSource.manager.find(TypeormBackupRequest);
 	console.log('find result 1', find1);
 
 	const br = {
@@ -18,16 +18,16 @@ async function main() {
 		preparedDataPathName: 'prepared path',
 		getOnStartFlag: true,
 		transportTypeCode: 'TEST',
-		backupProviderCode: 'CloudA',
+		backupProviderCode: 'CloudB',
 		storagePathName: 'stored path',
 		statusTypeCode: 'new',
 		receivedTimestamp: new Date(),
 	};
 
-	const save1 = await toDataSource.manager.save(BackupRequest, br);
+	const save1 = await typeormDataSource.manager.save(TypeormBackupRequest, br);
 	console.log('save result 1', save1);
 
-	const find2 = await toDataSource.manager.find(BackupRequest);
+	const find2 = await typeormDataSource.manager.find(TypeormBackupRequest);
 	console.log('find result 2', find2);
 }
 

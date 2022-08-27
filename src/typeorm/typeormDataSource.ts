@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
-import { BackupRequest } from './entity/BackupRequest.entity';
+import { TypeormBackupRequest } from './entity/TypeormBackupRequest.entity';
 
-export const toDataSource = new DataSource({
+export const typeormDataSource = new DataSource({
 	type: 'mssql',
 	host: process.env.SQLSERVER_URL,
 	port: Number.parseInt(process.env.SQLSERVER_PORT || '1433'),
@@ -12,7 +12,7 @@ export const toDataSource = new DataSource({
 	schema: process.env.SQLSERVER_SCHEMA,
 	synchronize: false,
 	logging: false,
-	entities: [BackupRequest],
+	entities: [TypeormBackupRequest],
 	migrations: [],
 	subscribers: [],
 	options: { encrypt: false },

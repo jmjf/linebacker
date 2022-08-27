@@ -1,7 +1,7 @@
 import { Column, Entity } from 'typeorm';
 
 @Entity({ name: 'BackupRequest' })
-export class BackupRequest {
+export class TypeormBackupRequest {
 	@Column({
 		name: 'BackupRequestIdentifier',
 		type: 'varchar',
@@ -28,10 +28,10 @@ export class BackupRequest {
 	transportTypeCode: string;
 
 	@Column({ name: 'BackupProviderCode', type: 'varchar', length: 50, nullable: true })
-	backupProviderCode: string;
+	backupProviderCode: string | null | undefined;
 
 	@Column({ name: 'StoragePathName', type: 'varchar', length: 250, nullable: true })
-	storagePathName: string;
+	storagePathName: string | null | undefined;
 
 	@Column({ name: 'StatusTypeCode', type: 'varchar', length: 50, nullable: false })
 	statusTypeCode: string;
@@ -40,17 +40,17 @@ export class BackupRequest {
 	receivedTimestamp: Date;
 
 	@Column({ name: 'CheckedTimestamp', type: 'datetime2', nullable: true })
-	checkedTimestamp: Date;
+	checkedTimestamp: Date | null | undefined;
 
 	@Column({ name: 'SentToInterfaceTimestamp', type: 'datetime2', nullable: true })
-	sentToInterfaceTimestamp: Date;
+	sentToInterfaceTimestamp: Date | null | undefined;
 
 	@Column({ name: 'ReplyTimestamp', type: 'datetime2', nullable: true })
-	replyTimestamp: Date;
+	replyTimestamp: Date | null | undefined;
 
 	@Column({ name: 'RequesterIdentifier', type: 'varchar', length: 50, nullable: true })
-	requesterId: Date;
+	requesterId: string | null | undefined;
 
 	@Column({ name: 'ReplyMessageText', type: 'varchar', length: 250, nullable: true })
-	replyMessageText: Date;
+	replyMessageText: Date | null | undefined;
 }

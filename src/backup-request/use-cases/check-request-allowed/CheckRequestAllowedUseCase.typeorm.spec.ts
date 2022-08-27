@@ -1,6 +1,6 @@
-import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
+import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 
-import { BackupJob, IBackupJobProps } from '../../../backup-job/domain/BackupJob';
+import { IBackupJobProps } from '../../../backup-job/domain/BackupJob';
 import { BackupProviderTypeValues } from '../../../backup-job/domain/BackupProviderType';
 import { MockBackupJobServiceAdapter } from '../../../backup-job/adapter/impl/MockBackupJobServiceAdapter';
 
@@ -11,21 +11,20 @@ import { CheckRequestAllowedDTO } from './CheckRequestAllowedDTO';
 import { CheckRequestAllowedUseCase } from './CheckRequestAllowedUseCase';
 
 import {
-	MockPrismaContext,
-	PrismaContext,
-	createMockPrismaContext,
-} from '../../../common/infrastructure/database/prismaContext';
-import { BackupRequest } from '@prisma/client';
-import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
-import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
+	MockTypeormContext,
+	TypeormContext,
+	createMockTypeormContext,
+} from '../../../common/infrastructure/database/typeormContext';
+import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
+import { TypeormBackupRequest } from '../../../typeorm/entity/TypeormBackupRequest.entity';
 
-describe('CheckRequestAllowedUseCase', () => {
-	let mockPrismaCtx: MockPrismaContext;
-	let prismaCtx: PrismaContext;
+describe('CheckRequestAllowedUseCase - typeorm', () => {
+	let mockTypeormCtx: MockTypeormContext;
+	let typeormCtx: TypeormContext;
 
 	beforeEach(() => {
-		mockPrismaCtx = createMockPrismaContext();
-		prismaCtx = mockPrismaCtx as unknown as PrismaContext;
+		mockTypeormCtx = createMockTypeormContext();
+		typeormCtx = mockTypeormCtx as unknown as TypeormContext;
 	});
 
 	const baseDto: CheckRequestAllowedDTO = {
@@ -40,7 +39,7 @@ describe('CheckRequestAllowedUseCase', () => {
 		holdFlag: false,
 	};
 
-	const dbBackupRequest: BackupRequest = {
+	const dbBackupRequest: TypeormBackupRequest = {
 		backupRequestId: 'dbBackupRequestId',
 		backupJobId: 'dbBackupJobId',
 		dataDate: new Date(),
@@ -58,45 +57,12 @@ describe('CheckRequestAllowedUseCase', () => {
 		replyMessageText: null,
 	};
 
-	test('when backup job for request meets allowed rules, it returns a BackupRequest in Allowed status', async () => {
-		// Arrange
-
-		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
-
-		const repo = new PrismaBackupRequestRepo(prismaCtx);
-
-		const adapter = new MockBackupJobServiceAdapter({
-			getByIdResult: { ...backupJobProps },
-		});
-
-		const useCase = new CheckRequestAllowedUseCase({
-			backupRequestRepo: repo,
-			backupJobServiceAdapter: adapter,
-		});
-		const dto = { ...baseDto };
-
-		// Act
-		const startTimestamp = new Date();
-		const result = await useCase.execute(dto);
-
-		// Assert
-		expect(result.isOk()).toBe(true);
-		if (result.isOk()) {
-			// type guard makes the rest easier
-			expect(result.value.statusTypeCode).toBe(RequestStatusTypeValues.Allowed);
-			expect(result.value.checkedTimestamp.valueOf()).toBeGreaterThanOrEqual(startTimestamp.valueOf());
-		}
-	});
-
 	test('when backup request is not found by id, it returns failure', async () => {
 		// Arrange
+		// findOne() returns null if not found
+		mockTypeormCtx.manager.findOne.mockResolvedValueOnce(null);
 
-		// findUnique() returns null if not found
-		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(null as unknown as BackupRequest);
-
-		const repo = new PrismaBackupRequestRepo(prismaCtx);
+		const repo = new TypeormBackupRequestRepo(typeormCtx);
 
 		const adapter = new MockBackupJobServiceAdapter({
 			getByIdError: new AdapterErrors.NotFoundError(
@@ -124,11 +90,9 @@ describe('CheckRequestAllowedUseCase', () => {
 
 	test('when backup job is not found, it returns failure', async () => {
 		// Arrange
+		mockTypeormCtx.manager.findOne.mockResolvedValueOnce(dbBackupRequest);
 
-		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
-
-		const repo = new PrismaBackupRequestRepo(prismaCtx);
+		const repo = new TypeormBackupRequestRepo(typeormCtx);
 
 		const adapter = new MockBackupJobServiceAdapter({
 			getByIdError: new AdapterErrors.BackupJobServiceError(`{msg: 'backupJobId not found' }`),
@@ -154,14 +118,12 @@ describe('CheckRequestAllowedUseCase', () => {
 
 	test('when request status type is not post-received value and not Received, it returns failure', async () => {
 		// Arrange
-
-		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue({
+		mockTypeormCtx.manager.findOne.mockResolvedValueOnce({
 			...dbBackupRequest,
 			statusTypeCode: 'INVALID',
 		});
 
-		const repo = new PrismaBackupRequestRepo(prismaCtx);
+		const repo = new TypeormBackupRequestRepo(typeormCtx);
 
 		const adapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });
 
@@ -183,7 +145,7 @@ describe('CheckRequestAllowedUseCase', () => {
 		}
 	});
 
-	// test.each(statusTestCases) runs the same test with different data (defined in statusTestCases)
+	// // test.each(statusTestCases) runs the same test with different data (defined in statusTestCases)
 	// I had to coerce several types to get the test to behave, but now this one block of code tests all the cases
 	const statusTestCases = [
 		{
@@ -215,10 +177,9 @@ describe('CheckRequestAllowedUseCase', () => {
 			};
 			resultBackupRequest[timestamp] = new Date();
 
-			// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest as BackupRequest);
+			mockTypeormCtx.manager.findOne.mockResolvedValueOnce(resultBackupRequest);
 
-			const repo = new PrismaBackupRequestRepo(prismaCtx);
+			const repo = new TypeormBackupRequestRepo(typeormCtx);
 			const saveSpy = jest.spyOn(repo, 'save');
 
 			const adapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });
@@ -242,4 +203,34 @@ describe('CheckRequestAllowedUseCase', () => {
 			}
 		}
 	);
+
+	test('when backup job for request meets allowed rules, it returns a BackupRequest in Allowed status', async () => {
+		// Arrange
+		mockTypeormCtx.manager.findOne.mockResolvedValueOnce(dbBackupRequest);
+		mockTypeormCtx.manager.save.mockResolvedValueOnce(dbBackupRequest);
+
+		const repo = new TypeormBackupRequestRepo(typeormCtx);
+
+		const adapter = new MockBackupJobServiceAdapter({
+			getByIdResult: { ...backupJobProps },
+		});
+
+		const useCase = new CheckRequestAllowedUseCase({
+			backupRequestRepo: repo,
+			backupJobServiceAdapter: adapter,
+		});
+		const dto = { ...baseDto };
+
+		// Act
+		const startTimestamp = new Date();
+		const result = await useCase.execute(dto);
+
+		// Assert
+		expect(result.isOk()).toBe(true);
+		if (result.isOk()) {
+			// type guard makes the rest easier
+			expect(result.value.statusTypeCode).toBe(RequestStatusTypeValues.Allowed);
+			expect(result.value.checkedTimestamp.valueOf()).toBeGreaterThanOrEqual(startTimestamp.valueOf());
+		}
+	});
 });
