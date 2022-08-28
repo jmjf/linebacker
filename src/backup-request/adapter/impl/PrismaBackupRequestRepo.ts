@@ -23,7 +23,7 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 	public async exists(backupRequestId: string): Promise<Result<boolean, AdapterErrors.DatabaseError>> {
 		// count the number of rows that meet the condition
 		try {
-			const count = await this.prisma.backupRequest.count({
+			const count = await this.prisma.prismaBackupRequest.count({
 				where: {
 					backupRequestId: backupRequestId,
 				},
@@ -41,7 +41,7 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 		Result<BackupRequest, AdapterErrors.DatabaseError | AdapterErrors.NotFoundError | DomainErrors.PropsError>
 	> {
 		try {
-			const data = await this.prisma.backupRequest.findUnique({
+			const data = await this.prisma.prismaBackupRequest.findUnique({
 				where: {
 					backupRequestId: backupRequestId,
 				},
@@ -61,7 +61,7 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 		const raw = this.mapToDb(backupRequest);
 
 		try {
-			await this.prisma.backupRequest.upsert({
+			await this.prisma.prismaBackupRequest.upsert({
 				where: {
 					backupRequestId: raw.backupRequestId,
 				},

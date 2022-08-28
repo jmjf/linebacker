@@ -20,7 +20,7 @@ import {
 	PrismaContext,
 	createMockPrismaContext,
 } from '../../../common/infrastructure/database/prismaContext';
-import { Backup, BackupRequest } from '@prisma/client';
+import { PrismaBackup, PrismaBackupRequest } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 
@@ -50,7 +50,7 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 		holdFlag: false,
 	};
 
-	const dbBackupRequest: BackupRequest = {
+	const dbBackupRequest: PrismaBackupRequest = {
 		backupRequestId: 'dbBackupRequestId',
 		backupJobId: 'dbBackupJobId',
 		dataDate: new Date(),
@@ -68,7 +68,7 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 		replyMessageText: null,
 	};
 
-	const prismaBackup: Backup = {
+	const prismaBackup: PrismaBackup = {
 		backupId: 'backupId',
 		backupRequestId: 'dbBackupRequestId',
 		backupJobId: 'dbBackupJobId',
@@ -95,7 +95,7 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 
 			// VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
 			// findUnique() returns null if not found
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(null as unknown as BackupRequest);
+			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(null as unknown as PrismaBackupRequest);
 			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
 
 			const backupRepo = new PrismaBackupRepo(prismaCtx);
@@ -130,7 +130,7 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 			// Arrange
 
 			// VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
+			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(dbBackupRequest);
 			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
 
 			const backupRepo = new PrismaBackupRepo(prismaCtx);
@@ -169,7 +169,7 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 			// Arrange
 
 			// VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
+			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(dbBackupRequest);
 			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
 
 			const backupRepo = new PrismaBackupRepo(prismaCtx);
@@ -211,11 +211,11 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 			// Arrange
 
 			// VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
+			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(dbBackupRequest);
 			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
 
-			mockPrismaCtx.prisma.backup.findFirst.mockResolvedValue(null as unknown as Backup);
-			mockPrismaCtx.prisma.backup.upsert.mockResolvedValue({} as Backup);
+			mockPrismaCtx.prisma.prismaBackup.findFirst.mockResolvedValue(null as unknown as PrismaBackup);
+			mockPrismaCtx.prisma.prismaBackup.upsert.mockResolvedValue({} as PrismaBackup);
 			const backupRepo = new PrismaBackupRepo(prismaCtx);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
@@ -251,14 +251,14 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 
 			// VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
 
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
+			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(dbBackupRequest);
 			// BackupRequest save() should never be called, so don't need a mock result
 			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
 			const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
 			// Backup save() will fail
-			mockPrismaCtx.prisma.backup.findFirst.mockResolvedValue(null as unknown as Backup);
-			mockPrismaCtx.prisma.backup.upsert.mockRejectedValue(
+			mockPrismaCtx.prisma.prismaBackup.findFirst.mockResolvedValue(null as unknown as PrismaBackup);
+			mockPrismaCtx.prisma.prismaBackup.upsert.mockRejectedValue(
 				new PrismaClientKnownRequestError('Some upsert failure', prismaCode, '2')
 			);
 			const backupRepo = new PrismaBackupRepo(prismaCtx);
@@ -294,16 +294,16 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 
 			// VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
 
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
+			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(dbBackupRequest);
 			// BackupRequest save() will fail
-			mockPrismaCtx.prisma.backupRequest.upsert.mockRejectedValue(
+			mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockRejectedValue(
 				new PrismaClientKnownRequestError('Some upsert failure', prismaCode, '2')
 			);
 			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
 			const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-			mockPrismaCtx.prisma.backup.findFirst.mockResolvedValue(null as unknown as Backup);
-			mockPrismaCtx.prisma.backup.upsert.mockResolvedValue({} as Backup);
+			mockPrismaCtx.prisma.prismaBackup.findFirst.mockResolvedValue(null as unknown as PrismaBackup);
+			mockPrismaCtx.prisma.prismaBackup.upsert.mockResolvedValue({} as PrismaBackup);
 			const backupRepo = new PrismaBackupRepo(prismaCtx);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
@@ -339,13 +339,13 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 
 			// VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
 
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
-			mockPrismaCtx.prisma.backupRequest.upsert.mockResolvedValue({} as BackupRequest);
+			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(dbBackupRequest);
+			mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockResolvedValue({} as PrismaBackupRequest);
 			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
 			const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-			mockPrismaCtx.prisma.backup.findFirst.mockResolvedValue(null as unknown as Backup);
-			mockPrismaCtx.prisma.backup.upsert.mockResolvedValue({} as Backup);
+			mockPrismaCtx.prisma.prismaBackup.findFirst.mockResolvedValue(null as unknown as PrismaBackup);
+			mockPrismaCtx.prisma.prismaBackup.upsert.mockResolvedValue({} as PrismaBackup);
 			const backupRepo = new PrismaBackupRepo(prismaCtx);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
@@ -378,13 +378,13 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 
 			// VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
 
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
-			mockPrismaCtx.prisma.backupRequest.upsert.mockResolvedValue({} as BackupRequest);
+			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(dbBackupRequest);
+			mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockResolvedValue({} as PrismaBackupRequest);
 			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
 			const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-			mockPrismaCtx.prisma.backup.findFirst.mockResolvedValue(null as unknown as Backup);
-			mockPrismaCtx.prisma.backup.upsert.mockResolvedValue({} as Backup);
+			mockPrismaCtx.prisma.prismaBackup.findFirst.mockResolvedValue(null as unknown as PrismaBackup);
+			mockPrismaCtx.prisma.prismaBackup.upsert.mockResolvedValue({} as PrismaBackup);
 			const backupRepo = new PrismaBackupRepo(prismaCtx);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
@@ -419,16 +419,16 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 
 			// VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
 
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
-			mockPrismaCtx.prisma.backupRequest.upsert.mockRejectedValue(
+			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(dbBackupRequest);
+			mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockRejectedValue(
 				new PrismaClientKnownRequestError('rejected', prismaCode, '2')
 			);
 			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
 			const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
 			// findFirst() for getByBackupRequestId()
-			mockPrismaCtx.prisma.backup.findFirst.mockResolvedValue(prismaBackup as Backup);
-			mockPrismaCtx.prisma.backup.upsert.mockResolvedValue({} as Backup); // succeed if called, shouldn't be called
+			mockPrismaCtx.prisma.prismaBackup.findFirst.mockResolvedValue(prismaBackup as PrismaBackup);
+			mockPrismaCtx.prisma.prismaBackup.upsert.mockResolvedValue({} as PrismaBackup); // succeed if called, shouldn't be called
 			const backupRepo = new PrismaBackupRepo(prismaCtx);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
@@ -489,17 +489,17 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 
 				// VS Code sometimes highlights mockPrismaCtx lines as errors (circular reference) -- it is usually wrong
 
-				mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue({
+				mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue({
 					...dbBackupRequest,
 					statusTypeCode: requestStatus,
 				});
-				mockPrismaCtx.prisma.backupRequest.upsert.mockResolvedValue({} as BackupRequest);
+				mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockResolvedValue({} as PrismaBackupRequest);
 				const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
 				const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
 				// findFirst() for getByBackupRequestId()
-				mockPrismaCtx.prisma.backup.findFirst.mockResolvedValue(prismaBackup as Backup);
-				mockPrismaCtx.prisma.backup.upsert.mockResolvedValue({} as Backup); // succeed if called, shouldn't be called
+				mockPrismaCtx.prisma.prismaBackup.findFirst.mockResolvedValue(prismaBackup as PrismaBackup);
+				mockPrismaCtx.prisma.prismaBackup.upsert.mockResolvedValue({} as PrismaBackup); // succeed if called, shouldn't be called
 				const backupRepo = new PrismaBackupRepo(prismaCtx);
 				const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 

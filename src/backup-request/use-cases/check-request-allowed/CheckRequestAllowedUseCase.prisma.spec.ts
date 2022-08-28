@@ -15,7 +15,7 @@ import {
 	PrismaContext,
 	createMockPrismaContext,
 } from '../../../common/infrastructure/database/prismaContext';
-import { BackupRequest } from '@prisma/client';
+import { PrismaBackupRequest } from '@prisma/client';
 import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 
@@ -40,7 +40,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		holdFlag: false,
 	};
 
-	const dbBackupRequest: BackupRequest = {
+	const dbBackupRequest: PrismaBackupRequest = {
 		backupRequestId: 'dbBackupRequestId',
 		backupJobId: 'dbBackupJobId',
 		dataDate: new Date(),
@@ -62,7 +62,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		// Arrange
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
+		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(dbBackupRequest);
 
 		const repo = new PrismaBackupRequestRepo(prismaCtx);
 
@@ -94,7 +94,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 
 		// findUnique() returns null if not found
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(null as unknown as BackupRequest);
+		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(null as unknown as PrismaBackupRequest);
 
 		const repo = new PrismaBackupRequestRepo(prismaCtx);
 
@@ -126,7 +126,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		// Arrange
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
+		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(dbBackupRequest);
 
 		const repo = new PrismaBackupRequestRepo(prismaCtx);
 
@@ -156,7 +156,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		// Arrange
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue({
+		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue({
 			...dbBackupRequest,
 			statusTypeCode: 'INVALID',
 		});
@@ -216,7 +216,9 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 			resultBackupRequest[timestamp] = new Date();
 
 			// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest as BackupRequest);
+			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(
+				resultBackupRequest as PrismaBackupRequest
+			);
 
 			const repo = new PrismaBackupRequestRepo(prismaCtx);
 			const saveSpy = jest.spyOn(repo, 'save');

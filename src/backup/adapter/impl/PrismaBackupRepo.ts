@@ -11,6 +11,7 @@ import { BackupProviderType } from '../../../backup-job/domain/BackupProviderTyp
 
 import { Backup } from '../../domain/Backup';
 import { IBackupRepo } from '../BackupRepo';
+import { PrismaBackup } from '@prisma/client';
 
 export class PrismaBackupRepo implements IBackupRepo {
 	private prisma;
@@ -19,12 +20,10 @@ export class PrismaBackupRepo implements IBackupRepo {
 		this.prisma = ctx.prisma;
 	}
 
-	public async exists(
-		backupId: string
-	): Promise<Result<boolean, AdapterErrors.DatabaseError>> {
+	public async exists(backupId: string): Promise<Result<boolean, AdapterErrors.DatabaseError>> {
 		// count the number of rows that meet the condition
 		try {
-			const count = await this.prisma.backup.count({
+			const count = await this.prisma.prismaBackup.count({
 				where: {
 					backupId: backupId,
 				},
@@ -38,25 +37,16 @@ export class PrismaBackupRepo implements IBackupRepo {
 
 	public async getById(
 		backupId: string
-	): Promise<
-		Result<
-			Backup,
-			| AdapterErrors.DatabaseError
-			| AdapterErrors.NotFoundError
-			| DomainErrors.PropsError
-		>
-	> {
+	): Promise<Result<Backup, AdapterErrors.DatabaseError | AdapterErrors.NotFoundError | DomainErrors.PropsError>> {
 		try {
-			const data = await this.prisma.backup.findUnique({
+			const data = await this.prisma.prismaBackup.findUnique({
 				where: {
 					backupId: backupId,
 				},
 			});
 
 			if (data === null) {
-				return err(
-					new AdapterErrors.NotFoundError(`Backup not found |${backupId}|`)
-				);
+				return err(new AdapterErrors.NotFoundError(`Backup not found |${backupId}|`));
 			}
 
 			return this.mapToDomain(data);
@@ -67,22 +57,16 @@ export class PrismaBackupRepo implements IBackupRepo {
 
 	public async getByBackupRequestId(
 		backupRequestId: string
-	): Promise<
-		Result<Backup, AdapterErrors.DatabaseError | AdapterErrors.NotFoundError>
-	> {
+	): Promise<Result<Backup, AdapterErrors.DatabaseError | AdapterErrors.NotFoundError>> {
 		try {
-			const data = await this.prisma.backup.findFirst({
+			const data = await this.prisma.prismaBackup.findFirst({
 				where: {
 					backupRequestId: backupRequestId,
 				},
 			});
 
 			if (data === null) {
-				return err(
-					new AdapterErrors.NotFoundError(
-						`Backup not found for request |${backupRequestId}|`
-					)
-				);
+				return err(new AdapterErrors.NotFoundError(`Backup not found for request |${backupRequestId}|`));
 			}
 
 			return this.mapToDomain(data);
@@ -91,13 +75,11 @@ export class PrismaBackupRepo implements IBackupRepo {
 		}
 	}
 
-	public async save(
-		backup: Backup
-	): Promise<Result<Backup, AdapterErrors.DatabaseError>> {
+	public async save(backup: Backup): Promise<Result<Backup, AdapterErrors.DatabaseError>> {
 		const raw = this.mapToDb(backup);
 
 		try {
-			await this.prisma.backup.upsert({
+			await this.prisma.prismaBackup.upsert({
 				where: {
 					backupId: raw.backupId,
 				},
@@ -147,12 +129,24 @@ export class PrismaBackupRepo implements IBackupRepo {
 		return backupResult;
 	}
 
-	private mapToDb(backup: Backup): any {
+	private mapToDb(backup: Backup): PrismaBackup {
 		return {
 			backupId: backup.idValue,
-			...backup.props,
 			backupRequestId: backup.backupRequestId.value,
 			backupJobId: backup.backupJobId.value,
+			dataDate: backup.dataDate,
+			storagePathName: backup.storagePathName,
+			backupProviderCode: backup.backupProviderCode,
+			daysToKeepCount: backup.daysToKeepCount,
+			holdFlag: backup.holdFlag,
+			backupByteCount: BigInt(backup.backupByteCount),
+			copyStartTimestamp: backup.copyStartTimestamp,
+			copyEndTimestamp: backup.copyEndTimestamp,
+			verifyStartTimestamp: backup.verifyStartTimestamp,
+			verifyEndTimestamp: backup.verifyEndTimestamp,
+			verifyHashText: backup.verifyHashText,
+			dueToDeleteDate: backup.dueToDeleteDate,
+			deletedTimestamp: backup.deletedTimestamp,
 		};
 	}
 }

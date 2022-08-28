@@ -23,12 +23,6 @@ I use explict `any` rarely and always in the external facing adapter code, so th
 
 See notes in 8.3 about `DefaultAzureCredential` "AzureQueue env considerations" and potential challenges with using environment variables or injecting into `process.env`.
 
-## Add Prisma prefix on Prisma entities
-
-Avoid confusion with my entities/aggregates with the same name.
-
-Also, make mapping functions explicit to avoid possible issues with data types.
-
 ## ReceiveStoreStatusReplyUseCase
 
 Need to revisit the logic
@@ -42,20 +36,3 @@ Need to revisit the logic
 Because why have two loggers?
 
 ## Can I make Express not return a JSON parse error
-
-## If CreateBackupRequest gets no backupJobId, it generates one
-
-Because it calls `new UniqueIdentifier(dto.backupJobId)`, which will always return an id.
-
-Stemmler makes them `Entity` types. I'm not sure that would handle my case and I don't want to do it. Options:
-
--  Let the use case check and return (Should it know the backup id is required?)
-   -  Some use cases are retrieving data from the repo and ensuring they get a result, but that's more an orchestration concern.
-   -  Some use cases check that a status is as expected, but that's a business process concern (this step of the process requires this status); the data is valid, but may not be valid for the use case
--  Passing a string to `BackupRequest.create()` (it will check)
-   -  This feels more correct because `BackupRequest` is responsible for knowing it needs a value for `backupJobId`
-
-To do
-
--  Add a test for this case (in the use case test? in the controller test?)
--  Code to make it pass

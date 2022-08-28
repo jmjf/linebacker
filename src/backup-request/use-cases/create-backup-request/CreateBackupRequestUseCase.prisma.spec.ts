@@ -8,7 +8,7 @@ import {
 	PrismaContext,
 	createMockPrismaContext,
 } from '../../../common/infrastructure/database/prismaContext';
-import { BackupRequest } from '@prisma/client';
+import { PrismaBackupRequest } from '@prisma/client';
 
 describe('CreateBackupRequestUseCase - Prisma', () => {
 	let mockPrismaCtx: MockPrismaContext;
@@ -110,7 +110,7 @@ describe('CreateBackupRequestUseCase - Prisma', () => {
 
 		// The repo's save() only cares that upsert() succeeds, so the value doesn't matter
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.upsert.mockResolvedValue({} as unknown as BackupRequest);
+		mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockResolvedValue({} as unknown as PrismaBackupRequest);
 
 		const repo = new PrismaBackupRequestRepo(prismaCtx);
 		const saveSpy = jest.spyOn(repo, 'save');

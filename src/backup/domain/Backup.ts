@@ -90,11 +90,11 @@ export class Backup extends AggregateRoot<IBackupProps> {
 		return new Date(this.props.copyEndTimestamp);
 	}
 
-	public get verifyStartTimestamp(): Date | undefined {
+	public get verifyStartTimestamp(): Date {
 		return dateOrUndefinedAsDate(this.props.verifyStartTimestamp);
 	}
 
-	public get verifyEndTimestamp(): Date | undefined {
+	public get verifyEndTimestamp(): Date {
 		return dateOrUndefinedAsDate(this.props.verifyEndTimestamp);
 	}
 
@@ -102,7 +102,7 @@ export class Backup extends AggregateRoot<IBackupProps> {
 		return this.props.verifyHashText as string;
 	}
 
-	public get deletedTimestamp(): Date | undefined {
+	public get deletedTimestamp(): Date {
 		return dateOrUndefinedAsDate(this.props.deletedTimestamp);
 	}
 
