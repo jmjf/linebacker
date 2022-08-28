@@ -1,29 +1,28 @@
-import * as uuid from 'uuid';
 import request from 'supertest';
 
-import { buildApp } from '../../../expressApp';
+import { buildApp } from '../../../expressAppTypeorm';
 
 import { ICreateBackupRequestBody } from './ExpressCreateBackupRequestController';
 
 import {
-	MockPrismaContext,
-	PrismaContext,
-	createMockPrismaContext,
-} from '../../../common/infrastructure/database/prismaContext';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
+	MockTypeormContext,
+	TypeormContext,
+	createMockTypeormContext,
+} from '../../../common/infrastructure/database/typeormContext';
 
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { TypeORMError } from 'typeorm';
 
 describe('ExpressCreateBackupRequestController', () => {
-	let mockPrismaCtx: MockPrismaContext;
-	let prismaCtx: PrismaContext;
+	let mockTypeormCtx: MockTypeormContext;
+	let typeormCtx: TypeormContext;
 
 	beforeEach(() => {
-		mockPrismaCtx = createMockPrismaContext();
-		prismaCtx = mockPrismaCtx as unknown as PrismaContext;
+		mockTypeormCtx = createMockTypeormContext();
+		typeormCtx = mockTypeormCtx as unknown as TypeormContext;
 	});
 
-	const testUrl = '/backup-requests';
+	const testUrl = '/api/backup-requests';
 
 	const basePayload = {
 		apiVersion: '2022-05-22',
@@ -34,7 +33,7 @@ describe('ExpressCreateBackupRequestController', () => {
 
 	test('when apiVersion is invalid, it returns 400 and an error', async () => {
 		// Arrange
-		const app = buildApp(prismaCtx);
+		const app = buildApp(typeormCtx);
 
 		// Act
 		const response = await request(app)
@@ -54,15 +53,8 @@ describe('ExpressCreateBackupRequestController', () => {
 	test('when the use case gets a database error, the controller returns 500 and a low-leak error', async () => {
 		// Arrange
 		// simulate a database error
-		const prismaCode = 'P1012';
-		mockPrismaCtx.prisma.backupRequest.upsert.mockRejectedValue(
-			new PrismaClientKnownRequestError(
-				'Key is already defined',
-				prismaCode,
-				'2'
-			)
-		);
-		const app = buildApp(prismaCtx);
+		mockTypeormCtx.manager.save.mockRejectedValue(new TypeORMError('Key is already defined'));
+		const app = buildApp(typeormCtx);
 
 		// Act
 		const response = await request(app)
@@ -76,12 +68,12 @@ describe('ExpressCreateBackupRequestController', () => {
 		// convert payload to an object we can use -- may throw an error if JSON.parse fails
 		const payload = JSON.parse(response.text);
 		expect(payload.code).toBe('Database');
-		expect(payload.message).toBe(prismaCode.slice(1)); // ensure message is clean
+		// TODO: understand how message will return to ensure message is clean for TypeORM
 	});
 
 	test('when the use case returns a PropsError, the controller returns 400 and an error', async () => {
 		// Arrange
-		const app = buildApp(prismaCtx);
+		const app = buildApp(typeormCtx);
 
 		// Act
 		const response = await request(app)
@@ -101,7 +93,7 @@ describe('ExpressCreateBackupRequestController', () => {
 
 	test('when request data is good, the controller returns Accepted and a result payload', async () => {
 		// Arrange
-		const app = buildApp(prismaCtx);
+		const app = buildApp(typeormCtx);
 
 		// Act
 		const startTime = new Date();
@@ -118,16 +110,12 @@ describe('ExpressCreateBackupRequestController', () => {
 		const payload = JSON.parse(response.text);
 		const receivedTimestamp = new Date(payload.receivedTimestamp);
 
-		expect(uuid.validate(payload.backupRequestId)).toBe(true);
+		expect(payload.backupRequestId.length).toBe(21); // nanoid isn't "verifiable" like a UUID
 		expect(payload.statusTypeCode).toBe(RequestStatusTypeValues.Received);
 		expect(payload.backupJobId).toBe(basePayload.backupJobId);
 		expect(payload.preparedDataPathName).toBe(basePayload.backupDataLocation);
 		expect(payload.dataDate).toBe(basePayload.dataDate);
-		expect(receivedTimestamp.valueOf()).toBeGreaterThanOrEqual(
-			startTime.valueOf()
-		);
-		expect(receivedTimestamp.valueOf()).toBeLessThanOrEqual(
-			endTime.valueOf()
-		);
+		expect(receivedTimestamp.valueOf()).toBeGreaterThanOrEqual(startTime.valueOf());
+		expect(receivedTimestamp.valueOf()).toBeLessThanOrEqual(endTime.valueOf());
 	});
 });

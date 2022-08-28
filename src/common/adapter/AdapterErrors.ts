@@ -13,7 +13,7 @@ export class DatabaseError extends BaseError {
 		} catch (e) {
 			msg = { code: ' error' };
 		}
-		return msg.code.slice(1);
+		return msg.code ? msg.code.slice(1) : 'Database error';
 	}
 }
 
