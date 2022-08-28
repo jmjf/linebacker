@@ -16,7 +16,8 @@ import { RequestStatusType, RequestStatusTypeValues } from './RequestStatusType'
 import { RequestTransportType, validRequestTransportTypes } from './RequestTransportType';
 
 export interface IBackupRequestProps {
-	backupJobId: UniqueIdentifier;
+	// allow it to accept a string and convert to a UniqueIdentifier if good
+	backupJobId: string | UniqueIdentifier;
 	dataDate: string | Date;
 	preparedDataPathName: string;
 	getOnStartFlag: boolean;
@@ -38,7 +39,7 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 	}
 
 	public get backupJobId(): UniqueIdentifier {
-		return this.props.backupJobId;
+		return this.props.backupJobId as UniqueIdentifier;
 	}
 
 	public get dataDate(): Date {
@@ -197,6 +198,10 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 		if (propsGuardResult.isErr()) {
 			return err(new DomainErrors.PropsError(`{ message: '${propsGuardResult.error.message}'}`));
 		}
+
+		// ensure backupJobIdentifier is a UniqueIdentifier
+		props.backupJobId =
+			typeof props.backupJobId === 'string' ? new UniqueIdentifier(props.backupJobId) : props.backupJobId;
 
 		// ensure transport type is valid
 		const transportGuardResult = Guard.isOneOf(props.transportTypeCode, validRequestTransportTypes, 'transportType');

@@ -50,20 +50,22 @@ describe('CreateBackupRequestUseCase - typeorm', () => {
 		}
 	});
 
-	test('when executed with an undefined required value, it returns the expected error', async () => {
+	test.each([
+		{ propName: 'backupJobId', errPropName: 'backupJobId' },
+		{ propName: 'dataDate', errPropName: 'dataDate' },
+		{ propName: 'backupDataLocation', errPropName: 'preparedDataPathName' },
+		{ propName: 'transportType', errPropName: 'transportType' },
+		{ propName: 'getOnStartFlag', errPropName: 'getOnStartFlag' },
+	])('when executed with $propName undefined, it returns the expected error', async ({ propName, errPropName }) => {
 		// Arrange
 		// this test fails before it calls the repo, so no need to mock save
 		const repo = new TypeormBackupRequestRepo(typeormCtx);
 		const saveSpy = jest.spyOn(repo, 'save');
 
 		const useCase = new CreateBackupRequestUseCase(repo);
-		// TypeScript won't let me delete dto.createOnStartFlag, so build a dto without it
-		const dto = {
-			backupJobId: 'b753d695-c9e1-4fa1-99f0-9fc025fca24c',
-			dataDate: '2022-01-31',
-			backupDataLocation: '/path/to/data',
-			transportType: RequestTransportTypeValues.HTTP,
-		} as CreateBackupRequestDTO;
+
+		const dto = { ...baseDto };
+		(dto as { [index: string]: any })[propName] = undefined;
 
 		// Act
 		const result = await useCase.execute(dto);
@@ -73,7 +75,9 @@ describe('CreateBackupRequestUseCase - typeorm', () => {
 		expect(saveSpy).toHaveBeenCalledTimes(0);
 		if (result.isErr()) {
 			// type guard
-			expect(result.error.message).toContain('getOnStartFlag is null or undefined');
+			expect(result.error.name).toBe('PropsError');
+			expect(result.error.message).toContain(errPropName);
+			expect(result.error.message).toContain('null or undefined');
 		}
 	});
 

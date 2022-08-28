@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { InvalidApiVersionError } from '../../../common/adapter/AdapterErrors';
 import { ExpressController } from '../../../common/adapter/ExpressController';
+import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 import { CreateBackupRequestUseCase } from '../../use-cases/create-backup-request/CreateBackupRequestUseCase';
 
 export interface ICreateBackupRequestBody {
@@ -18,19 +19,14 @@ export class ExpressCreateBackupRequestController extends ExpressController {
 		this.useCase = useCase;
 	}
 
-	protected async execImpl(
-		request: Request,
-		response: Response
-	): Promise<unknown> {
+	protected async execImpl(request: Request, response: Response): Promise<unknown> {
 		const body = request.body as ICreateBackupRequestBody;
 
 		// TODO: create a different error for missing body
 		// TODO: confirm apiVersion is a known version (in array of converter functions)
 		if (!body || !body.apiVersion || body.apiVersion !== '2022-05-22') {
 			this.respondBadRequest(response);
-			return new InvalidApiVersionError(
-				`{ message: 'invalid apiVersion', apiVersion: ${body.apiVersion} }`
-			);
+			return new InvalidApiVersionError(`{ message: 'invalid apiVersion', apiVersion: ${body.apiVersion} }`);
 		}
 		// ELSE by return above -- message body might be usable
 		// TODO: get a converter function based on apiVersion (array of functions) and call it to get dto or fail (400)
@@ -48,7 +44,7 @@ export class ExpressCreateBackupRequestController extends ExpressController {
 			const dt = new Date(dataDate);
 			const responseBody = {
 				backupRequestId: result.value.id.value,
-				backupJobId: backupJobId.value,
+				backupJobId: (backupJobId as UniqueIdentifier).value,
 				dataDate: dt.toISOString().slice(0, 10), // only the date part
 				preparedDataPathName: v.preparedDataPathName,
 				statusTypeCode: v.statusTypeCode,

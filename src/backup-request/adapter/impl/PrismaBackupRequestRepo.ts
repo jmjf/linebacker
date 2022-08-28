@@ -90,7 +90,7 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 		const backupRequestId = new UniqueIdentifier(raw.backupRequestId);
 		const backupRequestResult = BackupRequest.create(
 			{
-				backupJobId: new UniqueIdentifier(raw.backupJobId),
+				backupJobId: raw.backupJobId,
 				dataDate: raw.dataDate,
 				preparedDataPathName: raw.preparedDataPathName,
 				getOnStartFlag: raw.getOnStartFlag,

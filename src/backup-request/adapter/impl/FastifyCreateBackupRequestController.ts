@@ -1,9 +1,6 @@
 import { InvalidApiVersionError } from '../../../common/adapter/AdapterErrors';
-import {
-	FastifyController,
-	RealFastifyRequest,
-	RealFastifyReply,
-} from '../../../common/adapter/FastifyController';
+import { FastifyController, RealFastifyRequest, RealFastifyReply } from '../../../common/adapter/FastifyController';
+import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 import { logger } from '../../../common/infrastructure/pinoLogger';
 import { CreateBackupRequestUseCase } from '../../use-cases/create-backup-request/CreateBackupRequestUseCase';
 
@@ -22,10 +19,7 @@ export class FastifyCreateBackupRequestController extends FastifyController {
 		this.useCase = useCase;
 	}
 
-	protected async execImpl(
-		request: RealFastifyRequest,
-		reply: RealFastifyReply
-	): Promise<any> {
+	protected async execImpl(request: RealFastifyRequest, reply: RealFastifyReply): Promise<any> {
 		const logContext = {
 			context: 'FastifyCreateBackupRequestController.execImpl',
 			fastifyRequestId: request.id,
@@ -39,9 +33,7 @@ export class FastifyCreateBackupRequestController extends FastifyController {
 
 		if (!body.apiVersion || body.apiVersion !== '2022-05-22') {
 			this.replyBadRequest(reply);
-			const err = new InvalidApiVersionError(
-				`{ message: 'invalid apiVersion', apiVersion: ${body.apiVersion} }`
-			);
+			const err = new InvalidApiVersionError(`{ message: 'invalid apiVersion', apiVersion: ${body.apiVersion} }`);
 			logger.error({
 				...logContext,
 				error: err,
@@ -63,7 +55,7 @@ export class FastifyCreateBackupRequestController extends FastifyController {
 				const dt = new Date(dataDate);
 				const replyValue = {
 					backupRequestId: result.value.id.value,
-					backupJobId: backupJobId.value,
+					backupJobId: (backupJobId as UniqueIdentifier).value,
 					dataDate: dt.toISOString().slice(0, 10), // only the date part
 					preparedDataPathName: v.preparedDataPathName,
 					statusTypeCode: v.statusTypeCode,

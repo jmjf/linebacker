@@ -26,7 +26,7 @@ export class CreateBackupRequestUseCase implements UseCase<CreateBackupRequestDT
 	async execute(request: CreateBackupRequestDTO): Promise<Response> {
 		// initialize props
 		const requestProps: IBackupRequestProps = {
-			backupJobId: new UniqueIdentifier(request.backupJobId),
+			backupJobId: request.backupJobId,
 			dataDate: request.dataDate,
 			preparedDataPathName: request.backupDataLocation,
 			getOnStartFlag: request.getOnStartFlag,
