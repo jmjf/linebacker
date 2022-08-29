@@ -111,7 +111,8 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 	public isChecked(): boolean {
 		return (
 			this.statusTypeCode &&
-			(RequestStatusTypeValues.Allowed + '| ' + RequestStatusTypeValues.NotAllowed).includes(this.statusTypeCode) &&
+			(this.statusTypeCode === RequestStatusTypeValues.Allowed ||
+				this.statusTypeCode === RequestStatusTypeValues.NotAllowed) &&
 			isDate(this.checkedTimestamp)
 		);
 	}
@@ -133,14 +134,30 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 	}
 
 	/**
-	 * returns true if the `BackupRequest` has received and processed a reply from the backup interface
+	 * returns true if the `BackupRequest` is in a Succeeded or failed status
 	 * @returns `boolean`
 	 */
 	public isReplied(): boolean {
+		return this.isFailed() || this.isSucceeded();
+	}
+
+	/**
+	 * returns true if the `BackupRequest` is in a Failed status
+	 * @returns `boolean`
+	 */
+	public isFailed(): boolean {
 		return (
-			this.statusTypeCode &&
-			(RequestStatusTypeValues.Succeeded + '|' + RequestStatusTypeValues.Failed).includes(this.statusTypeCode) &&
-			isDate(this.replyTimestamp)
+			this.statusTypeCode && this.statusTypeCode === RequestStatusTypeValues.Failed && isDate(this.replyTimestamp)
+		);
+	}
+
+	/**
+	 * returns true if the `BackupRequest` is in a Succeeded status
+	 * @returns `boolean`
+	 */
+	public isSucceeded(): boolean {
+		return (
+			this.statusTypeCode && this.statusTypeCode === RequestStatusTypeValues.Succeeded && isDate(this.replyTimestamp)
 		);
 	}
 

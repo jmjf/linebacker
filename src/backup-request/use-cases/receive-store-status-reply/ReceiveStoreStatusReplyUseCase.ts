@@ -53,7 +53,7 @@ export class ReceiveStoreStatusReplyUseCase implements UseCase<StoreStatusReplyD
 			return err(new DomainErrors.PropsError(`{ message: ${backupRequestIdGuardResult.error.message}}`));
 		}
 
-		// // console.log('RSSRUC get backup request');
+		// console.log('RSSRUC get backup request');
 		// backup request must exist or we can't do anything
 		const backupRequestResult = await this.backupRequestRepo.getById(backupRequestId);
 		if (backupRequestResult.isErr()) {
@@ -77,7 +77,7 @@ export class ReceiveStoreStatusReplyUseCase implements UseCase<StoreStatusReplyD
 
 		// If an error isn't a NotFoundError, fail the use case -- it's probably a DatabaseError, but use !== 'NotFoundError' so nothing slips through
 		if (existingBackupResult.isErr() && existingBackupResult.error.name !== 'NotFoundError') {
-			return existingBackupResult as unknown as Response;
+			return err(existingBackupResult.error);
 		}
 
 		let backup: Backup = {} as Backup;
@@ -108,24 +108,37 @@ export class ReceiveStoreStatusReplyUseCase implements UseCase<StoreStatusReplyD
 			// save the backup aggregate
 			const backupSaveResult = await this.backupRepo.save(backup);
 			if (backupSaveResult.isErr()) {
-				return backupSaveResult as unknown as Response;
+				return err(backupSaveResult.error);
 			}
 		}
 
-		if (backup.backupId?.value.length > 0) {
-			// if we have a Backup, it succeeded at some point
-			backupRequest.setStatusReplied(RequestStatusTypeValues.Succeeded, reply.messageText);
-		} else if (resultTypeCode === StoreResultTypeValues.Failed) {
-			// if no Backup exists and the reply says it failed, it failed
-			backupRequest.setStatusReplied(RequestStatusTypeValues.Failed, reply.messageText);
-		} // otherwise, don't change request status because it doesn't make sense
+		// I'm using the strategy below because it makes the conditions that result in
+		// backupRequest changes and saves clearer than a complex if/else structure (IMO)
+		const backupFound = existingBackupResult.isOk();
+		let shouldSaveBackupRequest = false;
 
-		const backupRequestSaveResult = await this.backupRequestRepo.save(backupRequest);
-		if (backupRequestSaveResult.isErr()) {
-			return backupRequestSaveResult;
+		if (backupFound && !backupRequest.isSucceeded()) {
+			// if we have a Backup and it isn't Succeeded, it should be no matter what the store status, so make it so
+			backupRequest.setStatusReplied(RequestStatusTypeValues.Succeeded, reply.messageText);
+			shouldSaveBackupRequest = true;
+		}
+		if (!backupFound && resultTypeCode === StoreResultTypeValues.Succeeded) {
+			// backup was saved, request is Succeeded -- period, end of discussion
+			backupRequest.setStatusReplied(RequestStatusTypeValues.Succeeded, reply.messageText);
+			shouldSaveBackupRequest = true;
+		}
+		if (!backupFound && resultTypeCode === StoreResultTypeValues.Failed && !backupRequest.isFailed()) {
+			backupRequest.setStatusReplied(RequestStatusTypeValues.Failed, reply.messageText);
+			shouldSaveBackupRequest = true;
 		}
 
-		// if the request succeeded, return the Backup, otherwise return the BackupRequest
+		if (shouldSaveBackupRequest) {
+			const backupRequestSaveResult = await this.backupRequestRepo.save(backupRequest);
+			if (backupRequestSaveResult.isErr()) {
+				return backupRequestSaveResult;
+			}
+		}
+
 		return ok(backupRequest);
 	}
 }
