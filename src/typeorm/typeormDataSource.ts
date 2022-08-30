@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
+import { TypeormBackup } from './entity/TypeormBackup.entity';
 import { TypeormBackupRequest } from './entity/TypeormBackupRequest.entity';
 
 export const typeormDataSource = new DataSource({
@@ -12,7 +13,7 @@ export const typeormDataSource = new DataSource({
 	schema: process.env.SQLSERVER_SCHEMA,
 	synchronize: false,
 	logging: false,
-	entities: [TypeormBackupRequest],
+	entities: [TypeormBackupRequest, TypeormBackup],
 	migrations: [],
 	subscribers: [],
 	options: { encrypt: false },

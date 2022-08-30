@@ -78,7 +78,7 @@ describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 		storagePathName: 'path/to/backup/storage',
 		daysToKeepCount: 42,
 		holdFlag: false,
-		backupByteCount: Number.MAX_SAFE_INTEGER,
+		backupByteCount: Number.MAX_SAFE_INTEGER.toString(),
 		copyStartTimestamp: new Date('2022-05-30T20:00:00Z'),
 		copyEndTimestamp: new Date('2022-05-30T20:11:11Z'),
 		verifyStartTimestamp: new Date('2022-05-30T20:11:33Z'),

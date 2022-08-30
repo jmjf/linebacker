@@ -106,7 +106,9 @@ export class TypeormBackupRepo implements IBackupRepo {
 				storagePathName: raw.storagePathName,
 				daysToKeepCount: raw.daysToKeepCount,
 				holdFlag: raw.holdFlag,
-				backupByteCount: raw.backupByteCount,
+				// parseInt could return NaN if the string is not numeric or the value is too large
+				// but this value is program driven and MAX_SAFE_INTEGER is 9-peta so very low risk
+				backupByteCount: parseInt(raw.backupByteCount),
 				copyStartTimestamp: raw.copyStartTimestamp,
 				copyEndTimestamp: raw.copyEndTimestamp,
 				verifyStartTimestamp: raw.verifyStartTimestamp === null ? undefined : raw.verifyStartTimestamp,
@@ -132,7 +134,7 @@ export class TypeormBackupRepo implements IBackupRepo {
 			backupProviderCode: backup.backupProviderCode,
 			daysToKeepCount: backup.daysToKeepCount,
 			holdFlag: backup.holdFlag,
-			backupByteCount: backup.backupByteCount,
+			backupByteCount: backup.backupByteCount.toString(),
 			copyStartTimestamp: backup.copyStartTimestamp,
 			copyEndTimestamp: backup.copyEndTimestamp,
 			verifyStartTimestamp: backup.verifyStartTimestamp,
