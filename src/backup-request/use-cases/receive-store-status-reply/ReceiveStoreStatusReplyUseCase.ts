@@ -112,7 +112,7 @@ export class ReceiveStoreStatusReplyUseCase implements UseCase<StoreStatusReplyD
 			}
 		}
 
-		// I'm using the strategy below because it makes the conditions that result in
+		// I'm writing the conditions as below because it makes the conditions that result in
 		// backupRequest changes and saves clearer than a complex if/else structure (IMO)
 		const backupFound = existingBackupResult.isOk();
 		let shouldSaveBackupRequest = false;
@@ -131,6 +131,22 @@ export class ReceiveStoreStatusReplyUseCase implements UseCase<StoreStatusReplyD
 			backupRequest.setStatusReplied(RequestStatusTypeValues.Failed, reply.messageText);
 			shouldSaveBackupRequest = true;
 		}
+
+		//
+		// An alternative approach that writes status based on the interface's result. If the interface
+		// sends two contradictory results for a request, the BackupRequest's status could end up out of
+		// sync with Backups. This case should not happen, but if it does, the inconsistency is possible.
+		// The inconsistency should be a Backup exists for a request that is in Failed status because:
+		// * A Succeeds result writes a Backup if none exists before it updates the request status.
+		// * A Failed result will not delete a Backup that exists.
+		//
+		// The advantage of this approach is that request status always matches the last status received
+		// from the interface.
+		// The disadvantage of this approach is that request status may be inconsistent with Backups.
+		//
+
+		// const requestStatus = resultTypeCode === StoreResultTypeValues.Succeeded ? RequestStatusTypeValues.Succeeded : RequestStatusTypeValues.Failed;
+		// backupRequest.setStatusReplied(requestStatus, reply.messageText);
 
 		if (shouldSaveBackupRequest) {
 			const backupRequestSaveResult = await this.backupRequestRepo.save(backupRequest);

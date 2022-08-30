@@ -46,7 +46,7 @@ model PrismaBackup {
   verifyEndTimestamp        DateTime    @map("VerifyEndTimestamp")
   verifyHashText            String      @map("VerifyHashText")
   dueToDeleteDate           DateTime    @map("DueToDeleteDate")
-  deletedTimestamp          DateTime    @map("DeletedTimestamp")
+  deletedTimestamp          DateTime?    @map("DeletedTimestamp")
 
   @@map("Backup")
 }

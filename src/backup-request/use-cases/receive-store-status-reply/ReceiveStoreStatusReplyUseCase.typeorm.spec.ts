@@ -24,7 +24,7 @@ import { TypeormBackupRequest } from '../../../typeorm/entity/TypeormBackupReque
 import { TypeormBackupRepo } from '../../../backup/adapter/impl/TypeormBackupRepo';
 import { TypeormBackup } from '../../../typeorm/entity/TypeormBackup.entity';
 
-describe('ReceiveStoreStatusReplyUseCase', () => {
+describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 	let mockTypeormCtx: MockTypeormContext;
 	let typeormCtx: TypeormContext;
 
