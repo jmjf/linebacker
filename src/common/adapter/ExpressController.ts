@@ -1,20 +1,20 @@
 import { Request, Response } from 'express';
+import { RequestWithHrTimeTraceId } from '../../pinomor';
+import { logger } from '../infrastructure/pinoLogger';
 
 export const responseTypes = {
 	json: 'application/json',
 	text: 'text/plan',
 };
 
-export abstract class ExpressController {
-	protected abstract execImpl(
-		request: Request,
-		response: Response
-	): Promise<void | unknown>;
+export type LinebackerRequest = Request & RequestWithHrTimeTraceId;
 
-	public async execute(
-		request: Request,
-		response: Response
-	): Promise<void | unknown> {
+export abstract class ExpressController {
+	protected logger = logger;
+
+	protected abstract execImpl(request: LinebackerRequest, response: Response): Promise<void | unknown>;
+
+	public async execute(request: LinebackerRequest, response: Response): Promise<void | unknown> {
 		try {
 			return await this.execImpl(request, response);
 		} catch (e) {
