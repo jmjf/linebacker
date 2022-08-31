@@ -1,3 +1,4 @@
+import { Dictionary } from '../../utils/utils';
 import { AggregateRoot } from './AggregateRoot';
 import { UniqueIdentifier } from './UniqueIdentifier';
 
@@ -11,10 +12,10 @@ export interface IDomainEventSubscriber<IDomainEvent> {
 }
 
 export class DomainEventBus {
-	private static handlersMap: { [index: string]: any } = {};
-	private static markedAggregates: AggregateRoot<any>[] = [];
+	private static handlersMap: Dictionary = {};
+	private static markedAggregates: AggregateRoot<unknown>[] = [];
 
-	public static markAggregateForPublish(aggregate: AggregateRoot<any>): void {
+	public static markAggregateForPublish(aggregate: AggregateRoot<unknown>): void {
 		const aggregateFound = !!this.findMarkedAggregateById(aggregate.id);
 
 		if (!aggregateFound) {
@@ -22,7 +23,7 @@ export class DomainEventBus {
 		}
 	}
 
-	private static removeMarkedAggregate(aggregate: AggregateRoot<any>): void {
+	private static removeMarkedAggregate(aggregate: AggregateRoot<unknown>): void {
 		const index = this.markedAggregates.findIndex((a) => a.equals(aggregate));
 		if (index >= 0) {
 			// remove if found
@@ -30,7 +31,7 @@ export class DomainEventBus {
 		}
 	}
 
-	private static findMarkedAggregateById(id: UniqueIdentifier): AggregateRoot<any> | null {
+	private static findMarkedAggregateById(id: UniqueIdentifier): AggregateRoot<unknown> | null {
 		const found = this.markedAggregates.find((a) => a.id.value === id.value);
 		return found === undefined ? null : found;
 	}

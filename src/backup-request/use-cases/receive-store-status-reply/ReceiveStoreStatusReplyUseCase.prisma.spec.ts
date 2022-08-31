@@ -19,9 +19,8 @@ import {
 	MockPrismaContext,
 	PrismaContext,
 	createMockPrismaContext,
-} from '../../../common/infrastructure/database/prismaContext';
+} from '../../../common/infrastructure/prismaContext';
 import { PrismaBackup, PrismaBackupRequest } from '@prisma/client';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 
 describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {

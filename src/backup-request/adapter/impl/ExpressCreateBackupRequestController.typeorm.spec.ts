@@ -8,7 +8,7 @@ import {
 	MockTypeormContext,
 	TypeormContext,
 	createMockTypeormContext,
-} from '../../../common/infrastructure/database/typeormContext';
+} from '../../../common/infrastructure/typeormContext';
 
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { TypeORMError } from 'typeorm';

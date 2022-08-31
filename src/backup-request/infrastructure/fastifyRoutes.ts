@@ -1,7 +1,9 @@
-import { PrismaContext } from '../../common/infrastructure/database/prismaContext';
+import { PrismaContext } from '../../common/infrastructure/prismaContext';
 
-import { FastifyCreateBackupRequestController } from '../adapter/impl/FastifyCreateBackupRequestController';
 import { RealFastifyReply, RealFastifyRequest, RealFastifyInstance } from '../../common/adapter/FastifyController';
+import * as AdapterErrors from '../../common/adapter/AdapterErrors';
+import { FastifyCreateBackupRequestController } from '../adapter/impl/FastifyCreateBackupRequestController';
+
 import { initBackupRequestModule } from './initBackupRequestModulePrisma';
 
 export function addBackupRequestRoutes(app: RealFastifyInstance, prismaCtx: PrismaContext) {
@@ -15,9 +17,10 @@ export function addBackupRequestRoutes(app: RealFastifyInstance, prismaCtx: Pris
 		// HTTP status > 399 is an error
 		if (reply.statusCode > 399) {
 			app.log.error(result);
+			const err = result as AdapterErrors.DatabaseError; // may not be a DatabaseError, but code deals with that
 			const newResult = {
-				code: result.code,
-				message: result.name === 'DatabaseError' ? result.cleanMessage() : result.callerMessage,
+				code: err.code,
+				message: err.name === 'DatabaseError' ? err.cleanMessage() : err.callerMessage,
 			};
 			result = newResult;
 		}

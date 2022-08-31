@@ -7,8 +7,9 @@ import {
 	MockPrismaContext,
 	PrismaContext,
 	createMockPrismaContext,
-} from '../../../common/infrastructure/database/prismaContext';
+} from '../../../common/infrastructure/prismaContext';
 import { PrismaBackupRequest } from '@prisma/client';
+import { Dictionary } from '../../../utils/utils';
 
 describe('CreateBackupRequestUseCase - Prisma', () => {
 	let mockPrismaCtx: MockPrismaContext;
@@ -67,7 +68,7 @@ describe('CreateBackupRequestUseCase - Prisma', () => {
 		const useCase = new CreateBackupRequestUseCase(repo);
 
 		const dto = { ...baseDto };
-		(dto as { [index: string]: any })[propName] = undefined;
+		(dto as Dictionary)[propName] = undefined;
 
 		// Act
 		const result = await useCase.execute(dto);

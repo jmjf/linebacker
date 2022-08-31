@@ -1,5 +1,5 @@
 import { TypeormBackupRequest } from '../../../typeorm/entity/TypeormBackupRequest.entity';
-import { TypeormContext } from '../../../common/infrastructure/database/typeormContext';
+import { TypeormContext } from '../../../common/infrastructure/typeormContext';
 
 import { err, ok, Result } from '../../../common/core/Result';
 import { DomainEventBus } from '../../../common/domain/DomainEventBus';

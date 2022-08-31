@@ -1,4 +1,3 @@
-import * as uuid from 'uuid';
 import request from 'supertest';
 
 import { buildApp } from '../../../expressAppPrisma';
@@ -9,7 +8,7 @@ import {
 	MockPrismaContext,
 	PrismaContext,
 	createMockPrismaContext,
-} from '../../../common/infrastructure/database/prismaContext';
+} from '../../../common/infrastructure/prismaContext';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
 
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';

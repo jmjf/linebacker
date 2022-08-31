@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { InvalidApiVersionError } from '../../../common/adapter/AdapterErrors';
 import { ExpressController, LinebackerRequest } from '../../../common/adapter/ExpressController';
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';

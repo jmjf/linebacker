@@ -1,4 +1,4 @@
-import { Result, ok, err } from '../../../common/core/Result';
+import { Result, err } from '../../../common/core/Result';
 import { UseCase } from '../../../common/application/UseCase';
 import * as ApplicationErrors from '../../../common/application/ApplicationErrors';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
@@ -6,7 +6,6 @@ import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 import { IBackupJobServiceAdapter } from '../../../backup-job/adapter/BackupJobServiceAdapter';
 import { IBackupRequestRepo } from '../../adapter/IBackupRequestRepo';
 import { BackupRequest } from '../../domain/BackupRequest';
-import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { CheckRequestAllowedDTO } from './CheckRequestAllowedDTO';
 
 type Response = Result<

@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 
-import { prismaCtx } from './common/infrastructure/database/prismaContext';
+import { prismaCtx } from './common/infrastructure/prismaContext';
 import { logger } from './common/infrastructure/logger';
 import { buildApp } from './expressAppPrisma';
 

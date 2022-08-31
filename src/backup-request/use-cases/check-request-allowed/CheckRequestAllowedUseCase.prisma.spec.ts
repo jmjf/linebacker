@@ -1,6 +1,4 @@
-import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
-
-import { BackupJob, IBackupJobProps } from '../../../backup-job/domain/BackupJob';
+import { IBackupJobProps } from '../../../backup-job/domain/BackupJob';
 import { BackupProviderTypeValues } from '../../../backup-job/domain/BackupProviderType';
 import { MockBackupJobServiceAdapter } from '../../../backup-job/adapter/impl/MockBackupJobServiceAdapter';
 
@@ -14,10 +12,11 @@ import {
 	MockPrismaContext,
 	PrismaContext,
 	createMockPrismaContext,
-} from '../../../common/infrastructure/database/prismaContext';
+} from '../../../common/infrastructure/prismaContext';
 import { PrismaBackupRequest } from '@prisma/client';
 import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
+import { Dictionary } from '../../../utils/utils';
 
 describe('CheckRequestAllowedUseCase - Prisma', () => {
 	let mockPrismaCtx: MockPrismaContext;
@@ -209,7 +208,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		async ({ status, timestamp }) => {
 			// Arrange
 			// timestamp that matters is defined in inputs, so need to add it after setting up base props
-			const resultBackupRequest: { [index: string]: any } = {
+			const resultBackupRequest: Dictionary = {
 				...dbBackupRequest,
 				statusTypeCode: status as RequestStatusType,
 			};

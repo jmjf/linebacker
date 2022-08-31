@@ -14,9 +14,10 @@ import {
 	MockPrismaContext,
 	PrismaContext,
 	createMockPrismaContext,
-} from '../../../common/infrastructure/database/prismaContext';
+} from '../../../common/infrastructure/prismaContext';
 import { PrismaBackupRequest } from '@prisma/client';
 import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
+import { Dictionary } from '../../../utils/utils';
 
 describe('SendRequestToInterfaceUseCase - Prisma', () => {
 	let mockPrismaCtx: MockPrismaContext;
@@ -96,7 +97,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		{ status: RequestStatusTypeValues.Succeeded, timestampName: 'replyTimestamp' },
 	])('when request is $status, it returns err (BackupRequestStatusError)', async ({ status, timestampName }) => {
 		// Arrange
-		const resultBackupRequest: { [index: string]: any } = {
+		const resultBackupRequest: Dictionary = {
 			...dbBackupRequest,
 			backupJobId: 'request is sent job id',
 			statusTypeCode: status,

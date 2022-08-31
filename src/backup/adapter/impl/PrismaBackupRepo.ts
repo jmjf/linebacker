@@ -1,4 +1,4 @@
-import { PrismaContext } from '../../../common/infrastructure/database/prismaContext';
+import { PrismaContext } from '../../../common/infrastructure/prismaContext';
 
 import { DomainEventBus } from '../../../common/domain/DomainEventBus';
 
@@ -104,7 +104,7 @@ export class PrismaBackupRepo implements IBackupRepo {
 	}
 
 	// this may belong in a mapper
-	private mapToDomain(raw: any): Result<Backup, DomainErrors.PropsError> {
+	private mapToDomain(raw: PrismaBackup): Result<Backup, DomainErrors.PropsError> {
 		const backupId = new UniqueIdentifier(raw.backupId);
 		const backupResult = Backup.create(
 			{
@@ -115,14 +115,14 @@ export class PrismaBackupRepo implements IBackupRepo {
 				storagePathName: raw.storagePathName,
 				daysToKeepCount: raw.daysToKeepCount,
 				holdFlag: raw.holdFlag,
-				backupByteCount: raw.backupByteCount,
+				backupByteCount: parseInt(raw.backupByteCount.toString()),
 				copyStartTimestamp: raw.copyStartTimestamp,
 				copyEndTimestamp: raw.copyEndTimestamp,
 				verifyStartTimestamp: raw.verifyStartTimestamp,
 				verifyEndTimestamp: raw.verifyEndTimestamp,
 				verifyHashText: raw.verifyHashText,
 				dueToDeleteDate: raw.dueToDeleteDate,
-				deletedTimestamp: raw.deletedTimestamp,
+				deletedTimestamp: raw.deletedTimestamp === null ? undefined : raw.deletedTimestamp,
 			},
 			backupId
 		);

@@ -1,6 +1,6 @@
 import fastify from 'fastify';
 
-import { PrismaContext } from './common/infrastructure/database/prismaContext';
+import { PrismaContext } from './common/infrastructure/prismaContext';
 
 import { addBackupRequestRoutes } from './backup-request/infrastructure/fastifyRoutes';
 

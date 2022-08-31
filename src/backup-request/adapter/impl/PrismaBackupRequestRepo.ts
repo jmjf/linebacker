@@ -1,4 +1,4 @@
-import { PrismaContext } from '../../../common/infrastructure/database/prismaContext';
+import { PrismaContext } from '../../../common/infrastructure/prismaContext';
 
 import { DomainEventBus } from '../../../common/domain/DomainEventBus';
 
@@ -12,6 +12,8 @@ import { BackupProviderType } from '../../../backup-job/domain/BackupProviderTyp
 import { BackupRequest } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
 import { IBackupRequestRepo } from '../IBackupRequestRepo';
+import { PrismaBackupRequest } from '@prisma/client';
+import { RequestStatusType } from '../../domain/RequestStatusType';
 
 export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 	private prisma;
@@ -86,7 +88,7 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 	}
 
 	// this may belong in a mapper
-	private mapToDomain(raw: any): Result<BackupRequest, DomainErrors.PropsError> {
+	private mapToDomain(raw: PrismaBackupRequest): Result<BackupRequest, DomainErrors.PropsError> {
 		const backupRequestId = new UniqueIdentifier(raw.backupRequestId);
 		const backupRequestResult = BackupRequest.create(
 			{
@@ -96,24 +98,38 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 				getOnStartFlag: raw.getOnStartFlag,
 				transportTypeCode: raw.transportTypeCode as RequestTransportType,
 				backupProviderCode: raw.backupProviderCode as BackupProviderType,
-				storagePathName: raw.storagePathName,
-				statusTypeCode: raw.statusTypeCode,
+				storagePathName: raw.storagePathName === null ? undefined : raw.storagePathName,
+				statusTypeCode: raw.statusTypeCode as RequestStatusType,
 				receivedTimestamp: raw.receivedTimestamp,
-				checkedTimestamp: raw.checkedTimestamp,
-				sentToInterfaceTimestamp: raw.sentToInterfaceTimestamp,
-				replyTimestamp: raw.replyTimestamp,
-				requesterId: raw.requesterId,
-				replyMessageText: raw.replyMessageText,
+				checkedTimestamp: raw.checkedTimestamp === null ? undefined : raw.checkedTimestamp,
+				sentToInterfaceTimestamp: raw.sentToInterfaceTimestamp === null ? undefined : raw.sentToInterfaceTimestamp,
+				replyTimestamp: raw.replyTimestamp === null ? undefined : raw.replyTimestamp,
+				requesterId: raw.requesterId === null ? undefined : raw.requesterId,
+				replyMessageText: raw.replyMessageText === null ? undefined : raw.replyMessageText,
 			},
 			backupRequestId
 		);
 		return backupRequestResult;
 	}
 
-	private mapToDb(backupRequest: BackupRequest): any {
+	private mapToDb(backupRequest: BackupRequest): PrismaBackupRequest {
 		return {
 			backupRequestId: backupRequest.idValue,
 			...backupRequest.props,
+
+			dataDate: backupRequest.dataDate,
+			preparedDataPathName: backupRequest.preparedDataPathName,
+			getOnStartFlag: backupRequest.getOnStartFlag,
+			transportTypeCode: backupRequest.transportTypeCode,
+			backupProviderCode: backupRequest.backupProviderCode,
+			storagePathName: backupRequest.storagePathName,
+			statusTypeCode: backupRequest.statusTypeCode,
+			receivedTimestamp: backupRequest.receivedTimestamp,
+			checkedTimestamp: backupRequest.checkedTimestamp,
+			sentToInterfaceTimestamp: backupRequest.sentToInterfaceTimestamp,
+			replyTimestamp: backupRequest.replyTimestamp,
+			requesterId: backupRequest.requesterId,
+			replyMessageText: backupRequest.replyMessageText,
 			backupJobId: backupRequest.backupJobId.value,
 		};
 	}

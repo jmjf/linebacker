@@ -6,9 +6,10 @@ import {
 	MockTypeormContext,
 	TypeormContext,
 	createMockTypeormContext,
-} from '../../../common/infrastructure/database/typeormContext';
+} from '../../../common/infrastructure/typeormContext';
 import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
 import { TypeormBackupRequest } from '../../../typeorm/entity/TypeormBackupRequest.entity';
+import { Dictionary } from '../../../utils/utils';
 
 describe('CreateBackupRequestUseCase - typeorm', () => {
 	let mockTypeormCtx: MockTypeormContext;
@@ -65,7 +66,7 @@ describe('CreateBackupRequestUseCase - typeorm', () => {
 		const useCase = new CreateBackupRequestUseCase(repo);
 
 		const dto = { ...baseDto };
-		(dto as { [index: string]: any })[propName] = undefined;
+		(dto as Dictionary)[propName] = undefined;
 
 		// Act
 		const result = await useCase.execute(dto);

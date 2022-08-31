@@ -25,11 +25,7 @@ import { ReceiveStoreStatusReplyUseCase } from '../use-cases/receive-store-statu
 
 import { AzureBackupInterfaceStoreAdapter } from '../adapter/impl/AzureBackupInterfaceStoreAdapter';
 
-import {
-	MockPrismaContext,
-	PrismaContext,
-	createMockPrismaContext,
-} from '../../common/infrastructure/database/prismaContext';
+import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../../common/infrastructure/prismaContext';
 import { PrismaBackupRequest } from '@prisma/client';
 import { PrismaBackupRequestRepo } from '../adapter/impl/PrismaBackupRequestRepo';
 import { PrismaBackupRepo } from '../../backup/adapter/impl/PrismaBackupRepo';

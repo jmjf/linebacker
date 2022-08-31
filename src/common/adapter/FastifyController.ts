@@ -30,14 +30,15 @@ export type RealFastifyReply = FastifyReply<
 >;
 export type RealFastifyInstance = FastifyInstance<Http2SecureServer, Http2ServerRequest, Http2ServerResponse>;
 export abstract class FastifyController {
-	protected abstract execImpl(request: RealFastifyRequest, reply: RealFastifyReply): Promise<void | any>;
+	protected abstract execImpl(request: RealFastifyRequest, reply: RealFastifyReply): Promise<void | unknown>;
 
-	public async execute(request: RealFastifyRequest, reply: RealFastifyReply): Promise<void | any> {
+	public async execute(request: RealFastifyRequest, reply: RealFastifyReply): Promise<void | unknown> {
 		try {
 			return await this.execImpl(request, reply);
 		} catch (e) {
 			console.log(e);
 		}
+		return;
 	}
 
 	public replyOk<T>(reply: RealFastifyReply, dto?: T) {

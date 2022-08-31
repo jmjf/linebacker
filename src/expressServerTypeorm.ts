@@ -13,7 +13,7 @@ logger.info(`${logContext} | APP_ENV ${process.env.APP_ENV}`);
 dotenv.config({ path: `./env/${process.env.APP_ENV}.env` });
 
 import { typeormDataSource } from './typeorm/typeormDataSource';
-import { typeormCtx } from './common/infrastructure/database/typeormContext';
+import { typeormCtx } from './common/infrastructure/typeormContext';
 
 import { buildApp } from './expressAppTypeorm';
 

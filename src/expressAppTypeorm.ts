@@ -1,8 +1,8 @@
-import express, { Request } from 'express';
-import { buildPinomor, RequestWithHrTimeTraceId } from './pinomor';
+import express from 'express';
+import { buildPinomor } from './pinomor';
 
 import { addBackupRequestRoutes } from './backup-request/infrastructure/expressRoutesTypeorm';
-import { TypeormContext } from './common/infrastructure/database/typeormContext';
+import { TypeormContext } from './common/infrastructure/typeormContext';
 
 export function buildApp(typeormCtx: TypeormContext) {
 	const app = express();

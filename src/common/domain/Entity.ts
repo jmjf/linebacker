@@ -17,7 +17,7 @@ import { UniqueIdentifier } from './UniqueIdentifier';
  * @param v - value to be tested (type any)
  * @returns boolean
  */
-const isEntity = (v: any): v is Entity<any> => {
+const isEntity = (v: unknown): v is Entity<unknown> => {
 	return v instanceof Entity;
 };
 
@@ -36,18 +36,18 @@ export abstract class Entity<T> {
 	 * @param id optional UniqueIdentifier, must be a valid UUIDv4 (not validated)
 	 *
 	 * @remarks If `id` isn't provided, the constructor will create a new UniqueIdentifier.
-	 * 
+	 *
 	 */
 	constructor(props: T, id?: UniqueIdentifier) {
-		this._id = (id ? id : new UniqueIdentifier());
+		this._id = id ? id : new UniqueIdentifier();
 		this.props = props;
 	}
 
 	/**
-	 * 
+	 *
 	 * @param indent number of spaces to indent for pretty printed output; if not provided, don't pretty print (prefer for logging)
 	 * @returns the entity's data as a JSON string with all values in one object (id and props values in the same object)
-	 * 
+	 *
 	 * @remarks the default Object.prototype.toString() method returns a JSON string like {_id, props: {...} }. This method flattens it.
 	 */
 	public toJSON(indent?: number): string {

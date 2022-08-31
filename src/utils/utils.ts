@@ -1,5 +1,7 @@
 import { isDate } from 'util/types';
 
+export type Dictionary = { [index: string]: any };
+
 export function dateOrUndefinedAsDate(date: any): Date {
 	if (isDate(date) || (typeof date === 'string' && !isNaN(Date.parse(date)))) {
 		return new Date(date);

@@ -19,7 +19,7 @@ export class FastifyCreateBackupRequestController extends FastifyController {
 		this.useCase = useCase;
 	}
 
-	protected async execImpl(request: RealFastifyRequest, reply: RealFastifyReply): Promise<any> {
+	protected async execImpl(request: RealFastifyRequest, reply: RealFastifyReply): Promise<unknown> {
 		const logContext = {
 			context: 'FastifyCreateBackupRequestController.execImpl',
 			fastifyRequestId: request.id,
