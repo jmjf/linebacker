@@ -76,7 +76,13 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 			await this.typeormCtx.manager.save(TypeormBackupRequest, { ...raw });
 		} catch (e) {
 			const { message, ...error } = e as Error;
-			return err(new AdapterErrors.DatabaseError(message, { ...error, moduleName, functionName }));
+			return err(
+				new AdapterErrors.DatabaseError(message, {
+					...error,
+					moduleName,
+					functionName,
+				})
+			);
 		}
 
 		// trigger domain events
