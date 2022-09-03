@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { RequestWithHrTimeTraceId } from '../../pinomor';
+import { RequestWithHrTimeTraceId } from '../../middleware/pinomor';
 import { logger } from '../infrastructure/pinoLogger';
 
 export const responseTypes = {
