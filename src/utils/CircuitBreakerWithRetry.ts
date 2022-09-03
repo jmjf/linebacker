@@ -1,6 +1,7 @@
 import { BaseError } from '../common/core/BaseError';
 import { Result } from '../common/core/Result';
 import { IDomainEvent } from '../common/domain/DomainEventBus';
+import { delay } from './utils';
 
 export const CircuitBreakerStateValues = {
 	Open: 'Open', // no connection
@@ -62,7 +63,22 @@ export class CircuitBreakerWithRetry {
 	}
 
 	public onSuccess() {
-		return;
+		// Callers that don't check for fast fail may move to Half Open while awaitIsAlive is
+		// waiting. awaitIsAlive will end its loop after its delay ends.
+
+		// when Closed, success resets any accumulated failures
+		if (this.state === CircuitBreakerStateValues.Closed) {
+			this.failureCount = 0;
+		} else {
+			// Open or Half Open; increment successCount
+			this.successCount++;
+
+			// any successful call will move to either Closed or HalfOpen
+			this.state =
+				this.successCount >= this.successToCloseCount
+					? CircuitBreakerStateValues.Closed
+					: CircuitBreakerStateValues.HalfOpen;
+		}
 	}
 
 	public onFailure() {
@@ -83,6 +99,11 @@ export class CircuitBreakerWithRetry {
 	}
 
 	private async awaitIsAlive() {
-		return;
+		do {
+			if (await this.isAlive()) this.state = CircuitBreakerStateValues.HalfOpen;
+			await delay(this.openAliveCheckDelayMs);
+		} while (this.state === CircuitBreakerStateValues.Open);
+
+		// run retries
 	}
 }

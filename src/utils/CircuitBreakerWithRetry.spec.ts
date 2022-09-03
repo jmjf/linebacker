@@ -9,10 +9,30 @@ import { UseCase } from '../common/application/UseCase';
 import * as AdapterErrors from '../common/adapter/AdapterErrors';
 
 import { CircuitBreakerStateValues, CircuitBreakerWithRetry, ConnectFailureErrorData } from './CircuitBreakerWithRetry';
+import { delay } from './utils';
 
 class TestService {
+	private liveness: boolean;
+	private testResult: boolean;
+
+	public setLiveness(value: boolean) {
+		this.liveness = value;
+	}
+
+	public setTestResult(value: boolean) {
+		this.testResult = value;
+	}
+
 	async test(): Promise<Result<boolean, BaseError>> {
-		return ok(true);
+		return this.testResult
+			? Promise.resolve(ok(true))
+			: Promise.resolve(err(new AdapterErrors.BackupJobServiceError('test failed')));
+	}
+
+	async isAlive(): Promise<Result<boolean, BaseError>> {
+		return this.liveness
+			? Promise.resolve(ok(true))
+			: Promise.resolve(err(new AdapterErrors.BackupJobServiceError('isAliveFalse')));
 	}
 }
 
@@ -110,18 +130,13 @@ class TestSubscriber implements IDomainEventSubscriber<TestEvent> {
 }
 
 describe('CircuitBreakerWithRetry', () => {
-	const isAliveTrue = async () => {
-		return Promise.resolve(ok(true));
-	};
-
-	const isAliveFalse = async () => {
-		return Promise.resolve(err(new AdapterErrors.BackupJobServiceError('isAliveFalse')));
-	};
-
-	test('when the service returns a connect failure, it becomes open', async () => {
+	test('when the service returns a connect failure, the circuit becomes open', async () => {
 		// Arrange
+		const service = new TestService();
+		service.setTestResult(false); // test() will fail
+
 		const circuitBreaker = new CircuitBreakerWithRetry({
-			isAlive: isAliveFalse,
+			isAlive: service.isAlive,
 			successToCloseCount: 10,
 			failureToOpenCount: 1,
 			halfOpenRetryDelayMs: 5,
@@ -129,12 +144,10 @@ describe('CircuitBreakerWithRetry', () => {
 			openAliveCheckDelayMs: 2000,
 		});
 
-		const service = new TestService();
-		service.test = isAliveFalse; // failse
-
 		const adapter = new TestAdapter(service, circuitBreaker);
 
 		// Act
+		expect(circuitBreaker.cbState).toBe(CircuitBreakerStateValues.Closed);
 		const result = await adapter.test();
 
 		// Assert
@@ -146,5 +159,138 @@ describe('CircuitBreakerWithRetry', () => {
 			expect((result.error.errorData as any).isConnectFailure).toBe(true);
 			expect((result.error.errorData as any).isConnected()).toBe(false);
 		}
+	});
+
+	test('when the circuit is open, the adapter can fail fast', async () => {
+		// Arrange
+		const service = new TestService();
+		service.setTestResult(false); // test() will fail
+
+		const circuitBreaker = new CircuitBreakerWithRetry({
+			isAlive: service.isAlive,
+			successToCloseCount: 10,
+			failureToOpenCount: 1,
+			halfOpenRetryDelayMs: 5,
+			closedRetryDelayMs: 5,
+			openAliveCheckDelayMs: 2000,
+		});
+
+		const adapter = new TestAdapter(service, circuitBreaker);
+
+		// Act
+		expect(circuitBreaker.cbState).toBe(CircuitBreakerStateValues.Closed);
+		const result1 = await adapter.test();
+
+		const result = await adapter.test();
+
+		// Assert
+		expect(circuitBreaker.cbState).toBe(CircuitBreakerStateValues.Open);
+		expect(result1.isErr()).toBe(true);
+		if (result1.isErr()) {
+			expect(result1.error.message).toContain('connect failure');
+		}
+		expect(result.isErr()).toBe(true);
+		if (result.isErr()) {
+			// proves it can fast fail
+			expect(result.error.message).toContain('fast fail');
+			expect((result.error.errorData as any).isConnectFailure).toBe(true);
+			expect((result.error.errorData as any).isConnected()).toBe(false);
+		}
+	});
+
+	test('when the circuit is open, it retries the connection until the connection is restored then moves to half open', async () => {
+		// Arrange
+		const service = new TestService();
+		service.setTestResult(false); // test() will fail
+
+		const circuitBreaker = new CircuitBreakerWithRetry({
+			isAlive: service.isAlive,
+			successToCloseCount: 10,
+			failureToOpenCount: 1,
+			halfOpenRetryDelayMs: 5,
+			closedRetryDelayMs: 5,
+			openAliveCheckDelayMs: 5,
+		});
+
+		const adapter = new TestAdapter(service, circuitBreaker);
+
+		// Act
+		expect(circuitBreaker.cbState).toBe(CircuitBreakerStateValues.Closed);
+		const result = await adapter.test();
+
+		// Assert
+		expect(circuitBreaker.cbState).toBe(CircuitBreakerStateValues.Open);
+		expect(result.isErr()).toBe(true);
+		if (result.isErr()) {
+			expect((result.error.errorData as any).isConnectFailure).toBe(true);
+			expect((result.error.errorData as any).isConnected()).toBe(false);
+		}
+
+		// for first time testing, I added a console.log() in awaitIsAlive()
+		// so I could see it running; after a few loops, set alive and give it
+		// a few ms to see the change
+		await delay(20);
+		service.setLiveness(true);
+		await delay(20);
+
+		expect(circuitBreaker.cbState).toBe(CircuitBreakerStateValues.HalfOpen);
+		if (result.isErr()) {
+			// Half open should be give connected
+			expect((result.error.errorData as any).isConnected()).toBe(true);
+		}
+	});
+
+	test('when the circuit is half open and successful calls reaches the threshold, it moves to closed', async () => {
+		// Arrange
+		const service = new TestService();
+		service.setTestResult(false); // test() will fail
+
+		const circuitBreaker = new CircuitBreakerWithRetry({
+			isAlive: service.isAlive,
+			successToCloseCount: 2,
+			failureToOpenCount: 1,
+			halfOpenRetryDelayMs: 5,
+			closedRetryDelayMs: 5,
+			openAliveCheckDelayMs: 5,
+		});
+
+		const adapter = new TestAdapter(service, circuitBreaker);
+
+		// Act
+		expect(circuitBreaker.cbState).toBe(CircuitBreakerStateValues.Closed);
+		const result = await adapter.test();
+
+		// Assert
+		expect(circuitBreaker.cbState).toBe(CircuitBreakerStateValues.Open);
+		expect(result.isErr()).toBe(true);
+		if (result.isErr()) {
+			expect((result.error.errorData as any).isConnectFailure).toBe(true);
+			expect((result.error.errorData as any).isConnected()).toBe(false);
+		}
+
+		// for first time testing, I added a console.log() in awaitIsAlive()
+		// so I could see it running; after a few loops, set alive and give it
+		// a few ms to see the change
+		await delay(20);
+		service.setLiveness(true);
+		await delay(20);
+
+		expect(circuitBreaker.cbState).toBe(CircuitBreakerStateValues.HalfOpen);
+		if (result.isErr()) {
+			// Half open should be give connected
+			expect((result.error.errorData as any).isConnected()).toBe(true);
+		}
+
+		service.setTestResult(true); // test() will succeed
+
+		// threshold requires 2 success to close the circuit, so half open still
+		const result1 = await adapter.test();
+		expect(result1.isOk()).toBe(true);
+		expect(circuitBreaker.cbState).toBe(CircuitBreakerStateValues.HalfOpen);
+
+		// second success, so open now
+		const result2 = await adapter.test();
+		expect(result2.isOk()).toBe(true);
+		expect(circuitBreaker.cbState).toBe(CircuitBreakerStateValues.Closed);
 	});
 });
