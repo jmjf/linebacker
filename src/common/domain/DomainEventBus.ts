@@ -1,4 +1,5 @@
 import { Dictionary } from '../../utils/utils';
+import { logger } from '../infrastructure/pinoLogger';
 import { AggregateRoot } from './AggregateRoot';
 import { UniqueIdentifier } from './UniqueIdentifier';
 
@@ -65,7 +66,10 @@ export class DomainEventBus {
 		const eventName: string = event.constructor.name;
 
 		if (Object.prototype.hasOwnProperty.call(this.handlersMap, eventName)) {
-			this.handlersMap[eventName].forEach((handler: (event: IDomainEvent) => void) => handler(event));
+			this.handlersMap[eventName].forEach((handler: (event: IDomainEvent) => void) => {
+				logger.debug({ eventName, handerName: handler.name }, 'publish event');
+				handler(event);
+			});
 		}
 	}
 }

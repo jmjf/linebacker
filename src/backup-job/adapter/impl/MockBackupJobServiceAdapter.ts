@@ -7,7 +7,7 @@ import { BackupJob, IBackupJobProps } from '../../domain/BackupJob';
 import { BackupProviderTypeValues } from '../../domain/BackupProviderType';
 import { IBackupJobServiceAdapter } from '../BackupJobServiceAdapter';
 //import { delay } from '../../../utils/utils';
-import { logger } from '../../../common/infrastructure/pinoLogger';
+//import { logger } from '../../../common/infrastructure/pinoLogger';
 
 export const mockBackupJobProps = {
 	storagePathName: 'storagePathName',
@@ -50,7 +50,7 @@ export class MockBackupJobServiceAdapter implements IBackupJobServiceAdapter {
 		// });
 		if (this.getByIdResult) return this.mapToDomain({ ...this.getByIdResult, backupJobId });
 		if (this.getByIdError) return err(this.getByIdError);
-		return err(new AdapterErrors.BackupJobServiceError(`{msg: 'unknown'}`));
+		return err(new AdapterErrors.BackupJobServiceError('No error set up for mock'));
 	}
 
 	mapToDomain(raw: any) {

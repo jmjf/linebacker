@@ -131,7 +131,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('BackupRequestStatusError');
-			expect(result.error.message).toContain(status);
+			expect((result.error.errorData as any).statusTypeCode).toBe(status);
 		}
 	});
 
@@ -162,7 +162,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('NotFoundError');
-			expect(result.error.message).toMatch(dto.backupRequestId);
+			expect((result.error.errorData as any).backupRequestId).toMatch(dto.backupRequestId);
 		}
 	});
 

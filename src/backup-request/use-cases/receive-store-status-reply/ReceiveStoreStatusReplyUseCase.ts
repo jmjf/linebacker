@@ -1,6 +1,7 @@
 import { UseCase } from '../../../common/application/UseCase';
 import { Result, ok, err } from '../../../common/core/Result';
 import { Guard } from '../../../common/core/Guard';
+import { BaseError } from '../../../common/core/BaseError';
 
 import { Backup, IBackupProps } from '../../../backup/domain/Backup';
 import { IBackupRepo } from '../../../backup/adapter/BackupRepo';
@@ -15,10 +16,12 @@ import { StoreResultTypeValues, validStoreResultTypes } from '../../domain/Store
 import { StoreStatusReplyDTO } from './StoreStatusReplyDTO';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 
+const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
+
 // add errors when you define them
 type Response = Result<
 	BackupRequest,
-	DomainErrors.PropsError | AdapterErrors.BackupJobServiceError | AdapterErrors.DatabaseError | Error
+	DomainErrors.PropsError | AdapterErrors.BackupJobServiceError | AdapterErrors.DatabaseError | BaseError
 >;
 
 /**
@@ -40,17 +43,30 @@ export class ReceiveStoreStatusReplyUseCase implements UseCase<StoreStatusReplyD
 	}
 
 	async execute(reply: StoreStatusReplyDTO): Promise<Response> {
+		const functionName = 'execute';
 		// // console.log('RSSRUC start', reply);
 		const { resultTypeCode, backupRequestId, ...restOfReply } = reply;
 
 		const resultTypeCodeGuardResult = Guard.isOneOf(resultTypeCode, validStoreResultTypes, 'resultTypeCode');
 		if (resultTypeCodeGuardResult.isErr()) {
-			return err(new DomainErrors.PropsError(`{ message: ${resultTypeCodeGuardResult.error.message}}`));
+			return err(
+				new DomainErrors.PropsError(resultTypeCodeGuardResult.error.message, {
+					argName: resultTypeCodeGuardResult.error.argName,
+					moduleName,
+					functionName,
+				})
+			);
 		}
 
 		const backupRequestIdGuardResult = Guard.againstNullOrUndefined(backupRequestId, 'backupRequestId');
 		if (backupRequestIdGuardResult.isErr()) {
-			return err(new DomainErrors.PropsError(`{ message: ${backupRequestIdGuardResult.error.message}}`));
+			return err(
+				new DomainErrors.PropsError(backupRequestIdGuardResult.error.message, {
+					argName: backupRequestIdGuardResult.error.argName,
+					moduleName,
+					functionName,
+				})
+			);
 		}
 
 		// console.log('RSSRUC get backup request');

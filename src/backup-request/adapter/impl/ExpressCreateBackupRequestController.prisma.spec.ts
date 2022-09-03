@@ -13,7 +13,7 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
 
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 
-describe('ExpressCreateBackupRequestController', () => {
+describe('ExpressCreateBackupRequestController - prisma', () => {
 	let mockPrismaCtx: MockPrismaContext;
 	let prismaCtx: PrismaContext;
 

@@ -8,12 +8,11 @@ import { IBackupRequestRepo } from '../../adapter/IBackupRequestRepo';
 import { BackupRequest } from '../../domain/BackupRequest';
 import { CheckRequestAllowedDTO } from './CheckRequestAllowedDTO';
 
+const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
+
 type Response = Result<
 	BackupRequest,
-	| ApplicationErrors.BackupRequestStatusError
-	| ApplicationErrors.UnexpectedError
-	| AdapterErrors.BackupJobServiceError
-	| Error
+	ApplicationErrors.BackupRequestStatusError | ApplicationErrors.UnexpectedError | AdapterErrors.BackupJobServiceError
 >;
 
 export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDTO, Promise<Response>> {
@@ -26,6 +25,7 @@ export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDT
 	}
 
 	public async execute(request: CheckRequestAllowedDTO): Promise<Response> {
+		const functionName = 'execute';
 		// Get request from repository (returns a BackupRequest)
 		const { backupRequestId } = request;
 
@@ -38,9 +38,12 @@ export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDT
 		// Already past this state
 		if (!backupRequest.isReceived()) {
 			return err(
-				new ApplicationErrors.BackupRequestStatusError(
-					`{ message: 'Must be in Received status', backupRequestId: '${backupRequestId}', statusTypeCode: '${backupRequest.statusTypeCode}'`
-				)
+				new ApplicationErrors.BackupRequestStatusError('Request must be in Received status', {
+					backupRequestId,
+					statusTypeCode: backupRequest.statusTypeCode,
+					moduleName,
+					functionName,
+				})
 			);
 		}
 

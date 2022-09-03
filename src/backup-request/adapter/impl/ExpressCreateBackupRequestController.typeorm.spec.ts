@@ -13,7 +13,7 @@ import {
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { TypeORMError } from 'typeorm';
 
-describe('ExpressCreateBackupRequestController', () => {
+describe('ExpressCreateBackupRequestController - typeorm', () => {
 	let mockTypeormCtx: MockTypeormContext;
 	let typeormCtx: TypeormContext;
 

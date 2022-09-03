@@ -4,6 +4,8 @@ import { BackupRequest } from '../../domain/BackupRequest';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 import { StoreDeleteResponse, StoreReceiveResponse, StoreSendResponse } from '../IBackupInterfaceStoreAdapter';
 
+const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
+
 export class AzureBackupInterfaceStoreAdapter {
 	private queueName: string;
 	private useBase64: boolean;
@@ -16,6 +18,7 @@ export class AzureBackupInterfaceStoreAdapter {
 	public async send(
 		backupRequest: BackupRequest
 	): Promise<Result<StoreSendResponse, AdapterErrors.InterfaceAdapterError>> {
+		const functionName = 'send';
 		const messageText = JSON.stringify(this.mapToQueue(backupRequest));
 
 		const startTime = new Date();
@@ -27,15 +30,7 @@ export class AzureBackupInterfaceStoreAdapter {
 		const endTime = new Date();
 
 		if (sendResult.isErr()) {
-			return err(
-				new AdapterErrors.InterfaceAdapterError(
-					`{context: 'AzureBackupInterfaceStoreAdapter.send', message: '${sendResult.error.message}', name: '${
-						sendResult.error.name
-					}', code: '${
-						sendResult.error.code
-					}, startTime: '${startTime.toISOString()}', endTime: '${endTime.toISOString()}' }`
-				)
-			);
+			return err(sendResult.error);
 		}
 
 		const response: StoreSendResponse = {
@@ -54,6 +49,7 @@ export class AzureBackupInterfaceStoreAdapter {
 	public async receive(
 		messageCount: number
 	): Promise<Result<StoreReceiveResponse, AdapterErrors.InterfaceAdapterError>> {
+		const functionName = 'receive';
 		// ensure messageCount is usable
 		if (typeof messageCount !== 'number' || messageCount < 1) messageCount = 1;
 
@@ -66,15 +62,7 @@ export class AzureBackupInterfaceStoreAdapter {
 		const endTime = new Date();
 
 		if (rcvResult.isErr()) {
-			return err(
-				new AdapterErrors.InterfaceAdapterError(
-					`{context: 'AzureBackupInterfaceStoreAdapter.receive', message: '${rcvResult.error.message}', name: '${
-						rcvResult.error.name
-					}', code: '${
-						rcvResult.error.code
-					}, startTime: '${startTime.toISOString()}', endTime: '${endTime.toISOString()}' }`
-				)
-			);
+			return err(rcvResult.error);
 		}
 
 		return ok({ messages: rcvResult.value.receivedMessageItems, startTime, endTime } as StoreReceiveResponse);
@@ -84,20 +72,13 @@ export class AzureBackupInterfaceStoreAdapter {
 		messageId: string,
 		popReceipt: string
 	): Promise<Result<StoreDeleteResponse, AdapterErrors.InterfaceAdapterError>> {
+		const functionName = 'delete';
 		const startTime = new Date();
 		const deleteResult = await AzureQueue.deleteMessage({ queueName: this.queueName, messageId, popReceipt });
 		const endTime = new Date();
 
 		if (deleteResult.isErr()) {
-			return err(
-				new AdapterErrors.InterfaceAdapterError(
-					`{context: 'AzureBackupInterfaceStoreAdapter.delete', message: '${deleteResult.error.message}', name: '${
-						deleteResult.error.name
-					}', code: '${
-						deleteResult.error.code
-					}, startTime: '${startTime.toISOString()}', endTime: '${endTime.toISOString()}' }`
-				)
-			);
+			return err(deleteResult.error);
 		}
 
 		return ok({ responseStatus: deleteResult.value.responseStatus, startTime, endTime });

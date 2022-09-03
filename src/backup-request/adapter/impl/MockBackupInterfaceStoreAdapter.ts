@@ -46,7 +46,7 @@ export class MockBackupInterfaceStoreAdapter implements IBackupInterfaceStoreAda
 				responseStatus: 201,
 			});
 		if (this.sendMessageError) return err(this.sendMessageError);
-		return err(new AdapterErrors.InterfaceAdapterError(`{msg: 'no error provided'}`));
+		return err(new AdapterErrors.InterfaceAdapterError(JSON.stringify({ msg: 'no error provided' })));
 	}
 
 	async receive(messageCount: number): Promise<Result<StoreReceiveResponse, AdapterErrors.InterfaceAdapterError>> {

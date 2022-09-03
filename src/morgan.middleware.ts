@@ -1,6 +1,6 @@
 import morgan from 'morgan';
 
-import { logger } from './common/infrastructure/logger';
+import { logger } from './common/infrastructure/winstonLogger';
 
 const stream = {
 	write: (message: unknown) => logger.http(message),

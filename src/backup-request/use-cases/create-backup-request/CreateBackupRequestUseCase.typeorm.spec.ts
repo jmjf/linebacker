@@ -10,6 +10,7 @@ import {
 import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
 import { TypeormBackupRequest } from '../../../typeorm/entity/TypeormBackupRequest.entity';
 import { Dictionary } from '../../../utils/utils';
+import { DatabaseError } from '../../../common/adapter/AdapterErrors';
 
 describe('CreateBackupRequestUseCase - typeorm', () => {
 	let mockTypeormCtx: MockTypeormContext;
@@ -47,7 +48,7 @@ describe('CreateBackupRequestUseCase - typeorm', () => {
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.message).toContain('is not one of');
-			expect(result.error.message).toContain('transportType');
+			expect((result.error.errorData as any).argName).toBe('transportType');
 		}
 	});
 
@@ -55,7 +56,7 @@ describe('CreateBackupRequestUseCase - typeorm', () => {
 		{ propName: 'backupJobId', errPropName: 'backupJobId' },
 		{ propName: 'dataDate', errPropName: 'dataDate' },
 		{ propName: 'backupDataLocation', errPropName: 'preparedDataPathName' },
-		{ propName: 'transportType', errPropName: 'transportType' },
+		{ propName: 'transportType', errPropName: 'transportTypeCode' },
 		{ propName: 'getOnStartFlag', errPropName: 'getOnStartFlag' },
 	])('when executed with $propName undefined, it returns the expected error', async ({ propName, errPropName }) => {
 		// Arrange
@@ -77,8 +78,8 @@ describe('CreateBackupRequestUseCase - typeorm', () => {
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('PropsError');
-			expect(result.error.message).toContain(errPropName);
 			expect(result.error.message).toContain('null or undefined');
+			expect((result.error.errorData as any).argName).toBe(errPropName);
 		}
 	});
 
@@ -100,7 +101,29 @@ describe('CreateBackupRequestUseCase - typeorm', () => {
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.message).toContain('not a valid date');
-			expect(result.error.message).toContain('dataDate');
+			expect((result.error.errorData as any).argName).toContain('dataDate');
+		}
+	});
+
+	test('when executed with good data and the save fails, it returns a DatabaseError', async () => {
+		// Arrange
+		mockTypeormCtx.manager.save.mockRejectedValueOnce(new DatabaseError('simulated database error'));
+
+		const repo = new TypeormBackupRequestRepo(typeormCtx);
+		const saveSpy = jest.spyOn(repo, 'save');
+
+		const useCase = new CreateBackupRequestUseCase(repo);
+		const dto = { ...baseDto };
+
+		// Act
+		const result = await useCase.execute(dto);
+
+		// Assert
+		expect(result.isErr()).toBe(true);
+		expect(saveSpy).toHaveBeenCalledTimes(1);
+		if (result.isErr()) {
+			// type guard so TS knows value is valid
+			expect(result.error.message).toContain('simulated database error');
 		}
 	});
 

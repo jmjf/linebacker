@@ -15,6 +15,8 @@ import { StoreResultType } from './StoreResultType';
 import { RequestStatusType, RequestStatusTypeValues } from './RequestStatusType';
 import { RequestTransportType, validRequestTransportTypes } from './RequestTransportType';
 
+const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
+
 export interface IBackupRequestProps {
 	// allow it to accept a string and convert to a UniqueIdentifier if good
 	backupJobId: string | UniqueIdentifier;
@@ -198,6 +200,7 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 		props: IBackupRequestProps,
 		id?: UniqueIdentifier
 	): Result<BackupRequest, DomainErrors.PropsError> {
+		const functionName = 'create';
 		// check required props are not null or undefined
 		// if result !succeeded return Result.fail<>()
 
@@ -213,7 +216,13 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 
 		const propsGuardResult = Guard.againstNullOrUndefinedBulk(guardArgs);
 		if (propsGuardResult.isErr()) {
-			return err(new DomainErrors.PropsError(`{ message: '${propsGuardResult.error.message}'}`));
+			return err(
+				new DomainErrors.PropsError(propsGuardResult.error.message, {
+					argName: propsGuardResult.error.argName,
+					moduleName,
+					functionName,
+				})
+			);
 		}
 
 		// ensure backupJobIdentifier is a UniqueIdentifier
@@ -223,7 +232,13 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 		// ensure transport type is valid
 		const transportGuardResult = Guard.isOneOf(props.transportTypeCode, validRequestTransportTypes, 'transportType');
 		if (transportGuardResult.isErr()) {
-			return err(new DomainErrors.PropsError(`{ message: '${transportGuardResult.error.message}'}`));
+			return err(
+				new DomainErrors.PropsError(transportGuardResult.error.message, {
+					argName: transportGuardResult.error.argName,
+					moduleName,
+					functionName,
+				})
+			);
 		}
 
 		// I could do a similar test on status, but that would make certain tests fail before the test
@@ -233,7 +248,13 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 		// ensure dataDate is a date
 		const dataDateGuardResult = Guard.isValidDate(props.dataDate, 'dataDate');
 		if (dataDateGuardResult.isErr()) {
-			return err(new DomainErrors.PropsError(`{ message: '${dataDateGuardResult.error.message}'}`));
+			return err(
+				new DomainErrors.PropsError(dataDateGuardResult.error.message, {
+					argName: dataDateGuardResult.error.argName,
+					moduleName,
+					functionName,
+				})
+			);
 		}
 		const dataDateAsDate = new Date(props.dataDate);
 

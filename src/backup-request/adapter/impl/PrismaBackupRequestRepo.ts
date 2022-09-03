@@ -15,6 +15,7 @@ import { IBackupRequestRepo } from '../IBackupRequestRepo';
 import { PrismaBackupRequest } from '@prisma/client';
 import { RequestStatusType } from '../../domain/RequestStatusType';
 
+const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 	private prisma;
 
@@ -23,6 +24,7 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 	}
 
 	public async exists(backupRequestId: string): Promise<Result<boolean, AdapterErrors.DatabaseError>> {
+		const functionName = 'exists';
 		// count the number of rows that meet the condition
 		try {
 			const count = await this.prisma.prismaBackupRequest.count({
@@ -33,7 +35,8 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 
 			return ok(count > 0);
 		} catch (e) {
-			return err(new AdapterErrors.DatabaseError(`${JSON.stringify(e)}`));
+			const { message, ...error } = e as Error;
+			return err(new AdapterErrors.DatabaseError(message, { ...error, moduleName, functionName }));
 		}
 	}
 
@@ -42,6 +45,7 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 	): Promise<
 		Result<BackupRequest, AdapterErrors.DatabaseError | AdapterErrors.NotFoundError | DomainErrors.PropsError>
 	> {
+		const functionName = 'getById';
 		try {
 			const data = await this.prisma.prismaBackupRequest.findUnique({
 				where: {
@@ -50,16 +54,20 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 			});
 
 			if (data === null) {
-				return err(new AdapterErrors.NotFoundError(`Backup request not found |${backupRequestId}|`));
+				return err(
+					new AdapterErrors.NotFoundError('Backup request not found for backupRequestId', { backupRequestId })
+				);
 			}
 
 			return this.mapToDomain(data);
 		} catch (e) {
-			return err(new AdapterErrors.DatabaseError(`${JSON.stringify(e)}`));
+			const { message, ...error } = e as Error;
+			return err(new AdapterErrors.DatabaseError(message, { ...error, moduleName, functionName }));
 		}
 	}
 
 	public async save(backupRequest: BackupRequest): Promise<Result<BackupRequest, AdapterErrors.DatabaseError>> {
+		const functionName = 'save';
 		const raw = this.mapToDb(backupRequest);
 
 		try {
@@ -75,7 +83,8 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 				},
 			});
 		} catch (e) {
-			return err(new AdapterErrors.DatabaseError(`${JSON.stringify(e)}`));
+			const { message, ...error } = e as Error;
+			return err(new AdapterErrors.DatabaseError(message, { ...error, moduleName, functionName }));
 		}
 
 		// trigger domain events

@@ -8,6 +8,7 @@ import {
 	StorageSharedKeyCredential,
 } from '@azure/storage-queue';
 import { fromBase64, toBase64 } from '../../utils/utils';
+import { BaseError } from '../core/BaseError';
 import { err, ok, Result } from '../core/Result';
 import * as InfrastructureErrors from './InfrastructureErrors';
 
@@ -41,6 +42,8 @@ interface AqInit extends AQMethodParams {
 	queueClient: QueueClient;
 }
 
+const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
+
 export class AzureQueue {
 	// do not use 'gi' -- global flag makes it start where it left off (end of the RegExp) so next test will fail
 	private static accountUriRegExp = new RegExp(`^https://[a-z0-9]{3,24}.queue.core.windows.net/$`, 'i');
@@ -53,24 +56,31 @@ export class AzureQueue {
 		DefaultAzureCredential | StorageSharedKeyCredential,
 		InfrastructureErrors.EnvironmentError | Error
 	> {
+		const functionName = 'getCredential';
 		const adccEnv = ['AZURE_TENANT_ID', 'AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET_ID'];
 		const saskEnv = ['SASK_ACCOUNT_NAME', 'SASK_ACCOUNT_KEY'];
 
 		const credentialType = process.env.AUTH_METHOD as CredentialType;
 		if (credentialType !== 'ADCC' && credentialType !== 'SASK')
 			return err(
-				new InfrastructureErrors.EnvironmentError(
-					`{message: 'Invalid environment value', env: 'AUTH_METHOD', value: '${credentialType}'}`
-				)
+				new InfrastructureErrors.EnvironmentError('Invalid environment value', {
+					env: 'AUTH_METHOD',
+					value: credentialType,
+					moduleName,
+					functionName,
+				})
 			);
 
 		if (credentialType.toUpperCase() === 'ADCC') {
 			for (const envName of adccEnv) {
 				if (!this.isValidString(process.env[envName]))
 					return err(
-						new InfrastructureErrors.EnvironmentError(
-							`{message: 'Invalid environment value', env: '${envName}', credentialType: 'ADCC'}`
-						)
+						new InfrastructureErrors.EnvironmentError('Invalid environment value', {
+							env: envName,
+							credentialType: 'ADCC',
+							moduleName,
+							functionName,
+						})
 					);
 			}
 			return ok(new DefaultAzureCredential());
@@ -80,9 +90,12 @@ export class AzureQueue {
 		for (const envName of saskEnv) {
 			if (!this.isValidString(process.env[envName]))
 				return err(
-					new InfrastructureErrors.EnvironmentError(
-						`{message: 'Invalid environment value', env: '${envName}', credentialType: 'SASK'}`
-					)
+					new InfrastructureErrors.EnvironmentError('Invalid environment value', {
+						env: envName,
+						credentialType: 'SASK',
+						moduleName,
+						functionName,
+					})
 				);
 		}
 		try {
@@ -90,12 +103,13 @@ export class AzureQueue {
 				new StorageSharedKeyCredential(<string>process.env.SASK_ACCOUNT_NAME, <string>process.env.SASK_ACCOUNT_KEY)
 			);
 		} catch (e) {
-			console.log('SASK err', JSON.stringify(e, null, 3));
-			return err(new Error('SASK'));
+			const { message, ...error } = e as BaseError;
+			return err(new InfrastructureErrors.SDKError(message, { error, moduleName, functionName }));
 		}
 	}
 
 	private static getQueueClient(queueName: string): Result<QueueClient, InfrastructureErrors.EnvironmentError> {
+		const functionName = 'getQueueClient';
 		const envUri = <string>process.env.AZURE_QUEUE_ACCOUNT_URI;
 		// 8 because it must begin with at least http:// (7 char) and have something after it
 		const accountUri = envUri.length < 8 || envUri.slice(-1) === '/' ? envUri : envUri + '/';
@@ -104,9 +118,11 @@ export class AzureQueue {
 			(process.env.AUTH_METHOD === 'ADCC' && !this.accountUriRegExp.test(accountUri))
 		) {
 			return err(
-				new InfrastructureErrors.EnvironmentError(
-					`{message: 'Invalid environment value', env: 'AZURE_QUEUE_ACCOUNT_URI'}`
-				)
+				new InfrastructureErrors.EnvironmentError('Invalid environment value', {
+					env: 'AZURE_QUEUE_ACCOUNT_URI',
+					moduleName,
+					functionName,
+				})
 			);
 		}
 
@@ -126,19 +142,23 @@ export class AzureQueue {
 			const queueClient = new QueueClient(queueUri, credentialResult.value, queueClientOptions);
 			return ok(queueClient);
 		} catch (e) {
-			return err(new InfrastructureErrors.SDKError(`{message: 'could not create QueueClient'}`));
+			const { message, ...error } = e as BaseError;
+			return err(new InfrastructureErrors.SDKError(message, { error, moduleName, functionName }));
 		}
 	}
 
 	private static initMethod(
 		params: AQMethodParams
 	): Result<AqInit, InfrastructureErrors.InputError | InfrastructureErrors.EnvironmentError> {
+		const functionName = 'initMethod';
 		const queueName = params.queueName;
 		if (!this.isValidString(queueName))
 			return err(
-				new InfrastructureErrors.InputError(
-					`{message: 'Invalid input value', name: 'queueName', value: '${queueName}'}`
-				)
+				new InfrastructureErrors.InputError('Invalid queueName input', {
+					value: queueName,
+					moduleName,
+					functionName,
+				})
 			);
 		const useBase64 = typeof params.useBase64 === 'boolean' ? params.useBase64 : false;
 		const messageText = !useBase64 ? params.messageText || '' : toBase64(params.messageText || '');
@@ -169,6 +189,7 @@ export class AzureQueue {
 			InfrastructureErrors.InputError | InfrastructureErrors.EnvironmentError | InfrastructureErrors.SDKError
 		>
 	> {
+		const functionName = 'sendMessage';
 		const initResult = this.initMethod(params);
 		if (initResult.isErr()) {
 			return err(initResult.error);
@@ -177,9 +198,11 @@ export class AzureQueue {
 
 		if (!this.isValidString(messageText))
 			return err(
-				new InfrastructureErrors.InputError(
-					`{message: 'Invalid input value', name: 'messageText', value: '${messageText}'}`
-				)
+				new InfrastructureErrors.InputError('Invalid messageText input', {
+					value: messageText,
+					moduleName,
+					functionName,
+				})
 			);
 
 		try {
@@ -189,13 +212,9 @@ export class AzureQueue {
 				responseStatus: sendRes._response.status,
 				isSent: sendRes._response.status < 300,
 			});
-		} catch (er) {
-			const error = er as RestError;
-			return err(
-				new InfrastructureErrors.SDKError(
-					`{ message: '${error.message}', name: '${error.name}', code: '${error.code}, statusCode: ${error.statusCode}, httpRequestId: ${error.request?.requestId}'}`
-				)
-			);
+		} catch (e) {
+			const { message, ...error } = e as RestError;
+			return err(new InfrastructureErrors.SDKError(message, { error, moduleName, functionName }));
 		}
 	}
 
@@ -207,6 +226,7 @@ export class AzureQueue {
 			InfrastructureErrors.InputError | InfrastructureErrors.EnvironmentError | InfrastructureErrors.SDKError
 		>
 	> {
+		const functionName = 'receiveMessages';
 		const initResult = this.initMethod(params);
 		if (initResult.isErr()) {
 			return err(initResult.error);
@@ -227,13 +247,9 @@ export class AzureQueue {
 				receivedMessageItems: messageItems,
 				responseStatus: receiveRes._response.status,
 			});
-		} catch (er) {
-			const error = er as RestError;
-			return err(
-				new InfrastructureErrors.SDKError(
-					`{ message: '${error.message}', name: '${error.name}', code: '${error.code}, statusCode: ${error.statusCode}, httpRequestId: ${error.request?.requestId}'}`
-				)
-			);
+		} catch (e) {
+			const { message, ...error } = e as RestError;
+			return err(new InfrastructureErrors.SDKError(message, { error, moduleName, functionName }));
 		}
 	}
 
@@ -245,6 +261,7 @@ export class AzureQueue {
 			InfrastructureErrors.InputError | InfrastructureErrors.EnvironmentError | InfrastructureErrors.SDKError
 		>
 	> {
+		const functionName = 'deleteMessage';
 		const initResult = this.initMethod(params);
 		if (initResult.isErr()) {
 			return err(initResult.error);
@@ -257,13 +274,9 @@ export class AzureQueue {
 				...deleteRes,
 				responseStatus: deleteRes._response.status,
 			});
-		} catch (er) {
-			const error = er as RestError;
-			return err(
-				new InfrastructureErrors.SDKError(
-					`{ message: '${error.message}', name: '${error.name}', code: '${error.code}, statusCode: ${error.statusCode}, httpRequestId: ${error.request?.requestId}'}`
-				)
-			);
+		} catch (e) {
+			const { message, ...error } = e as RestError;
+			return err(new InfrastructureErrors.SDKError(message, { error, moduleName, functionName }));
 		}
 	}
 }

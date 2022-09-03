@@ -8,6 +8,8 @@ import * as DomainErrors from '../../common/domain/DomainErrors';
 import { BackupProviderType } from '../../backup-job/domain/BackupProviderType';
 import { AggregateRoot } from '../../common/domain/AggregateRoot';
 
+const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
+
 export interface IBackupProps {
 	backupRequestId: UniqueIdentifier;
 	backupJobId: UniqueIdentifier;
@@ -118,6 +120,7 @@ export class Backup extends AggregateRoot<IBackupProps> {
 	}
 
 	public static create(props: IBackupProps, id?: UniqueIdentifier): Result<Backup, DomainErrors.PropsError> {
+		const functionName = 'create';
 		// check required props are not null or undefined
 		// if result !succeeded return Result.fail<>()
 
@@ -138,7 +141,13 @@ export class Backup extends AggregateRoot<IBackupProps> {
 
 		const propsGuardResult = Guard.againstNullOrUndefinedBulk(guardArgs);
 		if (propsGuardResult.isErr()) {
-			return err(new DomainErrors.PropsError(`{ message: '${propsGuardResult.error.message}'}`));
+			return err(
+				new DomainErrors.PropsError(propsGuardResult.error.message, {
+					argName: propsGuardResult.error.argName,
+					moduleName,
+					functionName,
+				})
+			);
 		}
 
 		// Guard: resultTypeCode is in the list of RequestStatusTypes
