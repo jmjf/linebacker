@@ -14,9 +14,10 @@ import {
 	MockPrismaContext,
 	PrismaContext,
 	createMockPrismaContext,
-} from '../../../common/infrastructure/database/prismaContext';
-import { BackupRequest } from '@prisma/client';
+} from '../../../common/infrastructure/prismaContext';
+import { PrismaBackupRequest } from '@prisma/client';
 import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
+import { Dictionary } from '../../../utils/utils';
 
 describe('SendRequestToInterfaceUseCase - Prisma', () => {
 	let mockPrismaCtx: MockPrismaContext;
@@ -32,7 +33,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		backupRequestId: 'sendToInterfaceRequestId',
 	} as SendRequestToInterfaceDTO;
 
-	const dbBackupRequest: BackupRequest = {
+	const dbBackupRequest: PrismaBackupRequest = {
 		backupRequestId: 'dbBackupRequestId',
 		backupJobId: 'dbBackupJobId',
 		dataDate: new Date(),
@@ -96,7 +97,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		{ status: RequestStatusTypeValues.Succeeded, timestampName: 'replyTimestamp' },
 	])('when request is $status, it returns err (BackupRequestStatusError)', async ({ status, timestampName }) => {
 		// Arrange
-		const resultBackupRequest: { [index: string]: any } = {
+		const resultBackupRequest: Dictionary = {
 			...dbBackupRequest,
 			backupJobId: 'request is sent job id',
 			statusTypeCode: status,
@@ -105,7 +106,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		const expectedTimestamp = new Date(resultBackupRequest[timestampName]); // ensure we have a separate instance
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest as BackupRequest);
+		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(resultBackupRequest as PrismaBackupRequest);
 
 		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
 		const saveSpy = jest.spyOn(brRepo, 'save');
@@ -130,7 +131,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('BackupRequestStatusError');
-			expect(result.error.message).toContain(status);
+			expect((result.error.errorData as any).statusTypeCode).toBe(status);
 		}
 	});
 
@@ -139,7 +140,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 
 		// findUnique() returns null if not found
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(null as unknown as BackupRequest);
+		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(null as unknown as PrismaBackupRequest);
 
 		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
 		const saveSpy = jest.spyOn(brRepo, 'save');
@@ -161,13 +162,13 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('NotFoundError');
-			expect(result.error.message).toMatch(dto.backupRequestId);
+			expect((result.error.errorData as any).backupRequestId).toMatch(dto.backupRequestId);
 		}
 	});
 
 	test('when request is NotAllowed, it returns failure', async () => {
 		// Arrange
-		const resultBackupRequest: BackupRequest = {
+		const resultBackupRequest: PrismaBackupRequest = {
 			...dbBackupRequest,
 			backupJobId: 'request NotAllowed job id',
 			statusTypeCode: 'NotAllowed',
@@ -175,7 +176,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		};
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest);
+		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(resultBackupRequest);
 
 		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
 		const saveSpy = jest.spyOn(brRepo, 'save');
@@ -203,13 +204,13 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 
 	test('when request is allowed and sendMessage fails, it returns failure', async () => {
 		// Arrange
-		const resultBackupRequest: BackupRequest = {
+		const resultBackupRequest: PrismaBackupRequest = {
 			...dbBackupRequest,
 			backupJobId: 'send fails job id',
 		};
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest);
+		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(resultBackupRequest);
 
 		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
 		const saveSpy = jest.spyOn(brRepo, 'save');
@@ -239,7 +240,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		const startTimestamp = new Date();
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
+		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(dbBackupRequest);
 		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 

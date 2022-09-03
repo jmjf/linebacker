@@ -12,7 +12,7 @@ const pinoOptions = isDev()
 			...baseOptions,
 			level: 'debug',
 			transport: {
-				targets: [{ target: 'pino-pretty', level: 'info', options: {} }],
+				targets: [{ target: 'pino-pretty', level: 'debug', options: {} }],
 			},
 	  }
 	: {
@@ -23,6 +23,6 @@ const pinoOptions = isDev()
 				},
 			},
 	  };
-//if (isTest()) pinoOptions.level = 'fatal';
+if (isTest()) pinoOptions.level = 'fatal';
 
 export const logger = pino(pinoOptions);

@@ -10,7 +10,7 @@ datasource db {
   url      = env("DATABASE_URL_PG")
 }
 
-model BackupRequest {
+model PrismaBackupRequest {
   backupRequestId           String      @id @unique @map("BackupRequestIdentifier")
   backupJobId               String      @map("BackupJobIdentifier")
   dataDate                  DateTime    @map("DataDate")
@@ -26,9 +26,11 @@ model BackupRequest {
   replyTimestamp            DateTime?   @map("ReplyTimestamp")
   requesterId               String?     @map("RequesterIdentifier")
   replyMessageText          String?     @map("ReplyMessageText")
+
+  @@map("BackupRequest")
 }
 
-model Backup {
+model PrismaBackup {
   backupId                  String      @id @unique @map("BackupIdentifier")
   backupRequestId           String      @map("BackupRequestIdentifier")
   backupJobId               String      @map("BackupJobIdentifier")
@@ -44,5 +46,7 @@ model Backup {
   verifyEndTimestamp        DateTime    @map("VerifyEndTimestamp")
   verifyHashText            String      @map("VerifyHashText")
   dueToDeleteDate           DateTime    @map("DueToDeleteDate")
-  deletedTimestamp          DateTime    @map("DeletedTimestamp")
+  deletedTimestamp          DateTime?    @map("DeletedTimestamp")
+
+  @@map("Backup")
 }

@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import { logger } from './common/infrastructure/pinoLogger';
 
-import { prismaCtx } from './common/infrastructure/database/prismaContext';
+import { prismaCtx } from './common/infrastructure/prismaContext';
 import { buildApp } from './fastifyApp';
 
 const startServer = async () => {

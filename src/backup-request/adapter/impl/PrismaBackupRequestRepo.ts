@@ -1,4 +1,4 @@
-import { PrismaContext } from '../../../common/infrastructure/database/prismaContext';
+import { PrismaContext } from '../../../common/infrastructure/prismaContext';
 
 import { DomainEventBus } from '../../../common/domain/DomainEventBus';
 
@@ -12,7 +12,10 @@ import { BackupProviderType } from '../../../backup-job/domain/BackupProviderTyp
 import { BackupRequest } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
 import { IBackupRequestRepo } from '../IBackupRequestRepo';
+import { PrismaBackupRequest } from '@prisma/client';
+import { RequestStatusType } from '../../domain/RequestStatusType';
 
+const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 	private prisma;
 
@@ -21,9 +24,10 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 	}
 
 	public async exists(backupRequestId: string): Promise<Result<boolean, AdapterErrors.DatabaseError>> {
+		const functionName = 'exists';
 		// count the number of rows that meet the condition
 		try {
-			const count = await this.prisma.backupRequest.count({
+			const count = await this.prisma.prismaBackupRequest.count({
 				where: {
 					backupRequestId: backupRequestId,
 				},
@@ -31,7 +35,8 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 
 			return ok(count > 0);
 		} catch (e) {
-			return err(new AdapterErrors.DatabaseError(`${JSON.stringify(e)}`));
+			const { message, ...error } = e as Error;
+			return err(new AdapterErrors.DatabaseError(message, { ...error, moduleName, functionName }));
 		}
 	}
 
@@ -40,28 +45,33 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 	): Promise<
 		Result<BackupRequest, AdapterErrors.DatabaseError | AdapterErrors.NotFoundError | DomainErrors.PropsError>
 	> {
+		const functionName = 'getById';
 		try {
-			const data = await this.prisma.backupRequest.findUnique({
+			const data = await this.prisma.prismaBackupRequest.findUnique({
 				where: {
 					backupRequestId: backupRequestId,
 				},
 			});
 
 			if (data === null) {
-				return err(new AdapterErrors.NotFoundError(`Backup request not found |${backupRequestId}|`));
+				return err(
+					new AdapterErrors.NotFoundError('Backup request not found for backupRequestId', { backupRequestId })
+				);
 			}
 
 			return this.mapToDomain(data);
 		} catch (e) {
-			return err(new AdapterErrors.DatabaseError(`${JSON.stringify(e)}`));
+			const { message, ...error } = e as Error;
+			return err(new AdapterErrors.DatabaseError(message, { ...error, moduleName, functionName }));
 		}
 	}
 
 	public async save(backupRequest: BackupRequest): Promise<Result<BackupRequest, AdapterErrors.DatabaseError>> {
+		const functionName = 'save';
 		const raw = this.mapToDb(backupRequest);
 
 		try {
-			await this.prisma.backupRequest.upsert({
+			await this.prisma.prismaBackupRequest.upsert({
 				where: {
 					backupRequestId: raw.backupRequestId,
 				},
@@ -73,7 +83,8 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 				},
 			});
 		} catch (e) {
-			return err(new AdapterErrors.DatabaseError(`${JSON.stringify(e)}`));
+			const { message, ...error } = e as Error;
+			return err(new AdapterErrors.DatabaseError(message, { ...error, moduleName, functionName }));
 		}
 
 		// trigger domain events
@@ -86,34 +97,48 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 	}
 
 	// this may belong in a mapper
-	private mapToDomain(raw: any): Result<BackupRequest, DomainErrors.PropsError> {
+	private mapToDomain(raw: PrismaBackupRequest): Result<BackupRequest, DomainErrors.PropsError> {
 		const backupRequestId = new UniqueIdentifier(raw.backupRequestId);
 		const backupRequestResult = BackupRequest.create(
 			{
-				backupJobId: new UniqueIdentifier(raw.backupJobId),
+				backupJobId: raw.backupJobId,
 				dataDate: raw.dataDate,
 				preparedDataPathName: raw.preparedDataPathName,
 				getOnStartFlag: raw.getOnStartFlag,
 				transportTypeCode: raw.transportTypeCode as RequestTransportType,
 				backupProviderCode: raw.backupProviderCode as BackupProviderType,
-				storagePathName: raw.storagePathName,
-				statusTypeCode: raw.statusTypeCode,
+				storagePathName: raw.storagePathName === null ? undefined : raw.storagePathName,
+				statusTypeCode: raw.statusTypeCode as RequestStatusType,
 				receivedTimestamp: raw.receivedTimestamp,
-				checkedTimestamp: raw.checkedTimestamp,
-				sentToInterfaceTimestamp: raw.sentToInterfaceTimestamp,
-				replyTimestamp: raw.replyTimestamp,
-				requesterId: raw.requesterId,
-				replyMessageText: raw.replyMessageText,
+				checkedTimestamp: raw.checkedTimestamp === null ? undefined : raw.checkedTimestamp,
+				sentToInterfaceTimestamp: raw.sentToInterfaceTimestamp === null ? undefined : raw.sentToInterfaceTimestamp,
+				replyTimestamp: raw.replyTimestamp === null ? undefined : raw.replyTimestamp,
+				requesterId: raw.requesterId === null ? undefined : raw.requesterId,
+				replyMessageText: raw.replyMessageText === null ? undefined : raw.replyMessageText,
 			},
 			backupRequestId
 		);
 		return backupRequestResult;
 	}
 
-	private mapToDb(backupRequest: BackupRequest): any {
+	private mapToDb(backupRequest: BackupRequest): PrismaBackupRequest {
 		return {
 			backupRequestId: backupRequest.idValue,
 			...backupRequest.props,
+
+			dataDate: backupRequest.dataDate,
+			preparedDataPathName: backupRequest.preparedDataPathName,
+			getOnStartFlag: backupRequest.getOnStartFlag,
+			transportTypeCode: backupRequest.transportTypeCode,
+			backupProviderCode: backupRequest.backupProviderCode,
+			storagePathName: backupRequest.storagePathName,
+			statusTypeCode: backupRequest.statusTypeCode,
+			receivedTimestamp: backupRequest.receivedTimestamp,
+			checkedTimestamp: backupRequest.checkedTimestamp,
+			sentToInterfaceTimestamp: backupRequest.sentToInterfaceTimestamp,
+			replyTimestamp: backupRequest.replyTimestamp,
+			requesterId: backupRequest.requesterId,
+			replyMessageText: backupRequest.replyMessageText,
 			backupJobId: backupRequest.backupJobId.value,
 		};
 	}

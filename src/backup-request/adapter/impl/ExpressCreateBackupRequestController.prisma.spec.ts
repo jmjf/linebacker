@@ -1,18 +1,19 @@
-import * as uuid from 'uuid';
+import request from 'supertest';
 
-import { buildApp } from '../../../fastifyApp';
+import { buildApp } from '../../../expressAppPrisma';
 
-import { ICreateBackupRequestBody } from './FastifyCreateBackupRequestController';
+import { ICreateBackupRequestBody } from './ExpressCreateBackupRequestController';
 
 import {
 	MockPrismaContext,
 	PrismaContext,
 	createMockPrismaContext,
-} from '../../../common/infrastructure/database/prismaContext';
+} from '../../../common/infrastructure/prismaContext';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
+
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 
-describe('FastifyCreateBackupRequestController', () => {
+describe('ExpressCreateBackupRequestController - prisma', () => {
 	let mockPrismaCtx: MockPrismaContext;
 	let prismaCtx: PrismaContext;
 
@@ -21,7 +22,7 @@ describe('FastifyCreateBackupRequestController', () => {
 		prismaCtx = mockPrismaCtx as unknown as PrismaContext;
 	});
 
-	const testUrl = '/api/backup-requests';
+	const testUrl = '/backup-requests';
 
 	const basePayload = {
 		apiVersion: '2022-05-22',
@@ -35,44 +36,40 @@ describe('FastifyCreateBackupRequestController', () => {
 		const app = buildApp(prismaCtx);
 
 		// Act
-		const response = await app.inject({
-			method: 'POST',
-			url: testUrl,
-			payload: {
+		const response = await request(app)
+			.post(testUrl)
+			.send({
 				...basePayload,
 				apiVersion: 'invalid',
-			},
-		});
+			});
 
 		// Assert
 		expect(response.statusCode).toBe(400);
-		// convert body to an object we can use -- may throw an error if body isn't JSON
-		const body = JSON.parse(response.body);
-		expect(body.code).toBe('InvalidApiVersion');
+		// convert response payload to an object we can use -- may throw an error if JSON.parse() fails
+		const payload = JSON.parse(response.text);
+		expect(payload.code).toBe('InvalidApiVersion');
 	});
 
 	test('when the use case gets a database error, the controller returns 500 and a low-leak error', async () => {
 		// Arrange
 		// simulate a database error
 		const prismaCode = 'P1012';
-		mockPrismaCtx.prisma.backupRequest.upsert.mockRejectedValue(
+		mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockRejectedValue(
 			new PrismaClientKnownRequestError('Key is already defined', prismaCode, '2')
 		);
 		const app = buildApp(prismaCtx);
 
 		// Act
-		const response = await app.inject({
-			method: 'POST',
-			url: testUrl,
-			payload: {
+		const response = await request(app)
+			.post(testUrl)
+			.send({
 				...basePayload,
-			},
-		});
+			});
 
 		// Assert
 		expect(response.statusCode).toBe(500);
-		// convert payload to an object we can use -- may throw an error if payload isn't JSON
-		const payload = JSON.parse(response.payload);
+		// convert payload to an object we can use -- may throw an error if JSON.parse fails
+		const payload = JSON.parse(response.text);
 		expect(payload.code).toBe('Database');
 		expect(payload.message).toBe(prismaCode.slice(1)); // ensure message is clean
 	});
@@ -82,19 +79,17 @@ describe('FastifyCreateBackupRequestController', () => {
 		const app = buildApp(prismaCtx);
 
 		// Act
-		const response = await app.inject({
-			method: 'POST',
-			url: testUrl,
-			payload: {
+		const response = await request(app)
+			.post(testUrl)
+			.send({
 				...basePayload,
 				dataDate: '', // easy error to force
-			},
-		});
+			});
 
 		// Assert
 		expect(response.statusCode).toBe(400);
-		// convert payload to an object we can use -- may throw an error if payload isn't JSON
-		const payload = JSON.parse(response.payload);
+		// convert text to an object we can use -- may throw an error if isn't JSON
+		const payload = JSON.parse(response.text);
 		expect(payload.code).toBe('BadData');
 		expect(payload.message).toMatch('dataDate');
 	});
@@ -105,22 +100,20 @@ describe('FastifyCreateBackupRequestController', () => {
 
 		// Act
 		const startTime = new Date();
-		const response = await app.inject({
-			method: 'POST',
-			url: testUrl,
-			payload: {
+		const response = await request(app)
+			.post(testUrl)
+			.send({
 				...basePayload,
-			},
-		});
+			});
 		const endTime = new Date();
 
 		// Assert
 		expect(response.statusCode).toBe(202);
-		// convert payload to an object we can use -- may throw an error if payload isn't JSON
-		const payload = JSON.parse(response.payload);
+		// convert text to an object we can use -- may throw an error if not JSON
+		const payload = JSON.parse(response.text);
 		const receivedTimestamp = new Date(payload.receivedTimestamp);
 
-		expect(uuid.validate(payload.backupRequestId)).toBe(true);
+		expect(payload.backupRequestId.length).toBe(21); // can't validate nanoid like a UUID
 		expect(payload.statusTypeCode).toBe(RequestStatusTypeValues.Received);
 		expect(payload.backupJobId).toBe(basePayload.backupJobId);
 		expect(payload.preparedDataPathName).toBe(basePayload.backupDataLocation);

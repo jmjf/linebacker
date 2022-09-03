@@ -32,7 +32,7 @@ import {
 	MockTypeormContext,
 	TypeormContext,
 	createMockTypeormContext,
-} from '../../common/infrastructure/database/typeormContext';
+} from '../../common/infrastructure/typeormContext';
 import { TypeormBackupRequestRepo } from '../adapter/impl/TypeormBackupRequestRepo';
 import { TypeormBackupRequest } from '../../typeorm/entity/TypeormBackupRequest.entity';
 import { TypeormBackupRepo } from '../../backup/adapter/impl/TypeormBackupRepo';

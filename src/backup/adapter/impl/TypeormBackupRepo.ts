@@ -1,4 +1,4 @@
-import { TypeormContext } from '../../../common/infrastructure/database/typeormContext';
+import { TypeormContext } from '../../../common/infrastructure/typeormContext';
 
 import { err, ok, Result } from '../../../common/core/Result';
 import { DomainEventBus } from '../../../common/domain/DomainEventBus';
@@ -12,6 +12,7 @@ import { Backup } from '../../domain/Backup';
 import { IBackupRepo } from '../BackupRepo';
 import { TypeormBackup } from '../../../typeorm/entity/TypeormBackup.entity';
 
+const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 export class TypeormBackupRepo implements IBackupRepo {
 	private typeorm: TypeormContext;
 
@@ -20,6 +21,7 @@ export class TypeormBackupRepo implements IBackupRepo {
 	}
 
 	public async exists(backupId: string): Promise<Result<boolean, AdapterErrors.DatabaseError>> {
+		const functionName = 'exists';
 		// count the number of rows that meet the condition
 		try {
 			const count = await this.typeorm.manager.count(TypeormBackup, {
@@ -30,13 +32,15 @@ export class TypeormBackupRepo implements IBackupRepo {
 
 			return ok(count > 0);
 		} catch (e) {
-			return err(new AdapterErrors.DatabaseError(`${JSON.stringify(e)}`));
+			const { message, ...error } = e as Error;
+			return err(new AdapterErrors.DatabaseError(message, { ...error, moduleName, functionName }));
 		}
 	}
 
 	public async getById(
 		backupId: string
 	): Promise<Result<Backup, AdapterErrors.DatabaseError | AdapterErrors.NotFoundError | DomainErrors.PropsError>> {
+		const functionName = 'getById';
 		try {
 			const data = await this.typeorm.manager.findOne(TypeormBackup, {
 				where: {
@@ -45,18 +49,20 @@ export class TypeormBackupRepo implements IBackupRepo {
 			});
 
 			if (data === null) {
-				return err(new AdapterErrors.NotFoundError(`Backup not found |${backupId}|`));
+				return err(new AdapterErrors.NotFoundError('Backup not found for backupId', { backupId }));
 			}
 
 			return this.mapToDomain(data);
 		} catch (e) {
-			return err(new AdapterErrors.DatabaseError(`${JSON.stringify(e)}`));
+			const { message, ...error } = e as Error;
+			return err(new AdapterErrors.DatabaseError(message, { ...error, moduleName, functionName }));
 		}
 	}
 
 	public async getByBackupRequestId(
 		backupRequestId: string
 	): Promise<Result<Backup, AdapterErrors.DatabaseError | AdapterErrors.NotFoundError>> {
+		const functionName = 'getByBackupRequestId';
 		try {
 			const data = await this.typeorm.manager.findOne(TypeormBackup, {
 				where: {
@@ -65,16 +71,20 @@ export class TypeormBackupRepo implements IBackupRepo {
 			});
 
 			if (data === null) {
-				return err(new AdapterErrors.NotFoundError(`Backup not found for request |${backupRequestId}|`));
+				return err(
+					new AdapterErrors.NotFoundError('Backup request not found for backupRequestId', { backupRequestId })
+				);
 			}
 
 			return this.mapToDomain(data);
 		} catch (e) {
-			return err(new AdapterErrors.DatabaseError(`${JSON.stringify(e)}`));
+			const { message, ...error } = e as Error;
+			return err(new AdapterErrors.DatabaseError(message, { ...error, moduleName, functionName }));
 		}
 	}
 
 	public async save(backup: Backup): Promise<Result<Backup, AdapterErrors.DatabaseError>> {
+		const functionName = 'save';
 		const raw = this.mapToDb(backup);
 
 		try {
@@ -82,7 +92,8 @@ export class TypeormBackupRepo implements IBackupRepo {
 				...raw,
 			});
 		} catch (e) {
-			return err(new AdapterErrors.DatabaseError(`${JSON.stringify(e)}`));
+			const { message, ...error } = e as Error;
+			return err(new AdapterErrors.DatabaseError(message, { ...error, moduleName, functionName }));
 		}
 
 		// trigger domain events
@@ -106,7 +117,9 @@ export class TypeormBackupRepo implements IBackupRepo {
 				storagePathName: raw.storagePathName,
 				daysToKeepCount: raw.daysToKeepCount,
 				holdFlag: raw.holdFlag,
-				backupByteCount: raw.backupByteCount,
+				// parseInt could return NaN if the string is not numeric or the value is too large
+				// but this value is program driven and MAX_SAFE_INTEGER is 9-peta so very low risk
+				backupByteCount: parseInt(raw.backupByteCount),
 				copyStartTimestamp: raw.copyStartTimestamp,
 				copyEndTimestamp: raw.copyEndTimestamp,
 				verifyStartTimestamp: raw.verifyStartTimestamp === null ? undefined : raw.verifyStartTimestamp,
@@ -132,7 +145,7 @@ export class TypeormBackupRepo implements IBackupRepo {
 			backupProviderCode: backup.backupProviderCode,
 			daysToKeepCount: backup.daysToKeepCount,
 			holdFlag: backup.holdFlag,
-			backupByteCount: backup.backupByteCount,
+			backupByteCount: backup.backupByteCount.toString(),
 			copyStartTimestamp: backup.copyStartTimestamp,
 			copyEndTimestamp: backup.copyEndTimestamp,
 			verifyStartTimestamp: backup.verifyStartTimestamp,

@@ -25,12 +25,8 @@ import { ReceiveStoreStatusReplyUseCase } from '../use-cases/receive-store-statu
 
 import { AzureBackupInterfaceStoreAdapter } from '../adapter/impl/AzureBackupInterfaceStoreAdapter';
 
-import {
-	MockPrismaContext,
-	PrismaContext,
-	createMockPrismaContext,
-} from '../../common/infrastructure/database/prismaContext';
-import { BackupRequest, prisma } from '@prisma/client';
+import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../../common/infrastructure/prismaContext';
+import { PrismaBackupRequest } from '@prisma/client';
 import { PrismaBackupRequestRepo } from '../adapter/impl/PrismaBackupRequestRepo';
 import { PrismaBackupRepo } from '../../backup/adapter/impl/PrismaBackupRepo';
 import { BackupProviderTypeValues } from '../../backup-job/domain/BackupProviderType';
@@ -48,7 +44,7 @@ if (TEST_EVENTS) {
 			prismaCtx = mockPrismaCtx as unknown as PrismaContext;
 		});
 
-		const dbBackupRequest: BackupRequest = {
+		const dbBackupRequest: PrismaBackupRequest = {
 			backupRequestId: 'event-test-backup-request-id',
 			backupJobId: 'event-test-backup-job-id',
 			dataDate: new Date(),
@@ -121,16 +117,16 @@ if (TEST_EVENTS) {
 			process.env.AZURE_QUEUE_ACCOUNT_URI = 'uri';
 
 			// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue({ ...dbBackupRequest }); // default after responses below
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValueOnce({ ...dbBackupRequest }); // first response -- for check allowed
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValueOnce({
+			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue({ ...dbBackupRequest }); // default after responses below
+			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValueOnce({ ...dbBackupRequest }); // first response -- for check allowed
+			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValueOnce({
 				...dbBackupRequest,
 				statusTypeCode: RequestStatusTypeValues.Allowed,
 				checkedTimestamp: new Date(),
 			}); // second reponse -- for send to interface
 
 			// save() just needs to succeed; result value doesn't affect outcome
-			mockPrismaCtx.prisma.backupRequest.upsert.mockResolvedValue({} as unknown as BackupRequest);
+			mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockResolvedValue({} as unknown as PrismaBackupRequest);
 
 			const repo = new PrismaBackupRequestRepo(prismaCtx);
 			const saveSpy = jest.spyOn(repo, 'save');
@@ -241,7 +237,7 @@ if (TEST_EVENTS) {
 			},
 		};
 
-		const dbBackupRequest: BackupRequest = {
+		const dbBackupRequest: PrismaBackupRequest = {
 			backupRequestId: 'event-test-backup-request-id',
 			backupJobId: 'event-test-backup-job-id',
 			dataDate: new Date(),
@@ -289,8 +285,8 @@ if (TEST_EVENTS) {
 			//** Use case requirements **//
 
 			// Mock database results
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue({ ...dbBackupRequest });
-			mockPrismaCtx.prisma.backup.findFirst.mockResolvedValue(null); // no backup exists
+			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue({ ...dbBackupRequest });
+			mockPrismaCtx.prisma.prismaBackup.findFirst.mockResolvedValue(null); // no backup exists
 
 			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
 			const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');

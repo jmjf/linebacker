@@ -1,60 +1,55 @@
 import { BaseError } from '../core/BaseError';
 
 export class DatabaseError extends BaseError {
-	constructor(message: string) {
-		super(message);
+	constructor(messageOrErrorData: string | object, errorData?: object) {
+		super(messageOrErrorData, errorData);
 		this.name = 'DatabaseError';
 	}
 
 	cleanMessage(): string {
-		let msg;
-		try {
-			msg = JSON.parse(this.callerMessage);
-		} catch (e) {
-			msg = { code: ' error' };
-		}
-		return msg.code.slice(1);
+		const errorDataAny = this.errorData as any;
+		return errorDataAny && errorDataAny.code ? errorDataAny.code.slice(1) : 'Database error';
 	}
 }
 
 export class NotFoundError extends BaseError {
-	constructor(message: string) {
-		super(message);
+	constructor(messageOrErrorData: string | object, errorData?: object) {
+		super(messageOrErrorData, errorData);
 		this.name = 'NotFoundError';
 	}
 }
 
 export class BackupJobServiceError extends BaseError {
-	constructor(message: string) {
-		super(message);
+	constructor(messageOrErrorData: string | object, errorData?: object) {
+		super(messageOrErrorData, errorData);
 		this.name = 'BackupJobServiceError';
 	}
 }
 
 export class InvalidApiVersionError extends BaseError {
-	constructor(message: string) {
-		super(message);
+	constructor(messageOrErrorData: string | object, errorData?: object) {
+		super(messageOrErrorData, errorData);
 		this.name = 'InvalidApiVersionError';
 	}
 }
 
 export class BadDataError extends BaseError {
-	constructor(message: string) {
-		super(message);
+	constructor(messageOrErrorData: string | object, errorData?: object) {
+		super(messageOrErrorData, errorData);
 		this.name = 'BadDataError';
 	}
 }
 
 export class InterfaceAdapterError extends BaseError {
-	constructor(message: string) {
-		super(message);
+	constructor(messageOrErrorData: string | object, errorData?: object) {
+		super(messageOrErrorData, errorData);
 		this.name = 'InterfaceAdapterError';
 	}
 }
 
 export class StatusJsonError extends BaseError {
-	constructor(message: string) {
-		super(message);
+	constructor(messageOrErrorData: string | object, errorData?: object) {
+		super(messageOrErrorData, errorData);
 		this.name = 'StatusJsonError';
 	}
 }

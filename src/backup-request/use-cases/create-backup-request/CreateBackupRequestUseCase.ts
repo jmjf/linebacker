@@ -1,5 +1,5 @@
 import { Result } from '../../../common/core/Result';
-import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
+import { BaseError } from '../../../common/core/BaseError';
 import * as DomainErrors from '../../../common/domain/DomainErrors';
 import { UseCase } from '../../../common/application/UseCase';
 import * as ApplicationErrors from '../../../common/application/ApplicationErrors';
@@ -10,8 +10,10 @@ import { BackupRequest, IBackupRequestProps } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 
+const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
+
 // add errors when you define them
-type Response = Result<BackupRequest, DomainErrors.PropsError | ApplicationErrors.UnexpectedError | Error>;
+type Response = Result<BackupRequest, DomainErrors.PropsError | ApplicationErrors.UnexpectedError | BaseError>;
 
 /**
  * Class representing a use case to create a new backup request and store it in the request log
@@ -26,7 +28,7 @@ export class CreateBackupRequestUseCase implements UseCase<CreateBackupRequestDT
 	async execute(request: CreateBackupRequestDTO): Promise<Response> {
 		// initialize props
 		const requestProps: IBackupRequestProps = {
-			backupJobId: new UniqueIdentifier(request.backupJobId),
+			backupJobId: request.backupJobId,
 			dataDate: request.dataDate,
 			preparedDataPathName: request.backupDataLocation,
 			getOnStartFlag: request.getOnStartFlag,

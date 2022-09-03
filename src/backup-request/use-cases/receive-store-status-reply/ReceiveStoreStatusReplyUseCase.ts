@@ -1,6 +1,7 @@
 import { UseCase } from '../../../common/application/UseCase';
 import { Result, ok, err } from '../../../common/core/Result';
 import { Guard } from '../../../common/core/Guard';
+import { BaseError } from '../../../common/core/BaseError';
 
 import { Backup, IBackupProps } from '../../../backup/domain/Backup';
 import { IBackupRepo } from '../../../backup/adapter/BackupRepo';
@@ -15,10 +16,12 @@ import { StoreResultTypeValues, validStoreResultTypes } from '../../domain/Store
 import { StoreStatusReplyDTO } from './StoreStatusReplyDTO';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 
+const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
+
 // add errors when you define them
 type Response = Result<
 	BackupRequest,
-	DomainErrors.PropsError | AdapterErrors.BackupJobServiceError | AdapterErrors.DatabaseError | Error
+	DomainErrors.PropsError | AdapterErrors.BackupJobServiceError | AdapterErrors.DatabaseError | BaseError
 >;
 
 /**
@@ -40,20 +43,33 @@ export class ReceiveStoreStatusReplyUseCase implements UseCase<StoreStatusReplyD
 	}
 
 	async execute(reply: StoreStatusReplyDTO): Promise<Response> {
+		const functionName = 'execute';
 		// // console.log('RSSRUC start', reply);
 		const { resultTypeCode, backupRequestId, ...restOfReply } = reply;
 
 		const resultTypeCodeGuardResult = Guard.isOneOf(resultTypeCode, validStoreResultTypes, 'resultTypeCode');
 		if (resultTypeCodeGuardResult.isErr()) {
-			return err(new DomainErrors.PropsError(`{ message: ${resultTypeCodeGuardResult.error.message}}`));
+			return err(
+				new DomainErrors.PropsError(resultTypeCodeGuardResult.error.message, {
+					argName: resultTypeCodeGuardResult.error.argName,
+					moduleName,
+					functionName,
+				})
+			);
 		}
 
 		const backupRequestIdGuardResult = Guard.againstNullOrUndefined(backupRequestId, 'backupRequestId');
 		if (backupRequestIdGuardResult.isErr()) {
-			return err(new DomainErrors.PropsError(`{ message: ${backupRequestIdGuardResult.error.message}}`));
+			return err(
+				new DomainErrors.PropsError(backupRequestIdGuardResult.error.message, {
+					argName: backupRequestIdGuardResult.error.argName,
+					moduleName,
+					functionName,
+				})
+			);
 		}
 
-		// // console.log('RSSRUC get backup request');
+		// console.log('RSSRUC get backup request');
 		// backup request must exist or we can't do anything
 		const backupRequestResult = await this.backupRequestRepo.getById(backupRequestId);
 		if (backupRequestResult.isErr()) {
@@ -77,7 +93,7 @@ export class ReceiveStoreStatusReplyUseCase implements UseCase<StoreStatusReplyD
 
 		// If an error isn't a NotFoundError, fail the use case -- it's probably a DatabaseError, but use !== 'NotFoundError' so nothing slips through
 		if (existingBackupResult.isErr() && existingBackupResult.error.name !== 'NotFoundError') {
-			return existingBackupResult as unknown as Response;
+			return err(existingBackupResult.error);
 		}
 
 		let backup: Backup = {} as Backup;
@@ -108,24 +124,53 @@ export class ReceiveStoreStatusReplyUseCase implements UseCase<StoreStatusReplyD
 			// save the backup aggregate
 			const backupSaveResult = await this.backupRepo.save(backup);
 			if (backupSaveResult.isErr()) {
-				return backupSaveResult as unknown as Response;
+				return err(backupSaveResult.error);
 			}
 		}
 
-		if (backup.backupId?.value.length > 0) {
-			// if we have a Backup, it succeeded at some point
-			backupRequest.setStatusReplied(RequestStatusTypeValues.Succeeded, reply.messageText);
-		} else if (resultTypeCode === StoreResultTypeValues.Failed) {
-			// if no Backup exists and the reply says it failed, it failed
-			backupRequest.setStatusReplied(RequestStatusTypeValues.Failed, reply.messageText);
-		} // otherwise, don't change request status because it doesn't make sense
+		// I'm writing the conditions as below because it makes the conditions that result in
+		// backupRequest changes and saves clearer than a complex if/else structure (IMO)
+		const backupFound = existingBackupResult.isOk();
+		let shouldSaveBackupRequest = false;
 
-		const backupRequestSaveResult = await this.backupRequestRepo.save(backupRequest);
-		if (backupRequestSaveResult.isErr()) {
-			return backupRequestSaveResult;
+		if (backupFound && !backupRequest.isSucceeded()) {
+			// if we have a Backup and it isn't Succeeded, it should be no matter what the store status, so make it so
+			backupRequest.setStatusReplied(RequestStatusTypeValues.Succeeded, reply.messageText);
+			shouldSaveBackupRequest = true;
+		}
+		if (!backupFound && resultTypeCode === StoreResultTypeValues.Succeeded) {
+			// backup was saved, request is Succeeded -- period, end of discussion
+			backupRequest.setStatusReplied(RequestStatusTypeValues.Succeeded, reply.messageText);
+			shouldSaveBackupRequest = true;
+		}
+		if (!backupFound && resultTypeCode === StoreResultTypeValues.Failed && !backupRequest.isFailed()) {
+			backupRequest.setStatusReplied(RequestStatusTypeValues.Failed, reply.messageText);
+			shouldSaveBackupRequest = true;
 		}
 
-		// if the request succeeded, return the Backup, otherwise return the BackupRequest
+		//
+		// An alternative approach that writes status based on the interface's result. If the interface
+		// sends two contradictory results for a request, the BackupRequest's status could end up out of
+		// sync with Backups. This case should not happen, but if it does, the inconsistency is possible.
+		// The inconsistency should be a Backup exists for a request that is in Failed status because:
+		// * A Succeeds result writes a Backup if none exists before it updates the request status.
+		// * A Failed result will not delete a Backup that exists.
+		//
+		// The advantage of this approach is that request status always matches the last status received
+		// from the interface.
+		// The disadvantage of this approach is that request status may be inconsistent with Backups.
+		//
+
+		// const requestStatus = resultTypeCode === StoreResultTypeValues.Succeeded ? RequestStatusTypeValues.Succeeded : RequestStatusTypeValues.Failed;
+		// backupRequest.setStatusReplied(requestStatus, reply.messageText);
+
+		if (shouldSaveBackupRequest) {
+			const backupRequestSaveResult = await this.backupRequestRepo.save(backupRequest);
+			if (backupRequestSaveResult.isErr()) {
+				return backupRequestSaveResult;
+			}
+		}
+
 		return ok(backupRequest);
 	}
 }

@@ -1,9 +1,6 @@
 import { InvalidApiVersionError } from '../../../common/adapter/AdapterErrors';
-import {
-	FastifyController,
-	RealFastifyRequest,
-	RealFastifyReply,
-} from '../../../common/adapter/FastifyController';
+import { FastifyController, RealFastifyRequest, RealFastifyReply } from '../../../common/adapter/FastifyController';
+import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 import { logger } from '../../../common/infrastructure/pinoLogger';
 import { CreateBackupRequestUseCase } from '../../use-cases/create-backup-request/CreateBackupRequestUseCase';
 
@@ -14,6 +11,8 @@ export interface ICreateBackupRequestBody {
 	backupDataLocation: string;
 }
 
+const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
+
 export class FastifyCreateBackupRequestController extends FastifyController {
 	private useCase: CreateBackupRequestUseCase;
 
@@ -22,30 +21,31 @@ export class FastifyCreateBackupRequestController extends FastifyController {
 		this.useCase = useCase;
 	}
 
-	protected async execImpl(
-		request: RealFastifyRequest,
-		reply: RealFastifyReply
-	): Promise<any> {
-		const logContext = {
-			context: 'FastifyCreateBackupRequestController.execImpl',
-			fastifyRequestId: request.id,
-		};
+	protected async execImpl(request: RealFastifyRequest, reply: RealFastifyReply): Promise<unknown> {
+		const functionName = 'execImpl';
+		const fastifyRequestId = request.id;
 		const body = <ICreateBackupRequestBody>request.body;
-		logger.info({
-			...logContext,
+		logger.debug({
+			fastifyRequestId,
 			requestBody: body,
 			msg: 'start',
+			moduleName,
+			functionName,
 		});
 
 		if (!body.apiVersion || body.apiVersion !== '2022-05-22') {
 			this.replyBadRequest(reply);
-			const err = new InvalidApiVersionError(
-				`{ message: 'invalid apiVersion', apiVersion: ${body.apiVersion} }`
-			);
+			const err = new InvalidApiVersionError('Invalid apiVersion', {
+				apiVersion: body.apiVersion,
+				moduleName,
+				functionName,
+			});
 			logger.error({
-				...logContext,
-				error: err,
+				fastifyRequestId,
 				msg: 'InvalidApiVersionError',
+				apiVersion: body.apiVersion,
+				moduleName,
+				functionName,
 			});
 			return err;
 		} else {
@@ -55,7 +55,7 @@ export class FastifyCreateBackupRequestController extends FastifyController {
 				getOnStartFlag: true,
 			};
 
-			logger.info({ ...logContext, dto: dto, msg: 'execute use case' });
+			logger.debug({ fastifyRequestId, dto: dto, msg: 'execute use case' });
 			const result = await this.useCase.execute(dto);
 
 			if (result.isOk()) {
@@ -63,17 +63,19 @@ export class FastifyCreateBackupRequestController extends FastifyController {
 				const dt = new Date(dataDate);
 				const replyValue = {
 					backupRequestId: result.value.id.value,
-					backupJobId: backupJobId.value,
+					backupJobId: (backupJobId as UniqueIdentifier).value,
 					dataDate: dt.toISOString().slice(0, 10), // only the date part
 					preparedDataPathName: v.preparedDataPathName,
 					statusTypeCode: v.statusTypeCode,
 					receivedTimestamp: v.receivedTimestamp,
 					requesterId: v.requesterId,
 				};
-				logger.info({
-					...logContext,
+				logger.debug({
+					fastifyRequestId,
 					reply: replyValue,
-					msg: 'reply isOk',
+					msg: 'BackupRequest created',
+					moduleName,
+					functionName,
 				});
 
 				this.replyAccepted(reply);
@@ -81,9 +83,11 @@ export class FastifyCreateBackupRequestController extends FastifyController {
 			}
 			// else isErr()
 			logger.error({
-				...logContext,
+				fastifyRequestId,
 				error: result.error,
 				msg: 'reply isErr',
+				moduleName,
+				functionName,
 			});
 			switch (result.error.name) {
 				case 'PropsError':

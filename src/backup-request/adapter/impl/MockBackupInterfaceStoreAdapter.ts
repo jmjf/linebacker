@@ -6,43 +6,61 @@ import { BackupRequest } from '../../domain/BackupRequest';
 
 //import { delay } from '../../../utils/utils';
 
-import { IBackupInterfaceStoreAdapter, SendMessageResponse } from '../IBackupInterfaceStoreAdapter';
+import {
+	IBackupInterfaceStoreAdapter,
+	StoreDeleteResponse,
+	StoreReceiveResponse,
+	StoreSendResponse,
+} from '../IBackupInterfaceStoreAdapter';
 
 export interface IMockBRSQAdapterOptions {
 	sendMessageResult?: boolean;
-	sendMessageError?: AdapterErrors.SendQueueAdapterError;
+	sendMessageError?: AdapterErrors.InterfaceAdapterError;
 }
 
 export class MockBackupInterfaceStoreAdapter implements IBackupInterfaceStoreAdapter {
 	sendMessageResult: boolean | undefined;
-	sendMessageError: AdapterErrors.SendQueueAdapterError | undefined;
+	sendMessageError: AdapterErrors.InterfaceAdapterError | undefined;
 
 	constructor(opts: IMockBRSQAdapterOptions) {
 		this.sendMessageResult = opts.sendMessageResult;
 		this.sendMessageError = opts.sendMessageError;
 	}
 
-	async sendMessage(
-		backupRequest: BackupRequest
-	): Promise<Result<SendMessageResponse, AdapterErrors.SendQueueAdapterError>> {
-		const sendStart = new Date();
-		//await delay(10000);
+	async send(backupRequest: BackupRequest): Promise<Result<StoreSendResponse, AdapterErrors.InterfaceAdapterError>> {
+		const startTime = new Date();
+		//awaitendTime10000);
 		logger.info({
 			context: 'MockBRSQA.sendMessage',
 			backupRequestId: backupRequest.idValue,
 			backupJobId: backupRequest.backupJobId.value,
 			msg: 'sendMessage',
 		});
-		const sendEnd = new Date();
+		const endTime = new Date();
 		if (typeof this.sendMessageResult === 'boolean')
 			return ok({
 				backupRequestId: backupRequest.backupRequestId.value,
 				isSent: this.sendMessageResult,
-				sendStart,
-				sendEnd,
+				startTime,
+				endTime,
 				responseStatus: 201,
 			});
 		if (this.sendMessageError) return err(this.sendMessageError);
-		return err(new AdapterErrors.SendQueueAdapterError(`{msg: 'no error provided'}`));
+		return err(new AdapterErrors.InterfaceAdapterError(JSON.stringify({ msg: 'no error provided' })));
+	}
+
+	async receive(messageCount: number): Promise<Result<StoreReceiveResponse, AdapterErrors.InterfaceAdapterError>> {
+		return ok({} as StoreReceiveResponse);
+	}
+
+	async delete(
+		messageId: string,
+		popReceipt: string
+	): Promise<Result<StoreDeleteResponse, AdapterErrors.InterfaceAdapterError>> {
+		return ok({} as StoreDeleteResponse);
+	}
+
+	async isReady(): Promise<Result<boolean, AdapterErrors.InterfaceAdapterError>> {
+		return ok(true);
 	}
 }

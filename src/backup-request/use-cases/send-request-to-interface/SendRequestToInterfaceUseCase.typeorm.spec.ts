@@ -14,9 +14,10 @@ import {
 	MockTypeormContext,
 	TypeormContext,
 	createMockTypeormContext,
-} from '../../../common/infrastructure/database/typeormContext';
+} from '../../../common/infrastructure/typeormContext';
 import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
 import { TypeormBackupRequest } from '../../../typeorm/entity/TypeormBackupRequest.entity';
+import { Dictionary } from '../../../utils/utils';
 
 describe('SendRequestToInterfaceUseCase - typeorm', () => {
 	let mockTypeormCtx: MockTypeormContext;
@@ -95,7 +96,7 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 		{ status: RequestStatusTypeValues.Succeeded, timestampName: 'replyTimestamp' },
 	])('when request is $status, it returns err (BackupRequestStatusError)', async ({ status, timestampName }) => {
 		// Arrange
-		const resultBackupRequest: { [index: string]: any } = {
+		const resultBackupRequest: Dictionary = {
 			...dbBackupRequest,
 			backupJobId: 'request is sent job id',
 			statusTypeCode: status,
@@ -128,7 +129,7 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('BackupRequestStatusError');
-			expect(result.error.message).toContain(status);
+			expect((result.error.errorData as any).statusTypeCode).toBe(status);
 		}
 	});
 
@@ -159,7 +160,7 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('NotFoundError');
-			expect(result.error.message).toMatch(dto.backupRequestId);
+			expect((result.error.errorData as any).backupRequestId).toMatch(dto.backupRequestId);
 		}
 	});
 

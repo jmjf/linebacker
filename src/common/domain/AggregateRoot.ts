@@ -30,19 +30,15 @@ export abstract class AggregateRoot<T> extends Entity<T> {
 
 	private logDomainEventAdded(domainEvent: IDomainEvent): void {
 		const aggregateClass = Reflect.getPrototypeOf(this);
-		const aggregateName = aggregateClass
-			? aggregateClass.constructor.name
-			: 'unknown aggregate';
+		const aggregateName = aggregateClass ? aggregateClass.constructor.name : 'unknown aggregate';
 		const domainEventClass = Reflect.getPrototypeOf(domainEvent);
-		const domainEventName = domainEventClass
-			? domainEventClass.constructor.name
-			: 'unknown event';
+		const domainEventName = domainEventClass ? domainEventClass.constructor.name : 'unknown event';
 
-		logger.info({
-			context: `${aggregateName}`,
+		logger.debug({
 			eventName: domainEventName,
+			aggregateName: `${aggregateName}`,
 			aggregateId: domainEvent.getAggregateId().value,
-			msg: 'add event',
+			msg: 'added event',
 		});
 	}
 }

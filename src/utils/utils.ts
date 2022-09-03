@@ -1,5 +1,7 @@
 import { isDate } from 'util/types';
 
+export type Dictionary = { [index: string]: any };
+
 export function dateOrUndefinedAsDate(date: any): Date {
 	if (isDate(date) || (typeof date === 'string' && !isNaN(Date.parse(date)))) {
 		return new Date(date);
@@ -28,4 +30,12 @@ export function toBase64(s: string): string {
 
 export function fromBase64(s: string): string {
 	return Buffer.from(s, 'base64').toString('ascii');
+}
+
+export function safeJsonParse(s: string): object {
+	try {
+		return JSON.parse(s);
+	} catch (e) {
+		return { unparseableJson: s };
+	}
 }

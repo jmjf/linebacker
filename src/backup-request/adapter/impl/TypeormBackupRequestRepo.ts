@@ -1,5 +1,5 @@
 import { TypeormBackupRequest } from '../../../typeorm/entity/TypeormBackupRequest.entity';
-import { TypeormContext } from '../../../common/infrastructure/database/typeormContext';
+import { TypeormContext } from '../../../common/infrastructure/typeormContext';
 
 import { err, ok, Result } from '../../../common/core/Result';
 import { DomainEventBus } from '../../../common/domain/DomainEventBus';
@@ -15,6 +15,7 @@ import { IBackupRequestRepo } from '../IBackupRequestRepo';
 
 import { RequestStatusType } from '../../domain/RequestStatusType';
 
+const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 	private typeormCtx: TypeormContext;
 
@@ -25,6 +26,7 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 	}
 
 	public async exists(backupRequestId: string): Promise<Result<boolean, AdapterErrors.DatabaseError>> {
+		const functionName = 'exists';
 		// count the number of rows that meet the condition
 		try {
 			const count = await this.typeormCtx.manager.count(TypeormBackupRequest, {
@@ -35,7 +37,8 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 
 			return ok(count > 0);
 		} catch (e) {
-			return err(new AdapterErrors.DatabaseError(`${JSON.stringify(e)}`));
+			const { message, ...error } = e as Error;
+			return err(new AdapterErrors.DatabaseError(message, { ...error, moduleName, functionName }));
 		}
 	}
 
@@ -44,6 +47,7 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 	): Promise<
 		Result<BackupRequest, AdapterErrors.DatabaseError | AdapterErrors.NotFoundError | DomainErrors.PropsError>
 	> {
+		const functionName = 'getById';
 		try {
 			const data = await this.typeormCtx.manager.findOne(TypeormBackupRequest, {
 				where: {
@@ -52,22 +56,27 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 			});
 
 			if (data === null) {
-				return err(new AdapterErrors.NotFoundError(`Backup request not found |${backupRequestId}|`));
+				return err(
+					new AdapterErrors.NotFoundError('BackupRequest not found for backupRequestId', { backupRequestId })
+				);
 			}
 
 			return this.mapToDomain(data);
 		} catch (e) {
-			return err(new AdapterErrors.DatabaseError(`${JSON.stringify(e)}`));
+			const { message, ...error } = e as Error;
+			return err(new AdapterErrors.DatabaseError(message, { ...error, moduleName, functionName }));
 		}
 	}
 
 	public async save(backupRequest: BackupRequest): Promise<Result<BackupRequest, AdapterErrors.DatabaseError>> {
+		const functionName = 'save';
 		const raw = this.mapToDb(backupRequest);
 
 		try {
 			await this.typeormCtx.manager.save(TypeormBackupRequest, { ...raw });
 		} catch (e) {
-			return err(new AdapterErrors.DatabaseError(`${JSON.stringify(e)}`));
+			const { message, ...error } = e as Error;
+			return err(new AdapterErrors.DatabaseError(message, { ...error, moduleName, functionName }));
 		}
 
 		// trigger domain events
@@ -84,7 +93,7 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 		const backupRequestId = new UniqueIdentifier(raw.backupRequestId);
 		const backupRequestResult = BackupRequest.create(
 			{
-				backupJobId: new UniqueIdentifier(raw.backupJobId),
+				backupJobId: raw.backupJobId,
 				dataDate: raw.dataDate,
 				preparedDataPathName: raw.preparedDataPathName,
 				getOnStartFlag: raw.getOnStartFlag,

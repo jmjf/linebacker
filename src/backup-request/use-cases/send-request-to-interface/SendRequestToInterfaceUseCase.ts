@@ -1,20 +1,19 @@
 import { UseCase } from '../../../common/application/UseCase';
-import { Result, ok, err } from '../../../common/core/Result';
+import { Result, err } from '../../../common/core/Result';
 import * as ApplicationErrors from '../../../common/application/ApplicationErrors';
 
 import { IBackupInterfaceStoreAdapter } from '../../adapter/IBackupInterfaceStoreAdapter';
 import { IBackupRequestRepo } from '../../adapter/IBackupRequestRepo';
 import { BackupRequest } from '../../domain/BackupRequest';
-import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { SendRequestToInterfaceDTO } from './SendRequestToInterfaceDTO';
-import * as SendRequestToInterfaceErrors from './SendRequestToInterfaceErrors';
+
+const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 
 type Response = Result<
 	BackupRequest,
 	| ApplicationErrors.BackupRequestStatusError
-	| SendRequestToInterfaceErrors.SendToInterfaceError
+	| ApplicationErrors.SendToInterfaceError
 	| ApplicationErrors.UnexpectedError
-	| Error
 >;
 
 export class SendRequestToInterfaceUseCase implements UseCase<SendRequestToInterfaceDTO, Promise<Response>> {
@@ -27,6 +26,7 @@ export class SendRequestToInterfaceUseCase implements UseCase<SendRequestToInter
 	}
 
 	public async execute(request: SendRequestToInterfaceDTO): Promise<Response> {
+		const functionName = 'execute';
 		// Get request from repository (returns a `BackupRequest`)
 		const { backupRequestId } = request;
 
@@ -38,29 +38,25 @@ export class SendRequestToInterfaceUseCase implements UseCase<SendRequestToInter
 
 		if (!backupRequest.isAllowed()) {
 			return err(
-				new ApplicationErrors.BackupRequestStatusError(
-					`{ message: 'Must be in Allowed status', requestId: '${backupRequestId}', statusTypeCode: '${backupRequest.statusTypeCode}'`
-				)
+				new ApplicationErrors.BackupRequestStatusError('Request must be in Allowed status', {
+					backupRequestId,
+					statusTypeCode: backupRequest.statusTypeCode,
+					moduleName,
+					functionName,
+				})
 			);
 		}
 
 		// Send request to backup store interface -- need to handle this better
 		const sendResult = await this.interfaceStoreAdapter.send(backupRequest);
 		if (sendResult.isErr()) {
-			// LOG
-			return err(
-				new SendRequestToInterfaceErrors.SendToInterfaceError(
-					`{ message: 'Send to backup interface ${this.interfaceStoreAdapter.constructor.name} failed', requestId: '${backupRequestId}', error: '${sendResult.error.message}'`
-				)
-			);
+			return err(sendResult.error);
 		}
 		if (sendResult.value.isSent === false) {
-			// LOG
 			return err(
-				new SendRequestToInterfaceErrors.SendToInterfaceError(
-					`{ message: 'Send to backup interface ${
-						this.interfaceStoreAdapter.constructor.name
-					} failed', backupRequestId: '${backupRequestId}', response: ${JSON.stringify(sendResult.value)}`
+				new ApplicationErrors.SendToInterfaceError(
+					`Send to backup interface ${this.interfaceStoreAdapter.constructor.name} failed`,
+					{ backupRequestId, resultValue: sendResult.value, moduleName, functionName }
 				)
 			);
 		}

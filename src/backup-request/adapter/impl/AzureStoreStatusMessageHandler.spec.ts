@@ -14,7 +14,7 @@ import { AzureStoreStatusMessageHandler } from './AzureStoreStatusMessageHandler
 const now = new Date();
 const offsetMs = 15 * 60 * 1000;
 
-describe('AzureStoreStatusMessageHandler -- will move to receive status use case tests later', () => {
+describe('AzureStoreStatusMessageHandler', () => {
 	const msgObject: StoreStatusMessage = {
 		apiVersion: '2022-08-15',
 		backupRequestId: 'msg-backup-request-id',
@@ -49,7 +49,7 @@ describe('AzureStoreStatusMessageHandler -- will move to receive status use case
 		expect(publishSpy).toHaveBeenCalledTimes(0);
 		if (result.isErr()) {
 			expect(result.error.name).toBe('StatusJsonError');
-			expect(result.error.message).toContain(okMsgItem.messageId);
+			expect((result.error.errorData as any).messageId).toBe(okMsgItem.messageId);
 		}
 	});
 
@@ -70,7 +70,7 @@ describe('AzureStoreStatusMessageHandler -- will move to receive status use case
 	});
 });
 
-describe('AzureBackupInterfaceStoreAdapter -- will move to receive status use case later', () => {
+describe('AzureBackupInterfaceStoreAdapter', () => {
 	const okMsgItem: ReceivedMessageItem = {
 		dequeueCount: 1,
 		expiresOn: new Date(now.valueOf() + offsetMs * 40),
@@ -124,8 +124,7 @@ describe('AzureBackupInterfaceStoreAdapter -- will move to receive status use ca
 		expect(result.isErr()).toBe(true);
 		expect(receiveSpy).toHaveBeenCalledTimes(1);
 		if (result.isErr()) {
-			expect(result.error.name).toBe('InterfaceAdapterError');
-			expect(result.error.message).toContain('SDKError');
+			expect(result.error.name).toBe('SDKError');
 		}
 	});
 

@@ -1,6 +1,6 @@
 import { Column, Entity } from 'typeorm';
 
-@Entity({ name: 'Backup' })
+@Entity({ name: 'BackupInstance' })
 export class TypeormBackup {
 	@Column({
 		name: 'BackupIdentifier',
@@ -34,11 +34,11 @@ export class TypeormBackup {
 	holdFlag: boolean;
 
 	// TypeORM maps bigint to string; in JS/TS, MAX_SAFE_INTEGER is in the 9-peta range
-	// which should be large enough for this use case. So, I'm telling TypeORM it's an
-	// integer so it will map to number and will test with MAX_SAFE_INTEGER to ensure
-	// it doesn't truncate the value
-	@Column({ name: 'BackupByteCount', type: 'integer' })
-	backupByteCount: number;
+	// which should be large enough for this use case. Unfortunately, TypeORM will not
+	// allow an integer outside the +/- ~2.4-giga range. So, let TypeORM do a string
+	// like it wants and, in the repo, let the mappers handle it.
+	@Column({ name: 'BackupByteCount', type: 'bigint' })
+	backupByteCount: string;
 
 	@Column({ name: 'CopyStartTimestamp', type: 'datetime2' })
 	copyStartTimestamp: Date;

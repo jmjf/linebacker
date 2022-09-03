@@ -1,6 +1,4 @@
-import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
-
-import { BackupJob, IBackupJobProps } from '../../../backup-job/domain/BackupJob';
+import { IBackupJobProps } from '../../../backup-job/domain/BackupJob';
 import { BackupProviderTypeValues } from '../../../backup-job/domain/BackupProviderType';
 import { MockBackupJobServiceAdapter } from '../../../backup-job/adapter/impl/MockBackupJobServiceAdapter';
 
@@ -14,10 +12,11 @@ import {
 	MockPrismaContext,
 	PrismaContext,
 	createMockPrismaContext,
-} from '../../../common/infrastructure/database/prismaContext';
-import { BackupRequest } from '@prisma/client';
+} from '../../../common/infrastructure/prismaContext';
+import { PrismaBackupRequest } from '@prisma/client';
 import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
+import { Dictionary } from '../../../utils/utils';
 
 describe('CheckRequestAllowedUseCase - Prisma', () => {
 	let mockPrismaCtx: MockPrismaContext;
@@ -40,7 +39,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		holdFlag: false,
 	};
 
-	const dbBackupRequest: BackupRequest = {
+	const dbBackupRequest: PrismaBackupRequest = {
 		backupRequestId: 'dbBackupRequestId',
 		backupJobId: 'dbBackupJobId',
 		dataDate: new Date(),
@@ -62,7 +61,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		// Arrange
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
+		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(dbBackupRequest);
 
 		const repo = new PrismaBackupRequestRepo(prismaCtx);
 
@@ -94,7 +93,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 
 		// findUnique() returns null if not found
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(null as unknown as BackupRequest);
+		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(null as unknown as PrismaBackupRequest);
 
 		const repo = new PrismaBackupRequestRepo(prismaCtx);
 
@@ -118,7 +117,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('NotFoundError');
-			expect(result.error.message).toMatch(dto.backupRequestId);
+			expect((result.error.errorData as any).backupRequestId).toMatch(dto.backupRequestId);
 		}
 	});
 
@@ -126,7 +125,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		// Arrange
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(dbBackupRequest);
+		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(dbBackupRequest);
 
 		const repo = new PrismaBackupRequestRepo(prismaCtx);
 
@@ -156,7 +155,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		// Arrange
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue({
+		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue({
 			...dbBackupRequest,
 			statusTypeCode: 'INVALID',
 		});
@@ -209,14 +208,16 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		async ({ status, timestamp }) => {
 			// Arrange
 			// timestamp that matters is defined in inputs, so need to add it after setting up base props
-			const resultBackupRequest: { [index: string]: any } = {
+			const resultBackupRequest: Dictionary = {
 				...dbBackupRequest,
 				statusTypeCode: status as RequestStatusType,
 			};
 			resultBackupRequest[timestamp] = new Date();
 
 			// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-			mockPrismaCtx.prisma.backupRequest.findUnique.mockResolvedValue(resultBackupRequest as BackupRequest);
+			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(
+				resultBackupRequest as PrismaBackupRequest
+			);
 
 			const repo = new PrismaBackupRequestRepo(prismaCtx);
 			const saveSpy = jest.spyOn(repo, 'save');
@@ -238,7 +239,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 			if (result.isErr()) {
 				// type guard
 				expect(result.error.name).toBe('BackupRequestStatusError');
-				expect(result.error.message).toContain(status);
+				expect((result.error.errorData as any).statusTypeCode).toContain(status);
 			}
 		}
 	);

@@ -53,7 +53,7 @@ describe('AzureQueue', () => {
 				expect(result.isErr()).toBe(true);
 				if (result.isErr()) {
 					expect(result.error.name).toBe('EnvironmentError');
-					expect(result.error.message).toContain(envName);
+					expect((result.error.errorData as any).env).toContain(envName);
 				}
 			}
 		);
@@ -86,7 +86,7 @@ describe('AzureQueue', () => {
 				expect(result.isErr()).toBe(true);
 				if (result.isErr()) {
 					expect(result.error.name).toBe('EnvironmentError');
-					expect(result.error.message).toContain('AZURE_QUEUE_ACCOUNT_URI');
+					expect((result.error.errorData as any).env).toContain('AZURE_QUEUE_ACCOUNT_URI');
 				}
 			}
 		);

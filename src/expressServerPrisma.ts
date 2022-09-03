@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 
-import { prismaCtx } from './common/infrastructure/database/prismaContext';
-import { logger } from './common/infrastructure/logger';
+import { prismaCtx } from './common/infrastructure/prismaContext';
+import { logger } from './common/infrastructure/winstonLogger';
 import { buildApp } from './expressAppPrisma';
 
 const startServer = async () => {

@@ -14,9 +14,10 @@ import {
 	MockTypeormContext,
 	TypeormContext,
 	createMockTypeormContext,
-} from '../../../common/infrastructure/database/typeormContext';
+} from '../../../common/infrastructure/typeormContext';
 import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
 import { TypeormBackupRequest } from '../../../typeorm/entity/TypeormBackupRequest.entity';
+import { Dictionary } from '../../../utils/utils';
 
 describe('CheckRequestAllowedUseCase - typeorm', () => {
 	let mockTypeormCtx: MockTypeormContext;
@@ -84,7 +85,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('NotFoundError');
-			expect(result.error.message).toMatch(dto.backupRequestId);
+			expect((result.error.errorData as any).backupRequestId).toMatch(dto.backupRequestId);
 		}
 	});
 
@@ -171,7 +172,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		async ({ status, timestamp }) => {
 			// Arrange
 			// timestamp that matters is defined in inputs, so need to add it after setting up base props
-			const resultBackupRequest: { [index: string]: any } = {
+			const resultBackupRequest: Dictionary = {
 				...dbBackupRequest,
 				statusTypeCode: status as RequestStatusType,
 			};
@@ -199,7 +200,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 			if (result.isErr()) {
 				// type guard
 				expect(result.error.name).toBe('BackupRequestStatusError');
-				expect(result.error.message).toContain(status);
+				expect((result.error.errorData as any).statusTypeCode).toContain(status);
 			}
 		}
 	);

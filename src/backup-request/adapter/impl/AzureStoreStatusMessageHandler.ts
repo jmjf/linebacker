@@ -9,29 +9,38 @@ import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 import { logger } from '../../../common/infrastructure/pinoLogger';
 import { DomainEventBus } from '../../../common/domain/DomainEventBus';
 
+const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
+
 export class AzureStoreStatusMessageHandler implements IStoreStatusMessageHandler {
 	async processMessage(
 		message: ReceivedMessageItem,
 		opts?: unknown
 	): Promise<Result<boolean, AdapterErrors.StatusJsonError>> {
+		const functionName = 'processMessage';
 		let messageObject: StoreStatusMessage;
 
 		try {
 			messageObject = JSON.parse(message.messageText);
 		} catch (e) {
 			logger.error({
-				msg: 'Invalid messageText JSON in queue message',
+				msg: 'Unparseable messageText JSON in queue message',
 				providerType: 'CloudA',
 				messageId: message.messageId,
 				dequeueCount: message.dequeueCount,
 				messageText: message.messageText,
+				moduleName,
+				functionName,
 			});
 			if (message.dequeueCount >= 4) {
 				// TODO: store it and delete it
 				console.log('store message, delete message from queue');
 			}
 			return err(
-				new AdapterErrors.StatusJsonError(`{message: 'Invalid messageText JSON', messageId: ${message.messageId}}`)
+				new AdapterErrors.StatusJsonError('Unparseable messageText JSON in queue message', {
+					messageId: message.messageId,
+					moduleName,
+					functionName,
+				})
 			);
 		}
 
@@ -56,6 +65,8 @@ export class AzureStoreStatusMessageHandler implements IStoreStatusMessageHandle
 			messageId: message.messageId,
 			dequeueCount: message.dequeueCount,
 			messageObject: messageObject,
+			moduleName,
+			functionName,
 		});
 		return ok(true);
 	}
