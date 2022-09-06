@@ -55,7 +55,7 @@ export class DomainEventBus {
 	}
 
 	public static clearHandlers(): void {
-		this.handlersMap = [];
+		this.handlersMap = {};
 	}
 
 	public static clearMarkedAggregates(): void {

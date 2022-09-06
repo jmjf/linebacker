@@ -1,0 +1,31 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "npm",
+			"script": "build:testApp",
+			"group": "build",
+			"label": "npm: build - testApp",
+			"detail": "npx tsc"
+		},
+		{
+			"type": "shell",
+			"label": "clean app",
+			"command": "rm -rf ./build"
+		},
+		{
+			"label": "prepare app to debug",
+			"type": "shell",
+			"command": "echo prepare app to debug",
+			"dependsOrder": "sequence",
+			"dependsOn": ["npm: build - testApp"]
+		},
+		{
+			"label": "clean app after debug",
+			"type": "shell",
+			"command": "echo clean app after debug",
+			"dependsOrder": "sequence",
+			"dependsOn": ["clean app"]
+		}
+	]
+}
