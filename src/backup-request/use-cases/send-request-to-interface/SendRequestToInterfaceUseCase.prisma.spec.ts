@@ -17,11 +17,13 @@ import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../..
 import { PrismaBackupRequest } from '@prisma/client';
 import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
 import { delay, Dictionary } from '../../../utils/utils';
+import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
 
 describe('SendRequestToInterfaceUseCase - Prisma', () => {
 	let mockPrismaCtx: MockPrismaContext;
 	let prismaCtx: PrismaContext;
 	let dbCircuitBreaker: CircuitBreakerWithRetry;
+	let azureQueueCircuitBreaker: CircuitBreakerWithRetry;
 	let abortController: AbortController;
 
 	beforeEach(() => {
@@ -33,21 +35,13 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		};
 
 		abortController = new AbortController();
-		dbCircuitBreaker = new CircuitBreakerWithRetry({
-			isAlive,
-			abortSignal: abortController.signal,
-			serviceName: 'TypeORM',
-			successToCloseCount: 1,
-			failureToOpenCount: 100,
-			halfOpenRetryDelayMs: 5,
-			closedRetryDelayMs: 5,
-			openAliveCheckDelayMs: 5,
-		});
+		dbCircuitBreaker = getLenientCircuitBreaker('Prisma', abortController.signal);
+		azureQueueCircuitBreaker = getLenientCircuitBreaker('AzureQueue', abortController.signal);
 	});
 
 	afterEach(() => {
 		abortController.abort();
-		delay(250);
+		delay(100);
 	});
 
 	const baseDto = {
@@ -133,7 +127,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
-		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker);
 		const sendSpy = jest.spyOn(qAdapter, 'send');
 
 		const useCase = new SendRequestToInterfaceUseCase({
@@ -167,7 +161,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
-		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker);
 		const sendSpy = jest.spyOn(qAdapter, 'send');
 
 		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, interfaceStoreAdapter: qAdapter });
@@ -203,7 +197,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
-		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker);
 		const sendSpy = jest.spyOn(qAdapter, 'send');
 
 		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, interfaceStoreAdapter: qAdapter });
@@ -237,7 +231,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockResolvedValueOnce(mockSendError);
-		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker);
 		const sendSpy = jest.spyOn(qAdapter, 'send');
 
 		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, interfaceStoreAdapter: qAdapter });
@@ -276,7 +270,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 			mockResult._response.bodyAsText = message;
 			return mockResult;
 		});
-		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker);
 		const sendSpy = jest.spyOn(qAdapter, 'send');
 
 		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, interfaceStoreAdapter: qAdapter });

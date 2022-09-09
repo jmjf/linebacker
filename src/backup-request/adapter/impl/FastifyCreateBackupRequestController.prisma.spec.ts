@@ -1,3 +1,5 @@
+import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
+
 import { buildApp } from '../../../fastifyApp';
 
 import { ICreateBackupRequestBody } from './FastifyCreateBackupRequestController';
@@ -15,6 +17,7 @@ describe('FastifyCreateBackupRequestController', () => {
 	let mockPrismaCtx: MockPrismaContext;
 	let prismaCtx: PrismaContext;
 	let dbCircuitBreaker: CircuitBreakerWithRetry;
+	let azureQueueCircuitBreaker: CircuitBreakerWithRetry;
 	let abortController: AbortController;
 
 	beforeEach(() => {
@@ -26,16 +29,8 @@ describe('FastifyCreateBackupRequestController', () => {
 		};
 
 		abortController = new AbortController();
-		dbCircuitBreaker = new CircuitBreakerWithRetry({
-			isAlive,
-			abortSignal: abortController.signal,
-			serviceName: 'TypeORM',
-			successToCloseCount: 1,
-			failureToOpenCount: 100,
-			halfOpenRetryDelayMs: 5,
-			closedRetryDelayMs: 5,
-			openAliveCheckDelayMs: 5,
-		});
+		dbCircuitBreaker = getLenientCircuitBreaker('TypeORM', abortController.signal);
+		azureQueueCircuitBreaker = getLenientCircuitBreaker('AzureQueue', abortController.signal);
 	});
 
 	afterEach(() => {
@@ -54,7 +49,7 @@ describe('FastifyCreateBackupRequestController', () => {
 
 	test('when apiVersion is invalid, it returns 400 and an error', async () => {
 		// Arrange
-		const app = buildApp(prismaCtx, { dbCircuitBreaker });
+		const app = buildApp(prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker });
 
 		// Act
 		const response = await app.inject({
@@ -80,7 +75,7 @@ describe('FastifyCreateBackupRequestController', () => {
 		mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockRejectedValue(
 			new PrismaClientKnownRequestError('Key is already defined', prismaCode, '2')
 		);
-		const app = buildApp(prismaCtx, { dbCircuitBreaker });
+		const app = buildApp(prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker });
 
 		// Act
 		const response = await app.inject({
@@ -101,7 +96,7 @@ describe('FastifyCreateBackupRequestController', () => {
 
 	test('when the use case returns a PropsError, the controller returns 400 and an error', async () => {
 		// Arrange
-		const app = buildApp(prismaCtx, { dbCircuitBreaker });
+		const app = buildApp(prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker });
 
 		// Act
 		const response = await app.inject({
@@ -123,7 +118,7 @@ describe('FastifyCreateBackupRequestController', () => {
 
 	test('when request data is good, the controller returns Accepted and a result payload', async () => {
 		// Arrange
-		const app = buildApp(prismaCtx, { dbCircuitBreaker });
+		const app = buildApp(prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker });
 
 		// Act
 		const startTime = new Date();

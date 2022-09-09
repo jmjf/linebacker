@@ -145,7 +145,7 @@ if (TEST_EVENTS) {
 
 			// can mockResolvedValue here because we don't reuse the data structure, so no problem if it gets changed
 			mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockResolvedValue(interfaceSendOk);
-			const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+			const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', circuitBreakers.azureQueueCircuitBreaker);
 			const sendSpy = jest.spyOn(qAdapter, 'send');
 
 			new BackupRequestAllowedSubscriber(
@@ -310,7 +310,11 @@ if (TEST_EVENTS) {
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobDTO } });
 
 			// set up adapter, use case, and subscriber
-			const abisa = new AzureBackupInterfaceStoreAdapter('test-queue', false);
+			const abisa = new AzureBackupInterfaceStoreAdapter(
+				'test-queue',
+				circuitBreakers.azureQueueCircuitBreaker,
+				false
+			);
 			const rcvUseCase = new ReceiveStoreStatusReplyUseCase({
 				backupRequestRepo,
 				backupRepo,

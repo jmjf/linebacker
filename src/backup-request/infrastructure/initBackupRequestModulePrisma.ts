@@ -34,7 +34,10 @@ export const initBackupRequestModule = (
 	new BackupRequestCreatedSubscriber(checkRequestAllowedUseCase);
 
 	// subscribe BackupRequestAllowedSubscriber
-	const interfaceStoreAdapter = new AzureBackupInterfaceStoreAdapter('allowed-backup-requests');
+	const interfaceStoreAdapter = new AzureBackupInterfaceStoreAdapter(
+		'allowed-backup-requests',
+		circuitBreakers.azureQueueCircuitBreaker
+	);
 	const sendRequestToInterfaceUseCase = new SendRequestToInterfaceUseCase({
 		backupRequestRepo,
 		interfaceStoreAdapter,

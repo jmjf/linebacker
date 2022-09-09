@@ -2,10 +2,11 @@ import { isPrismaConnected } from '../prisma/isPrismaConnected';
 import { CircuitBreakerWithRetry } from './CircuitBreakerWithRetry';
 
 import circuitBreakerConfig from '../circuitBreakerConfig.json';
+import { AzureQueue } from './AzureQueue';
 
 export interface ICircuitBreakers {
 	dbCircuitBreaker: CircuitBreakerWithRetry;
-	// azureQueueCircuitBreaker: CircuitBreakerWithRetry;
+	azureQueueCircuitBreaker: CircuitBreakerWithRetry;
 	// jobServiceCircuitBreaker: CircuitBreakerWithRetry;
 }
 
@@ -16,11 +17,11 @@ export function buildCircuitBreakers(abortSignal: AbortSignal): ICircuitBreakers
 		...circuitBreakerConfig.prisma,
 	});
 
-	// const azureQueueCircuitBreaker = new CircuitBreakerWithRetry ({
-	// 	isAlive: isAzureQueueConnected,
-	// 	abortSignal: abortSignal,
-	// 	...circuitBreakerConfig.azureQueue
-	// });
+	const azureQueueCircuitBreaker = new CircuitBreakerWithRetry({
+		isAlive: AzureQueue.isConnected.bind(AzureQueue),
+		abortSignal: abortSignal,
+		...circuitBreakerConfig.azureQueue,
+	});
 
 	// const jobServiceCircuitBreaker = new CircuitBreakerWithRetry ({
 	// 	isAlive: isJobServiceConnected,
@@ -30,7 +31,7 @@ export function buildCircuitBreakers(abortSignal: AbortSignal): ICircuitBreakers
 
 	return {
 		dbCircuitBreaker,
-		// azureQueueCircuitBreaker,
+		azureQueueCircuitBreaker,
 		// jobServiceCircuitBreaker
 	};
 }

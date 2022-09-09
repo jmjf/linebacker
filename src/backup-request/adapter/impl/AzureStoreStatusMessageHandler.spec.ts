@@ -5,11 +5,15 @@ import * as mockQueueSDK from '@azure/storage-queue';
 import { ReceivedMessageItem } from '@azure/storage-queue';
 
 import { DomainEventBus } from '../../../common/domain/DomainEventBus';
+import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
 
 import { StoreStatusMessage } from '../../domain/StoreStatusReceived';
 import { AzureBackupInterfaceStoreAdapter } from './AzureBackupInterfaceStoreAdapter';
 
 import { AzureStoreStatusMessageHandler } from './AzureStoreStatusMessageHandler';
+
+import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
+import { delay } from '../../../utils/utils';
 
 const now = new Date();
 const offsetMs = 15 * 60 * 1000;
@@ -71,6 +75,23 @@ describe('AzureStoreStatusMessageHandler', () => {
 });
 
 describe('AzureBackupInterfaceStoreAdapter', () => {
+	let azureQueueCircuitBreaker: CircuitBreakerWithRetry;
+	let abortController: AbortController;
+
+	beforeEach(() => {
+		// mockTypeormCtx = createMockTypeormContext();
+		// typeormCtx = mockTypeormCtx as unknown as TypeormContext;
+
+		abortController = new AbortController();
+		// dbCircuitBreaker = getLenientCircuitBreaker('TypeORM', abortController.signal);
+		azureQueueCircuitBreaker = getLenientCircuitBreaker('AzureQueue', abortController.signal);
+	});
+
+	afterEach(() => {
+		abortController.abort();
+		delay(250);
+	});
+
 	const okMsgItem: ReceivedMessageItem = {
 		dequeueCount: 1,
 		expiresOn: new Date(now.valueOf() + offsetMs * 40),
@@ -115,7 +136,7 @@ describe('AzureBackupInterfaceStoreAdapter', () => {
 			.mockRejectedValueOnce(new Error('simulated SDK Promise.reject()'));
 		const receiveSpy = jest.spyOn(mockQueueSDK.QueueClient.prototype, 'receiveMessages');
 
-		const storeAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', false);
+		const storeAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker, false);
 
 		// Act
 		const result = await storeAdapter.receive(1);
@@ -148,7 +169,7 @@ describe('AzureBackupInterfaceStoreAdapter', () => {
 			.mockResolvedValueOnce({ ...mockRcvOk, receivedMessageItems: rcvItems });
 		const receiveSpy = jest.spyOn(mockQueueSDK.QueueClient.prototype, 'receiveMessages');
 
-		const storeAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', false);
+		const storeAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker, false);
 
 		// Act
 		const result = await storeAdapter.receive(1);
@@ -176,7 +197,7 @@ describe('AzureBackupInterfaceStoreAdapter', () => {
 		mockQueueSDK.QueueClient.prototype.receiveMessages = jest.fn().mockResolvedValueOnce({ ...mockRcvOk });
 		const receiveSpy = jest.spyOn(mockQueueSDK.QueueClient.prototype, 'receiveMessages');
 
-		const storeAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', false);
+		const storeAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker, false);
 
 		// Act
 		const result = await storeAdapter.receive(1);

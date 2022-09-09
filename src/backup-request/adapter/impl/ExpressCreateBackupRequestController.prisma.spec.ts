@@ -13,11 +13,13 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 
 import { delay } from '../../../utils/utils';
+import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
 
 describe('ExpressCreateBackupRequestController - prisma', () => {
 	let mockPrismaCtx: MockPrismaContext;
 	let prismaCtx: PrismaContext;
 	let dbCircuitBreaker: CircuitBreakerWithRetry;
+	let azureQueueCircuitBreaker: CircuitBreakerWithRetry;
 	let abortController: AbortController;
 
 	beforeEach(() => {
@@ -29,16 +31,8 @@ describe('ExpressCreateBackupRequestController - prisma', () => {
 		};
 
 		abortController = new AbortController();
-		dbCircuitBreaker = new CircuitBreakerWithRetry({
-			isAlive,
-			abortSignal: abortController.signal,
-			serviceName: 'TypeORM',
-			successToCloseCount: 1,
-			failureToOpenCount: 100,
-			halfOpenRetryDelayMs: 5,
-			closedRetryDelayMs: 5,
-			openAliveCheckDelayMs: 5,
-		});
+		dbCircuitBreaker = getLenientCircuitBreaker('Prisma', abortController.signal);
+		azureQueueCircuitBreaker = getLenientCircuitBreaker('AzureQueue', abortController.signal);
 	});
 
 	afterEach(() => {
@@ -57,7 +51,7 @@ describe('ExpressCreateBackupRequestController - prisma', () => {
 
 	test('when apiVersion is invalid, it returns 400 and an error', async () => {
 		// Arrange
-		const app = buildApp(prismaCtx, { dbCircuitBreaker });
+		const app = buildApp(prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker });
 
 		// Act
 		const response = await request(app)
@@ -81,7 +75,7 @@ describe('ExpressCreateBackupRequestController - prisma', () => {
 		mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockRejectedValue(
 			new PrismaClientKnownRequestError('Key is already defined', prismaCode, '2')
 		);
-		const app = buildApp(prismaCtx, { dbCircuitBreaker });
+		const app = buildApp(prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker });
 
 		// Act
 		const response = await request(app)
@@ -100,7 +94,7 @@ describe('ExpressCreateBackupRequestController - prisma', () => {
 
 	test('when the use case returns a PropsError, the controller returns 400 and an error', async () => {
 		// Arrange
-		const app = buildApp(prismaCtx, { dbCircuitBreaker });
+		const app = buildApp(prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker });
 
 		// Act
 		const response = await request(app)
@@ -120,7 +114,7 @@ describe('ExpressCreateBackupRequestController - prisma', () => {
 
 	test('when request data is good, the controller returns Accepted and a result payload', async () => {
 		// Arrange
-		const app = buildApp(prismaCtx, { dbCircuitBreaker });
+		const app = buildApp(prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker });
 
 		// Act
 		const startTime = new Date();

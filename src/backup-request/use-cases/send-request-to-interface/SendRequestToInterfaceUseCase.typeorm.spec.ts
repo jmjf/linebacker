@@ -16,12 +16,14 @@ import { SendRequestToInterfaceDTO } from './SendRequestToInterfaceDTO';
 import { MockTypeormContext, TypeormContext, createMockTypeormContext } from '../../../infrastructure/typeormContext';
 import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
 import { TypeormBackupRequest } from '../../../typeorm/entity/TypeormBackupRequest.entity';
-import { Dictionary } from '../../../utils/utils';
+import { delay, Dictionary } from '../../../utils/utils';
+import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
 
 describe('SendRequestToInterfaceUseCase - typeorm', () => {
 	let mockTypeormCtx: MockTypeormContext;
 	let typeormCtx: TypeormContext;
-	let circuitBreaker: CircuitBreakerWithRetry;
+	let dbCircuitBreaker: CircuitBreakerWithRetry;
+	let azureQueueCircuitBreaker: CircuitBreakerWithRetry;
 	let abortController: AbortController;
 
 	beforeEach(() => {
@@ -32,20 +34,13 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 			return Promise.resolve(ok(true));
 		};
 		abortController = new AbortController();
-		circuitBreaker = new CircuitBreakerWithRetry({
-			isAlive,
-			abortSignal: abortController.signal,
-			serviceName: 'TypeORM',
-			successToCloseCount: 1,
-			failureToOpenCount: 100,
-			halfOpenRetryDelayMs: 5,
-			closedRetryDelayMs: 5,
-			openAliveCheckDelayMs: 5,
-		});
+		dbCircuitBreaker = getLenientCircuitBreaker('TypeORM', abortController.signal);
+		azureQueueCircuitBreaker = getLenientCircuitBreaker('AzureQueue', abortController.signal);
 	});
 
 	afterEach(() => {
-		circuitBreaker.halt();
+		abortController.abort();
+		delay(100);
 	});
 
 	const baseDto = {
@@ -126,11 +121,11 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockTypeormCtx.manager.findOne.mockResolvedValue(resultBackupRequest as TypeormBackupRequest);
 
-		const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, dbCircuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
-		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker);
 		const sendSpy = jest.spyOn(qAdapter, 'send');
 
 		const useCase = new SendRequestToInterfaceUseCase({
@@ -160,11 +155,11 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockTypeormCtx.manager.findOne.mockResolvedValue(null as unknown as TypeormBackupRequest);
 
-		const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, dbCircuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
-		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker);
 		const sendSpy = jest.spyOn(qAdapter, 'send');
 
 		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, interfaceStoreAdapter: qAdapter });
@@ -196,11 +191,11 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockTypeormCtx.manager.findOne.mockResolvedValue(resultBackupRequest);
 
-		const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, dbCircuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
-		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker);
 		const sendSpy = jest.spyOn(qAdapter, 'send');
 
 		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, interfaceStoreAdapter: qAdapter });
@@ -230,11 +225,11 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockTypeormCtx.manager.findOne.mockResolvedValue(resultBackupRequest);
 
-		const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, dbCircuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockResolvedValueOnce(mockSendError);
-		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker);
 		const sendSpy = jest.spyOn(qAdapter, 'send');
 
 		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, interfaceStoreAdapter: qAdapter });
@@ -259,7 +254,7 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockTypeormCtx.manager.findOne.mockResolvedValue(dbBackupRequest);
-		const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, dbCircuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockImplementation((message: string) => {
@@ -273,7 +268,7 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 			mockResult._response.bodyAsText = message;
 			return mockResult;
 		});
-		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker);
 		const sendSpy = jest.spyOn(qAdapter, 'send');
 
 		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, interfaceStoreAdapter: qAdapter });
