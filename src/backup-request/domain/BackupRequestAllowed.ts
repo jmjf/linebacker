@@ -4,10 +4,12 @@ import { BackupRequest } from './BackupRequest';
 
 export class BackupRequestAllowed implements IDomainEvent {
 	public eventTimestamp: Date;
+	public retryCount: number;
 	public backupRequestId: UniqueIdentifier;
 
 	constructor(backupRequest: BackupRequest) {
 		this.eventTimestamp = new Date();
+		this.retryCount = 0;
 		this.backupRequestId = backupRequest.id;
 	}
 

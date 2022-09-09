@@ -9,7 +9,7 @@ import { UseCase } from '../common/application/UseCase';
 import * as AdapterErrors from '../common/adapter/AdapterErrors';
 
 import { CircuitBreakerStateValues, CircuitBreakerWithRetry, ConnectFailureErrorData } from './CircuitBreakerWithRetry';
-import { delay, Dictionary } from './utils';
+import { delay, Dictionary } from '../utils/utils';
 
 const VERBOSE_LOGS = false; // set true to get verbose console.logs for event tracing
 class TestService {
@@ -189,7 +189,8 @@ describe('CircuitBreakerWithRetry', () => {
 
 		const circuitBreaker = new CircuitBreakerWithRetry({
 			isAlive: () => Promise.resolve(ok(true)),
-			haltSignal: abortController.signal,
+			abortSignal: abortController.signal,
+			serviceName: 'TestService',
 			successToCloseCount: 10,
 			failureToOpenCount: 1,
 			halfOpenRetryDelayMs: 5,
@@ -221,7 +222,8 @@ describe('CircuitBreakerWithRetry', () => {
 
 		const circuitBreaker = new CircuitBreakerWithRetry({
 			isAlive: service.isAlive.bind(service),
-			haltSignal: abortController.signal,
+			abortSignal: abortController.signal,
+			serviceName: 'TestService',
 			successToCloseCount: 10,
 			failureToOpenCount: 1,
 			halfOpenRetryDelayMs: 5,
@@ -259,7 +261,8 @@ describe('CircuitBreakerWithRetry', () => {
 
 		const circuitBreaker = new CircuitBreakerWithRetry({
 			isAlive: service.isAlive.bind(service),
-			haltSignal: abortController.signal,
+			abortSignal: abortController.signal,
+			serviceName: 'TestService',
 			successToCloseCount: 10,
 			failureToOpenCount: 1,
 			halfOpenRetryDelayMs: 5,
@@ -302,7 +305,8 @@ describe('CircuitBreakerWithRetry', () => {
 
 		const circuitBreaker = new CircuitBreakerWithRetry({
 			isAlive: service.isAlive.bind(service),
-			haltSignal: abortController.signal,
+			abortSignal: abortController.signal,
+			serviceName: 'TestService',
 			successToCloseCount: 10,
 			failureToOpenCount: 1,
 			halfOpenRetryDelayMs: 500,
@@ -351,7 +355,8 @@ describe('CircuitBreakerWithRetry', () => {
 
 		const circuitBreaker = new CircuitBreakerWithRetry({
 			isAlive: service.isAlive.bind(service),
-			haltSignal: abortController.signal,
+			abortSignal: abortController.signal,
+			serviceName: 'TestService',
 			successToCloseCount: 2,
 			failureToOpenCount: 1,
 			halfOpenRetryDelayMs: 5,
@@ -410,7 +415,8 @@ describe('CircuitBreakerWithRetry', () => {
 
 		const circuitBreaker = new CircuitBreakerWithRetry({
 			isAlive: service.isAlive.bind(service),
-			haltSignal: abortController.signal,
+			abortSignal: abortController.signal,
+			serviceName: 'TestService',
 			successToCloseCount: 2,
 			failureToOpenCount: 1,
 			halfOpenRetryDelayMs: 5,
@@ -441,7 +447,8 @@ describe('CircuitBreakerWithRetry', () => {
 
 		const circuitBreaker = new CircuitBreakerWithRetry({
 			isAlive: service.isAlive.bind(service),
-			haltSignal: abortController.signal,
+			abortSignal: abortController.signal,
+			serviceName: 'TestService',
 			successToCloseCount: 2,
 			failureToOpenCount: 1,
 			halfOpenRetryDelayMs: 5,
@@ -497,7 +504,8 @@ describe('CircuitBreakerWithRetry', () => {
 
 		const circuitBreaker = new CircuitBreakerWithRetry({
 			isAlive: service.isAlive.bind(service),
-			haltSignal: abortController.signal,
+			abortSignal: abortController.signal,
+			serviceName: 'TestService',
 			successToCloseCount: 2,
 			failureToOpenCount: 1,
 			halfOpenRetryDelayMs: 5,
@@ -557,7 +565,8 @@ describe('CircuitBreakerWithRetry', () => {
 
 		const circuitBreaker = new CircuitBreakerWithRetry({
 			isAlive: service.isAlive.bind(service),
-			haltSignal: abortController.signal,
+			abortSignal: abortController.signal,
+			serviceName: 'TestService',
 			successToCloseCount: 2,
 			failureToOpenCount: 1,
 			halfOpenRetryDelayMs: 10,
@@ -619,7 +628,8 @@ describe('CircuitBreakerWithRetry', () => {
 
 		const circuitBreaker = new CircuitBreakerWithRetry({
 			isAlive: service.isAlive.bind(service),
-			haltSignal: abortController.signal,
+			abortSignal: abortController.signal,
+			serviceName: 'TestService',
 			successToCloseCount: 10,
 			failureToOpenCount: 1,
 			halfOpenRetryDelayMs: 50,

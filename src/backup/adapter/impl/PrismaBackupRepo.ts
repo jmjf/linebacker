@@ -1,4 +1,5 @@
-import { PrismaContext } from '../../../common/infrastructure/prismaContext';
+import { PrismaContext } from '../../../infrastructure/prismaContext';
+import { CircuitBreakerWithRetry, ConnectFailureErrorData } from '../../../infrastructure/CircuitBreakerWithRetry';
 
 import { DomainEventBus } from '../../../common/domain/DomainEventBus';
 
@@ -10,19 +11,39 @@ import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 import { BackupProviderType } from '../../../backup-job/domain/BackupProviderType';
 
 import { Backup } from '../../domain/Backup';
-import { IBackupRepo } from '../BackupRepo';
+import { IBackupRepo } from '../IBackupRepo';
 import { PrismaBackup } from '@prisma/client';
+import { isPrismaConnectError } from '../../../prisma/isPrismaConnectError';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 export class PrismaBackupRepo implements IBackupRepo {
 	private prisma;
+	private circuitBreaker: CircuitBreakerWithRetry;
+	private connectFailureErrorData: ConnectFailureErrorData;
 
-	constructor(ctx: PrismaContext) {
+	constructor(ctx: PrismaContext, circuitBreaker: CircuitBreakerWithRetry) {
 		this.prisma = ctx.prisma;
+		this.circuitBreaker = circuitBreaker;
+		this.connectFailureErrorData = {
+			isConnectFailure: true,
+			isConnected: this.circuitBreaker.isConnected.bind(this.circuitBreaker),
+			addRetryEvent: this.circuitBreaker.addRetryEvent.bind(this.circuitBreaker),
+			serviceName: this.circuitBreaker.serviceName,
+		};
 	}
 
 	public async exists(backupId: string): Promise<Result<boolean, AdapterErrors.DatabaseError>> {
 		const functionName = 'exists';
+
+		if (!this.circuitBreaker.isConnected()) {
+			return err(
+				new AdapterErrors.DatabaseError('Fast fail', {
+					...this.connectFailureErrorData,
+					moduleName,
+					functionName,
+				})
+			);
+		}
 		// count the number of rows that meet the condition
 		try {
 			const count = await this.prisma.prismaBackup.count({
@@ -31,10 +52,26 @@ export class PrismaBackupRepo implements IBackupRepo {
 				},
 			});
 
+			this.circuitBreaker.onSuccess();
+
 			return ok(count > 0);
 		} catch (e) {
 			const { message, ...error } = e as Error;
-			return err(new AdapterErrors.DatabaseError(message, { ...error, moduleName, functionName }));
+			let errorData = { isConnectFailure: false };
+
+			if (isPrismaConnectError(error)) {
+				this.circuitBreaker.onFailure();
+				errorData = this.connectFailureErrorData;
+			}
+
+			return err(
+				new AdapterErrors.DatabaseError(message, {
+					...error,
+					...errorData,
+					moduleName,
+					functionName,
+				})
+			);
 		}
 	}
 
@@ -42,12 +79,25 @@ export class PrismaBackupRepo implements IBackupRepo {
 		backupId: string
 	): Promise<Result<Backup, AdapterErrors.DatabaseError | AdapterErrors.NotFoundError | DomainErrors.PropsError>> {
 		const functionName = 'getById';
+
+		if (!this.circuitBreaker.isConnected()) {
+			return err(
+				new AdapterErrors.DatabaseError('Fast fail', {
+					...this.connectFailureErrorData,
+					moduleName,
+					functionName,
+				})
+			);
+		}
+
 		try {
 			const data = await this.prisma.prismaBackup.findUnique({
 				where: {
 					backupId: backupId,
 				},
 			});
+
+			this.circuitBreaker.onSuccess();
 
 			if (data === null) {
 				return err(new AdapterErrors.NotFoundError('Backup not found for backupId', { backupId }));
@@ -56,7 +106,21 @@ export class PrismaBackupRepo implements IBackupRepo {
 			return this.mapToDomain(data);
 		} catch (e) {
 			const { message, ...error } = e as Error;
-			return err(new AdapterErrors.DatabaseError(message, { ...error, moduleName, functionName }));
+			let errorData = { isConnectFailure: false };
+
+			if (isPrismaConnectError(error)) {
+				this.circuitBreaker.onFailure();
+				errorData = this.connectFailureErrorData;
+			}
+
+			return err(
+				new AdapterErrors.DatabaseError(message, {
+					...error,
+					...errorData,
+					moduleName,
+					functionName,
+				})
+			);
 		}
 	}
 
@@ -64,12 +128,25 @@ export class PrismaBackupRepo implements IBackupRepo {
 		backupRequestId: string
 	): Promise<Result<Backup, AdapterErrors.DatabaseError | AdapterErrors.NotFoundError>> {
 		const functionName = 'getByBackupRequestId';
+
+		if (!this.circuitBreaker.isConnected()) {
+			return err(
+				new AdapterErrors.DatabaseError('Fast fail', {
+					...this.connectFailureErrorData,
+					moduleName,
+					functionName,
+				})
+			);
+		}
+
 		try {
 			const data = await this.prisma.prismaBackup.findFirst({
 				where: {
 					backupRequestId: backupRequestId,
 				},
 			});
+
+			this.circuitBreaker.onSuccess();
 
 			if (data === null) {
 				return err(new AdapterErrors.NotFoundError('Backup not found for backupRequestId', { backupRequestId }));
@@ -78,14 +155,38 @@ export class PrismaBackupRepo implements IBackupRepo {
 			return this.mapToDomain(data);
 		} catch (e) {
 			const { message, ...error } = e as Error;
-			return err(new AdapterErrors.DatabaseError(message, { ...error, moduleName, functionName }));
+			let errorData = { isConnectFailure: false };
+
+			if (isPrismaConnectError(error)) {
+				this.circuitBreaker.onFailure();
+				errorData = this.connectFailureErrorData;
+			}
+
+			return err(
+				new AdapterErrors.DatabaseError(message, {
+					...error,
+					...errorData,
+					moduleName,
+					functionName,
+				})
+			);
 		}
 	}
 
 	public async save(backup: Backup): Promise<Result<Backup, AdapterErrors.DatabaseError>> {
 		const functionName = 'save';
-		const raw = this.mapToDb(backup);
 
+		if (!this.circuitBreaker.isConnected()) {
+			return err(
+				new AdapterErrors.DatabaseError('Fast fail', {
+					...this.connectFailureErrorData,
+					moduleName,
+					functionName,
+				})
+			);
+		}
+
+		const raw = this.mapToDb(backup);
 		try {
 			await this.prisma.prismaBackup.upsert({
 				where: {
@@ -98,9 +199,25 @@ export class PrismaBackupRepo implements IBackupRepo {
 					...raw,
 				},
 			});
+
+			this.circuitBreaker.onSuccess();
 		} catch (e) {
 			const { message, ...error } = e as Error;
-			return err(new AdapterErrors.DatabaseError(message, { ...error, moduleName, functionName }));
+			let errorData = { isConnectFailure: false };
+
+			if (isPrismaConnectError(error)) {
+				this.circuitBreaker.onFailure();
+				errorData = this.connectFailureErrorData;
+			}
+
+			return err(
+				new AdapterErrors.DatabaseError(message, {
+					...error,
+					...errorData,
+					moduleName,
+					functionName,
+				})
+			);
 		}
 
 		// trigger domain events

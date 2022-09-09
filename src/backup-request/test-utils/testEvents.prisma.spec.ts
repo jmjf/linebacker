@@ -25,12 +25,13 @@ import { ReceiveStoreStatusReplyUseCase } from '../use-cases/receive-store-statu
 
 import { AzureBackupInterfaceStoreAdapter } from '../adapter/impl/AzureBackupInterfaceStoreAdapter';
 
-import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../../common/infrastructure/prismaContext';
+import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../../infrastructure/prismaContext';
 import { PrismaBackupRequest } from '@prisma/client';
 import { PrismaBackupRequestRepo } from '../adapter/impl/PrismaBackupRequestRepo';
 import { PrismaBackupRepo } from '../../backup/adapter/impl/PrismaBackupRepo';
 import { BackupProviderTypeValues } from '../../backup-job/domain/BackupProviderType';
 import { AzureStoreStatusMessageHandler } from '../adapter/impl/AzureStoreStatusMessageHandler';
+import { buildCircuitBreakers } from '../../infrastructure/buildCircuitBreakers.prisma';
 
 const TEST_EVENTS = true;
 
@@ -128,7 +129,11 @@ if (TEST_EVENTS) {
 			// save() just needs to succeed; result value doesn't affect outcome
 			mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockResolvedValue({} as unknown as PrismaBackupRequest);
 
-			const repo = new PrismaBackupRequestRepo(prismaCtx);
+			// can use the default circuit breakers because this should be a non-failure test
+			const abortController = new AbortController();
+			const circuitBreakers = buildCircuitBreakers(abortController.signal);
+
+			const repo = new PrismaBackupRequestRepo(prismaCtx, circuitBreakers.dbCircuitBreaker);
 			const saveSpy = jest.spyOn(repo, 'save');
 
 			new BackupRequestCreatedSubscriber(
@@ -169,6 +174,9 @@ if (TEST_EVENTS) {
 			expect(result.isOk()).toBe(true);
 			expect(saveSpy).toHaveBeenCalledTimes(3); // create, check, send
 			expect(sendSpy).toHaveBeenCalledTimes(1);
+
+			abortController.abort();
+			delay(250);
 		});
 	});
 
@@ -288,10 +296,14 @@ if (TEST_EVENTS) {
 			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue({ ...dbBackupRequest });
 			mockPrismaCtx.prisma.prismaBackup.findFirst.mockResolvedValue(null); // no backup exists
 
-			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+			// can use the default circuit breakers because this should be a non-failure test
+			const abortController = new AbortController();
+			const circuitBreakers = buildCircuitBreakers(abortController.signal);
+
+			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreakers.dbCircuitBreaker);
 			const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-			const backupRepo = new PrismaBackupRepo(prismaCtx);
+			const backupRepo = new PrismaBackupRepo(prismaCtx, circuitBreakers.dbCircuitBreaker);
 			const backupSaveSpy = jest.spyOn(backupRepo, 'save');
 
 			// Backup job service
@@ -325,6 +337,9 @@ if (TEST_EVENTS) {
 			expect(deleteSpy).toBeCalledTimes(1);
 			expect(backupRequestSaveSpy).toBeCalledTimes(1);
 			expect(backupSaveSpy).toBeCalledTimes(1);
+
+			abortController.abort();
+			delay(250);
 		});
 	});
 } else {

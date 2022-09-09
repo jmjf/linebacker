@@ -184,7 +184,7 @@ async function main() {
 
 	const circuitBreaker = new CircuitBreakerWithRetry({
 		isAlive: service.isAlive.bind(service),
-		haltSignal: ac.signal,
+		abortSignal: ac.signal,
 		successToCloseCount: 2,
 		failureToOpenCount: 1,
 		halfOpenRetryDelayMs: 10,

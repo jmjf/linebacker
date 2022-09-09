@@ -4,7 +4,7 @@ import { Guard } from '../../../common/core/Guard';
 import { BaseError } from '../../../common/core/BaseError';
 
 import { Backup, IBackupProps } from '../../../backup/domain/Backup';
-import { IBackupRepo } from '../../../backup/adapter/BackupRepo';
+import { IBackupRepo } from '../../../backup/adapter/IBackupRepo';
 import { IBackupJobServiceAdapter } from '../../../backup-job/adapter/BackupJobServiceAdapter';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 import * as DomainErrors from '../../../common/domain/DomainErrors';

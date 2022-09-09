@@ -1,14 +1,19 @@
 import { Application, Request, Response } from 'express';
 
-import { TypeormContext } from '../../common/infrastructure/typeormContext';
+import { TypeormContext } from '../../infrastructure/typeormContext';
 import { BaseError } from '../../common/core/BaseError';
 import { DatabaseError } from '../../common/adapter/AdapterErrors';
 
 import { ExpressCreateBackupRequestController } from '../adapter/impl/ExpressCreateBackupRequestController';
 import { initBackupRequestModule } from './initBackupRequestModuleTypeorm';
+import { ICircuitBreakers } from '../../infrastructure/buildCircuitBreakers.typeorm';
 
-export function addBackupRequestRoutes(app: Application, typeormCtx: TypeormContext) {
-	const { createBackupRequestController } = initBackupRequestModule(typeormCtx, 'Express');
+export function addBackupRequestRoutes(
+	app: Application,
+	typeormCtx: TypeormContext,
+	circuitBreakers: ICircuitBreakers
+) {
+	const { createBackupRequestController } = initBackupRequestModule(typeormCtx, circuitBreakers, 'Express');
 
 	app.post('/api/backup-requests', async function (request: Request, response: Response) {
 		let result = await (createBackupRequestController as ExpressCreateBackupRequestController).execute(

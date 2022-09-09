@@ -1,7 +1,7 @@
 import { BaseError } from '../common/core/BaseError';
 import { Result } from '../common/core/Result';
 import { IDomainEvent, DomainEventBus } from '../common/domain/DomainEventBus';
-import { delay, isTest } from './utils';
+import { delay } from '../utils/utils';
 
 export const CircuitBreakerStateValues = {
 	Open: 'Open', // no connection
@@ -17,7 +17,8 @@ type CircuitBreakerStateType = typeof CircuitBreakerStateValues[keyof typeof Cir
 
 export interface CircuitBreakerOpts {
 	isAlive: () => Promise<Result<boolean, BaseError>>;
-	haltSignal: AbortSignal;
+	abortSignal: AbortSignal;
+	serviceName: string;
 	successToCloseCount?: number;
 	failureToOpenCount?: number;
 	halfOpenRetryDelayMs?: number;
@@ -34,7 +35,7 @@ export interface ConnectFailureErrorData {
 
 export class CircuitBreakerWithRetry {
 	private _state: CircuitBreakerStateType;
-	private haltSignal: AbortSignal;
+	private abortSignal: AbortSignal;
 	private successCount: number;
 	private failureCount: number;
 	private successToCloseCount: number;
@@ -44,6 +45,7 @@ export class CircuitBreakerWithRetry {
 	private openAliveCheckDelayMs: number;
 	private isAlive: () => Promise<Result<boolean, BaseError>>;
 	private retryEvents: IDomainEvent[] = [];
+	private _serviceName: string;
 
 	public halt() {
 		this._state = CircuitBreakerStateValues.Halted;
@@ -52,7 +54,7 @@ export class CircuitBreakerWithRetry {
 
 	constructor(opts: CircuitBreakerOpts) {
 		this._state = CircuitBreakerStateValues.Closed;
-		this.haltSignal = opts.haltSignal;
+		this.abortSignal = opts.abortSignal;
 		this.successCount = 0;
 		this.failureCount = 0;
 		this.successToCloseCount = opts.successToCloseCount || 5;
@@ -61,10 +63,15 @@ export class CircuitBreakerWithRetry {
 		this.closedRetryDelayMs = opts.closedRetryDelayMs || 100;
 		this.openAliveCheckDelayMs = opts.openAliveCheckDelayMs || 30 * 1000;
 		this.isAlive = opts.isAlive;
+		this._serviceName = opts.serviceName;
 	}
 
 	public get state(): CircuitBreakerStateType {
 		return this._state;
+	}
+
+	public get serviceName(): string {
+		return this._serviceName;
 	}
 
 	public get retryEventCount(): number {
@@ -146,7 +153,7 @@ export class CircuitBreakerWithRetry {
 			if (
 				(await delay(
 					this._state === CircuitBreakerStateValues.Closed ? this.closedRetryDelayMs : this.halfOpenRetryDelayMs,
-					this.haltSignal
+					this.abortSignal
 				)) === 'AbortError'
 			) {
 				this.halt();
@@ -168,7 +175,7 @@ export class CircuitBreakerWithRetry {
 			if (result.isOk()) {
 				this._state = CircuitBreakerStateValues.HalfOpen; // ends loop
 			} else {
-				if ((await delay(this.openAliveCheckDelayMs, this.haltSignal)) === 'AbortError') {
+				if ((await delay(this.openAliveCheckDelayMs, this.abortSignal)) === 'AbortError') {
 					this.halt();
 					// console.log('awaitIsAlive halting');
 					return;

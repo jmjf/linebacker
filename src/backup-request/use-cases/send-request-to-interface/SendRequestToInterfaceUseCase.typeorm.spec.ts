@@ -2,6 +2,9 @@
 jest.mock('@azure/storage-queue');
 import * as mockQueueSDK from '@azure/storage-queue';
 
+import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
+import { ok } from '../../../common/core/Result';
+
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 
@@ -10,11 +13,7 @@ import { AzureBackupInterfaceStoreAdapter } from '../../adapter/impl/AzureBackup
 import { SendRequestToInterfaceUseCase } from './SendRequestToInterfaceUseCase';
 import { SendRequestToInterfaceDTO } from './SendRequestToInterfaceDTO';
 
-import {
-	MockTypeormContext,
-	TypeormContext,
-	createMockTypeormContext,
-} from '../../../common/infrastructure/typeormContext';
+import { MockTypeormContext, TypeormContext, createMockTypeormContext } from '../../../infrastructure/typeormContext';
 import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
 import { TypeormBackupRequest } from '../../../typeorm/entity/TypeormBackupRequest.entity';
 import { Dictionary } from '../../../utils/utils';
@@ -22,10 +21,31 @@ import { Dictionary } from '../../../utils/utils';
 describe('SendRequestToInterfaceUseCase - typeorm', () => {
 	let mockTypeormCtx: MockTypeormContext;
 	let typeormCtx: TypeormContext;
+	let circuitBreaker: CircuitBreakerWithRetry;
+	let abortController: AbortController;
 
 	beforeEach(() => {
 		mockTypeormCtx = createMockTypeormContext();
 		typeormCtx = mockTypeormCtx as unknown as TypeormContext;
+
+		const isAlive = () => {
+			return Promise.resolve(ok(true));
+		};
+		abortController = new AbortController();
+		circuitBreaker = new CircuitBreakerWithRetry({
+			isAlive,
+			abortSignal: abortController.signal,
+			serviceName: 'TypeORM',
+			successToCloseCount: 1,
+			failureToOpenCount: 100,
+			halfOpenRetryDelayMs: 5,
+			closedRetryDelayMs: 5,
+			openAliveCheckDelayMs: 5,
+		});
+	});
+
+	afterEach(() => {
+		circuitBreaker.halt();
 	});
 
 	const baseDto = {
@@ -106,7 +126,7 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockTypeormCtx.manager.findOne.mockResolvedValue(resultBackupRequest as TypeormBackupRequest);
 
-		const brRepo = new TypeormBackupRequestRepo(typeormCtx);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
@@ -140,7 +160,7 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockTypeormCtx.manager.findOne.mockResolvedValue(null as unknown as TypeormBackupRequest);
 
-		const brRepo = new TypeormBackupRequestRepo(typeormCtx);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
@@ -176,7 +196,7 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockTypeormCtx.manager.findOne.mockResolvedValue(resultBackupRequest);
 
-		const brRepo = new TypeormBackupRequestRepo(typeormCtx);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
@@ -210,7 +230,7 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockTypeormCtx.manager.findOne.mockResolvedValue(resultBackupRequest);
 
-		const brRepo = new TypeormBackupRequestRepo(typeormCtx);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockResolvedValueOnce(mockSendError);
@@ -239,7 +259,7 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockTypeormCtx.manager.findOne.mockResolvedValue(dbBackupRequest);
-		const brRepo = new TypeormBackupRequestRepo(typeormCtx);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockImplementation((message: string) => {

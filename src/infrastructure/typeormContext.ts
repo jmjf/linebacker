@@ -3,7 +3,7 @@ import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { EntityManager } from 'typeorm';
 
 // Import your TypeORM DataSource object here for real context
-import { typeormDataSource } from '../../typeorm/typeormDataSource';
+import { typeormDataSource } from '../typeorm/typeormDataSource';
 
 // Patterned on Prisma's recommendation for testing, but changed for TypeORM
 // I'm using EntityManager. TypeORM's Repository is aimed at building the

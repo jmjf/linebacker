@@ -1,7 +1,11 @@
 import { err, ok, Result } from '../../../common/core/Result';
-import { AzureQueue } from '../../../common/infrastructure/AzureQueue';
-import { BackupRequest } from '../../domain/BackupRequest';
+
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
+
+import { AzureQueue } from '../../../infrastructure/AzureQueue';
+import { CircuitBreakerWithRetry, ConnectFailureErrorData } from '../../../infrastructure/CircuitBreakerWithRetry';
+
+import { BackupRequest } from '../../domain/BackupRequest';
 import { StoreDeleteResponse, StoreReceiveResponse, StoreSendResponse } from '../IBackupInterfaceStoreAdapter';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
@@ -9,39 +13,66 @@ const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 export class AzureBackupInterfaceStoreAdapter {
 	private queueName: string;
 	private useBase64: boolean;
+	private circuitBreaker: CircuitBreakerWithRetry;
+	private connectFailureErrorData: ConnectFailureErrorData;
 
-	constructor(queueName: string, useBase64 = false) {
+	constructor(queueName: string, circuitBreaker: CircuitBreakerWithRetry, useBase64 = false) {
 		this.queueName = queueName;
 		this.useBase64 = useBase64;
+		this.circuitBreaker = circuitBreaker;
+		this.connectFailureErrorData = {
+			isConnectFailure: true,
+			isConnected: this.circuitBreaker.isConnected.bind(this.circuitBreaker),
+			addRetryEvent: this.circuitBreaker.addRetryEvent.bind(this.circuitBreaker),
+			serviceName: this.circuitBreaker.serviceName,
+		};
 	}
 
 	public async send(
 		backupRequest: BackupRequest
 	): Promise<Result<StoreSendResponse, AdapterErrors.InterfaceAdapterError>> {
 		const functionName = 'send';
+
+		if (!this.circuitBreaker.isConnected()) {
+			return err(
+				new AdapterErrors.InterfaceAdapterError('Fast fail', {
+					...this.connectFailureErrorData,
+					moduleName,
+					functionName,
+				})
+			);
+		}
+
 		const messageText = JSON.stringify(this.mapToQueue(backupRequest));
 
 		const startTime = new Date();
-		const sendResult = await AzureQueue.sendMessage({
+		const result = await AzureQueue.sendMessage({
 			queueName: this.queueName,
 			messageText,
 			useBase64: this.useBase64,
 		});
 		const endTime = new Date();
 
-		if (sendResult.isErr()) {
-			return err(sendResult.error);
+		if (result.isErr()) {
+			console.log('send error', AzureQueue.isConnectError(result.error), result.error);
+			if (AzureQueue.isConnectError(result.error)) {
+				this.circuitBreaker.onFailure();
+				result.error.errorData = { ...result.error.errorData, ...this.connectFailureErrorData };
+			}
+			return err(result.error);
 		}
+
+		this.circuitBreaker.onSuccess();
 
 		const response: StoreSendResponse = {
 			backupRequestId: backupRequest.backupRequestId.value,
-			isSent: sendResult.value.isSent,
-			responseStatus: sendResult.value.responseStatus,
+			isSent: result.value.isSent,
+			responseStatus: result.value.responseStatus,
 			startTime,
 			endTime,
-			insertedOn: sendResult.value.insertedOn,
-			messageId: sendResult.value.messageId,
-			sendRequestId: sendResult.value.requestId,
+			insertedOn: result.value.insertedOn,
+			messageId: result.value.messageId,
+			sendRequestId: result.value.requestId,
 		};
 		return ok(response);
 	}
@@ -50,22 +81,39 @@ export class AzureBackupInterfaceStoreAdapter {
 		messageCount: number
 	): Promise<Result<StoreReceiveResponse, AdapterErrors.InterfaceAdapterError>> {
 		const functionName = 'receive';
+
+		if (!this.circuitBreaker.isConnected()) {
+			return err(
+				new AdapterErrors.InterfaceAdapterError('Fast fail', {
+					...this.connectFailureErrorData,
+					moduleName,
+					functionName,
+				})
+			);
+		}
+
 		// ensure messageCount is usable
 		if (typeof messageCount !== 'number' || messageCount < 1) messageCount = 1;
 
 		const startTime = new Date();
-		const rcvResult = await AzureQueue.receiveMessages({
+		const result = await AzureQueue.receiveMessages({
 			queueName: this.queueName,
 			useBase64: this.useBase64,
 			messageCount,
 		});
 		const endTime = new Date();
 
-		if (rcvResult.isErr()) {
-			return err(rcvResult.error);
+		if (result.isErr()) {
+			if (AzureQueue.isConnectError(result.error)) {
+				this.circuitBreaker.onFailure();
+				result.error.errorData = { ...result.error.errorData, ...this.connectFailureErrorData };
+			}
+			return err(result.error);
 		}
 
-		return ok({ messages: rcvResult.value.receivedMessageItems, startTime, endTime } as StoreReceiveResponse);
+		this.circuitBreaker.onSuccess();
+
+		return ok({ messages: result.value.receivedMessageItems, startTime, endTime } as StoreReceiveResponse);
 	}
 
 	public async delete(
@@ -73,19 +121,32 @@ export class AzureBackupInterfaceStoreAdapter {
 		popReceipt: string
 	): Promise<Result<StoreDeleteResponse, AdapterErrors.InterfaceAdapterError>> {
 		const functionName = 'delete';
-		const startTime = new Date();
-		const deleteResult = await AzureQueue.deleteMessage({ queueName: this.queueName, messageId, popReceipt });
-		const endTime = new Date();
 
-		if (deleteResult.isErr()) {
-			return err(deleteResult.error);
+		if (!this.circuitBreaker.isConnected()) {
+			return err(
+				new AdapterErrors.InterfaceAdapterError('Fast fail', {
+					...this.connectFailureErrorData,
+					moduleName,
+					functionName,
+				})
+			);
 		}
 
-		return ok({ responseStatus: deleteResult.value.responseStatus, startTime, endTime });
-	}
+		const startTime = new Date();
+		const result = await AzureQueue.deleteMessage({ queueName: this.queueName, messageId, popReceipt });
+		const endTime = new Date();
 
-	public async isReady(): Promise<Result<boolean, AdapterErrors.InterfaceAdapterError>> {
-		return ok(true);
+		if (result.isErr()) {
+			if (AzureQueue.isConnectError(result.error)) {
+				this.circuitBreaker.onFailure();
+				result.error.errorData = { ...result.error.errorData, ...this.connectFailureErrorData };
+			}
+			return err(result.error);
+		}
+
+		this.circuitBreaker.onSuccess();
+
+		return ok({ responseStatus: result.value.responseStatus, startTime, endTime });
 	}
 
 	private mapToQueue(backupRequest: BackupRequest) {

@@ -10,23 +10,44 @@ import { AzureBackupInterfaceStoreAdapter } from '../../adapter/impl/AzureBackup
 import { SendRequestToInterfaceUseCase } from './SendRequestToInterfaceUseCase';
 import { SendRequestToInterfaceDTO } from './SendRequestToInterfaceDTO';
 
-import {
-	MockPrismaContext,
-	PrismaContext,
-	createMockPrismaContext,
-} from '../../../common/infrastructure/prismaContext';
+import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
+import { ok } from '../../../common/core/Result';
+
+import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../../../infrastructure/prismaContext';
 import { PrismaBackupRequest } from '@prisma/client';
 import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
-import { Dictionary } from '../../../utils/utils';
+import { delay, Dictionary } from '../../../utils/utils';
 
 describe('SendRequestToInterfaceUseCase - Prisma', () => {
 	let mockPrismaCtx: MockPrismaContext;
 	let prismaCtx: PrismaContext;
+	let dbCircuitBreaker: CircuitBreakerWithRetry;
+	let abortController: AbortController;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
 		mockPrismaCtx = createMockPrismaContext();
 		prismaCtx = mockPrismaCtx as unknown as PrismaContext;
+
+		const isAlive = () => {
+			return Promise.resolve(ok(true));
+		};
+
+		abortController = new AbortController();
+		dbCircuitBreaker = new CircuitBreakerWithRetry({
+			isAlive,
+			abortSignal: abortController.signal,
+			serviceName: 'TypeORM',
+			successToCloseCount: 1,
+			failureToOpenCount: 100,
+			halfOpenRetryDelayMs: 5,
+			closedRetryDelayMs: 5,
+			openAliveCheckDelayMs: 5,
+		});
+	});
+
+	afterEach(() => {
+		abortController.abort();
+		delay(250);
 	});
 
 	const baseDto = {
@@ -108,7 +129,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(resultBackupRequest as PrismaBackupRequest);
 
-		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
+		const brRepo = new PrismaBackupRequestRepo(prismaCtx, dbCircuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
@@ -142,7 +163,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(null as unknown as PrismaBackupRequest);
 
-		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
+		const brRepo = new PrismaBackupRequestRepo(prismaCtx, dbCircuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
@@ -178,7 +199,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(resultBackupRequest);
 
-		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
+		const brRepo = new PrismaBackupRequestRepo(prismaCtx, dbCircuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
@@ -212,7 +233,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(resultBackupRequest);
 
-		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
+		const brRepo = new PrismaBackupRequestRepo(prismaCtx, dbCircuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockResolvedValueOnce(mockSendError);
@@ -241,7 +262,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(dbBackupRequest);
-		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
+		const brRepo = new PrismaBackupRequestRepo(prismaCtx, dbCircuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockImplementation((message: string) => {

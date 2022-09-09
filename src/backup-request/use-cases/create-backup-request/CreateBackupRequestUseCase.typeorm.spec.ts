@@ -1,24 +1,44 @@
+import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
+
 import { CreateBackupRequestUseCase } from './CreateBackupRequestUseCase';
 import { CreateBackupRequestDTO } from './CreateBackupRequestDTO';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 
-import {
-	MockTypeormContext,
-	TypeormContext,
-	createMockTypeormContext,
-} from '../../../common/infrastructure/typeormContext';
+import { MockTypeormContext, TypeormContext, createMockTypeormContext } from '../../../infrastructure/typeormContext';
 import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
 import { TypeormBackupRequest } from '../../../typeorm/entity/TypeormBackupRequest.entity';
 import { Dictionary } from '../../../utils/utils';
 import { DatabaseError } from '../../../common/adapter/AdapterErrors';
+import { ok } from '../../../common/core/Result';
 
 describe('CreateBackupRequestUseCase - typeorm', () => {
 	let mockTypeormCtx: MockTypeormContext;
 	let typeormCtx: TypeormContext;
+	let circuitBreaker: CircuitBreakerWithRetry;
+	let abortController: AbortController;
 
 	beforeEach(() => {
 		mockTypeormCtx = createMockTypeormContext();
 		typeormCtx = mockTypeormCtx as unknown as TypeormContext;
+
+		const isAlive = () => {
+			return Promise.resolve(ok(true));
+		};
+		abortController = new AbortController();
+		circuitBreaker = new CircuitBreakerWithRetry({
+			isAlive,
+			abortSignal: abortController.signal,
+			serviceName: 'TypeORM',
+			successToCloseCount: 1,
+			failureToOpenCount: 100,
+			halfOpenRetryDelayMs: 5,
+			closedRetryDelayMs: 5,
+			openAliveCheckDelayMs: 5,
+		});
+	});
+
+	afterEach(() => {
+		circuitBreaker.halt();
 	});
 
 	const baseDto = {
@@ -33,7 +53,7 @@ describe('CreateBackupRequestUseCase - typeorm', () => {
 	test('when executed with an invalid transport type, it returns the expected error', async () => {
 		// Arrange
 		// this test fails before it calls the repo, so no need to mock save
-		const repo = new TypeormBackupRequestRepo(typeormCtx);
+		const repo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 		const saveSpy = jest.spyOn(repo, 'save');
 
 		const useCase = new CreateBackupRequestUseCase(repo);
@@ -61,7 +81,7 @@ describe('CreateBackupRequestUseCase - typeorm', () => {
 	])('when executed with $propName undefined, it returns the expected error', async ({ propName, errPropName }) => {
 		// Arrange
 		// this test fails before it calls the repo, so no need to mock save
-		const repo = new TypeormBackupRequestRepo(typeormCtx);
+		const repo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 		const saveSpy = jest.spyOn(repo, 'save');
 
 		const useCase = new CreateBackupRequestUseCase(repo);
@@ -86,7 +106,7 @@ describe('CreateBackupRequestUseCase - typeorm', () => {
 	test('when executed with an invalid dataDate, it returns the expected error', async () => {
 		// Arrange
 		// this test fails before it calls the repo, so no need to mock save
-		const repo = new TypeormBackupRequestRepo(typeormCtx);
+		const repo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 		const saveSpy = jest.spyOn(repo, 'save');
 
 		const useCase = new CreateBackupRequestUseCase(repo);
@@ -109,7 +129,7 @@ describe('CreateBackupRequestUseCase - typeorm', () => {
 		// Arrange
 		mockTypeormCtx.manager.save.mockRejectedValueOnce(new DatabaseError('simulated database error'));
 
-		const repo = new TypeormBackupRequestRepo(typeormCtx);
+		const repo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 		const saveSpy = jest.spyOn(repo, 'save');
 
 		const useCase = new CreateBackupRequestUseCase(repo);
@@ -131,7 +151,7 @@ describe('CreateBackupRequestUseCase - typeorm', () => {
 		// Arrange
 		mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackupRequest);
 
-		const repo = new TypeormBackupRequestRepo(typeormCtx);
+		const repo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 		const saveSpy = jest.spyOn(repo, 'save');
 
 		const useCase = new CreateBackupRequestUseCase(repo);

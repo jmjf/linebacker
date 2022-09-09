@@ -28,15 +28,12 @@ import { ReceiveStoreStatusReplyUseCase } from '../use-cases/receive-store-statu
 import { AzureStoreStatusMessageHandler } from '../adapter/impl/AzureStoreStatusMessageHandler';
 import { AzureBackupInterfaceStoreAdapter } from '../adapter/impl/AzureBackupInterfaceStoreAdapter';
 
-import {
-	MockTypeormContext,
-	TypeormContext,
-	createMockTypeormContext,
-} from '../../common/infrastructure/typeormContext';
+import { MockTypeormContext, TypeormContext, createMockTypeormContext } from '../../infrastructure/typeormContext';
 import { TypeormBackupRequestRepo } from '../adapter/impl/TypeormBackupRequestRepo';
 import { TypeormBackupRequest } from '../../typeorm/entity/TypeormBackupRequest.entity';
 import { TypeormBackupRepo } from '../../backup/adapter/impl/TypeormBackupRepo';
 import { TypeormBackup } from '../../typeorm/entity/TypeormBackup.entity';
+import { buildCircuitBreakers } from '../../infrastructure/buildCircuitBreakers.typeorm';
 
 const TEST_EVENTS = true;
 
@@ -134,7 +131,11 @@ if (TEST_EVENTS) {
 			// save() just needs to succeed; result value doesn't affect outcome
 			mockTypeormCtx.manager.save.mockResolvedValue({} as TypeormBackupRequest);
 
-			const repo = new TypeormBackupRequestRepo(typeormCtx);
+			// can use the default circuit breakers because this should be a non-failure test
+			const abortController = new AbortController();
+			const circuitBreakers = buildCircuitBreakers(abortController.signal);
+
+			const repo = new TypeormBackupRequestRepo(typeormCtx, circuitBreakers.dbCircuitBreaker);
 			const saveSpy = jest.spyOn(repo, 'save');
 
 			new BackupRequestCreatedSubscriber(
@@ -175,6 +176,9 @@ if (TEST_EVENTS) {
 			expect(result.isOk()).toBe(true);
 			expect(saveSpy).toHaveBeenCalledTimes(3); // create, check, send
 			expect(sendSpy).toHaveBeenCalledTimes(1);
+
+			abortController.abort();
+			delay(250);
 		});
 	});
 
@@ -302,11 +306,15 @@ if (TEST_EVENTS) {
 			// BackupRequest save() will fail
 			mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackupRequest); // second return (backup request saved second)
 
+			// can use the default circuit breakers because this should be a non-failure test
+			const abortController = new AbortController();
+			const circuitBreakers = buildCircuitBreakers(abortController.signal);
+
 			// Mock database results
-			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
+			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreakers.dbCircuitBreaker);
 			const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-			const backupRepo = new TypeormBackupRepo(typeormCtx);
+			const backupRepo = new TypeormBackupRepo(typeormCtx, circuitBreakers.dbCircuitBreaker);
 			const backupSaveSpy = jest.spyOn(backupRepo, 'save');
 
 			// Backup job service
@@ -340,6 +348,9 @@ if (TEST_EVENTS) {
 			expect(deleteSpy).toBeCalledTimes(1);
 			expect(backupRequestSaveSpy).toBeCalledTimes(1);
 			expect(backupSaveSpy).toBeCalledTimes(1);
+
+			abortController.abort();
+			delay(250);
 		});
 	});
 } else {

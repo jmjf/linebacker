@@ -1,13 +1,18 @@
-import { PrismaContext } from '../../common/infrastructure/prismaContext';
+import { PrismaContext } from '../../infrastructure/prismaContext';
 
 import { RealFastifyReply, RealFastifyRequest, RealFastifyInstance } from '../../common/adapter/FastifyController';
 import * as AdapterErrors from '../../common/adapter/AdapterErrors';
 import { FastifyCreateBackupRequestController } from '../adapter/impl/FastifyCreateBackupRequestController';
 
 import { initBackupRequestModule } from './initBackupRequestModulePrisma';
+import { ICircuitBreakers } from '../../infrastructure/buildCircuitBreakers.typeorm';
 
-export function addBackupRequestRoutes(app: RealFastifyInstance, prismaCtx: PrismaContext) {
-	const { createBackupRequestController } = initBackupRequestModule(prismaCtx, 'Fastify');
+export function addBackupRequestRoutes(
+	app: RealFastifyInstance,
+	prismaCtx: PrismaContext,
+	circuitBreakers: ICircuitBreakers
+) {
+	const { createBackupRequestController } = initBackupRequestModule(prismaCtx, circuitBreakers, 'Fastify');
 
 	app.post('/api/backup-requests', async function (request: RealFastifyRequest, reply: RealFastifyReply) {
 		let result = await (createBackupRequestController as FastifyCreateBackupRequestController).execute(

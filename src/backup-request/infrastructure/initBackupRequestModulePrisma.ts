@@ -2,7 +2,7 @@ import {
 	mockBackupJobProps,
 	MockBackupJobServiceAdapter,
 } from '../../backup-job/adapter/impl/MockBackupJobServiceAdapter';
-import { PrismaContext } from '../../common/infrastructure/prismaContext';
+import { PrismaContext } from '../../infrastructure/prismaContext';
 import { ExpressCreateBackupRequestController } from '../adapter/impl/ExpressCreateBackupRequestController';
 
 import { FastifyCreateBackupRequestController } from '../adapter/impl/FastifyCreateBackupRequestController';
@@ -14,9 +14,14 @@ import { CheckRequestAllowedUseCase } from '../use-cases/check-request-allowed/C
 import { CreateBackupRequestUseCase } from '../use-cases/create-backup-request/CreateBackupRequestUseCase';
 import { BackupRequestAllowedSubscriber } from '../use-cases/send-request-to-interface/BackupRequestAllowedSubscriber';
 import { SendRequestToInterfaceUseCase } from '../use-cases/send-request-to-interface/SendRequestToInterfaceUseCase';
+import { ICircuitBreakers } from '../../infrastructure/buildCircuitBreakers.typeorm';
 
-export const initBackupRequestModule = (prismaCtx: PrismaContext, controllerType: 'Fastify' | 'Express') => {
-	const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+export const initBackupRequestModule = (
+	prismaCtx: PrismaContext,
+	circuitBreakers: ICircuitBreakers,
+	controllerType: 'Fastify' | 'Express'
+) => {
+	const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreakers.dbCircuitBreaker);
 
 	const createBackupRequestUseCase = new CreateBackupRequestUseCase(backupRequestRepo);
 

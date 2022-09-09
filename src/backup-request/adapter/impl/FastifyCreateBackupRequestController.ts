@@ -1,7 +1,7 @@
 import { InvalidApiVersionError } from '../../../common/adapter/AdapterErrors';
 import { FastifyController, RealFastifyRequest, RealFastifyReply } from '../../../common/adapter/FastifyController';
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
-import { logger } from '../../../common/infrastructure/pinoLogger';
+import { logger } from '../../../infrastructure/pinoLogger';
 import { CreateBackupRequestUseCase } from '../../use-cases/create-backup-request/CreateBackupRequestUseCase';
 
 export interface ICreateBackupRequestBody {

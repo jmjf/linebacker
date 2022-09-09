@@ -1,11 +1,12 @@
 import express from 'express';
-import { buildPinomor } from './middleware/pinomor';
-import { handleBodyJsonErrors } from './middleware/handleBodyJsonError';
+import { buildPinomor } from './infrastructure/middleware/pinomor';
+import { handleBodyJsonErrors } from './infrastructure/middleware/handleBodyJsonError';
 
 import { addBackupRequestRoutes } from './backup-request/infrastructure/expressRoutesTypeorm';
-import { TypeormContext } from './common/infrastructure/typeormContext';
+import { TypeormContext } from './infrastructure/typeormContext';
+import { ICircuitBreakers } from './infrastructure/buildCircuitBreakers.typeorm';
 
-export function buildApp(typeormCtx: TypeormContext) {
+export function buildApp(typeormCtx: TypeormContext, circuitBreakers: ICircuitBreakers) {
 	const app = express();
 
 	// request/response logging
@@ -17,7 +18,7 @@ export function buildApp(typeormCtx: TypeormContext) {
 
 	app.use(handleBodyJsonErrors());
 
-	addBackupRequestRoutes(app, typeormCtx);
+	addBackupRequestRoutes(app, typeormCtx, circuitBreakers);
 
 	return app;
 }

@@ -7,7 +7,7 @@ import { BackupJob, IBackupJobProps } from '../../domain/BackupJob';
 import { BackupProviderTypeValues } from '../../domain/BackupProviderType';
 import { IBackupJobServiceAdapter } from '../BackupJobServiceAdapter';
 //import { delay } from '../../../utils/utils';
-//import { logger } from '../../../common/infrastructure/pinoLogger';
+//import { logger } from '../../../infrastructure/pinoLogger';
 
 export const mockBackupJobProps = {
 	storagePathName: 'storagePathName',

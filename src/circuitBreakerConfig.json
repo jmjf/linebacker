@@ -1,0 +1,37 @@
+{
+	"typeorm": {
+		"serviceName": "TypeORM",
+		"successToCloseCount": 10,
+		"failureToOpenCount": 10,
+		"halfOpenRetryDelayMs": 250,
+		"closedRetryDelayMs": 100,
+		"openAliveCheckDelayMs": 60000
+	},
+
+	"prisma": {
+		"serviceName": "Prisma",
+		"successToCloseCount": 10,
+		"failureToOpenCount": 10,
+		"halfOpenRetryDelayMs": 250,
+		"closedRetryDelayMs": 100,
+		"openAliveCheckDelayMs": 60000
+	},
+
+	"azureQueue": {
+		"serviceName": "AzureQueue",
+		"successToCloseCount": 10,
+		"failureToOpenCount": 10,
+		"halfOpenRetryDelayMs": 500,
+		"closedRetryDelayMs": 250,
+		"openAliveCheckDelayMs": 300000
+	},
+
+	"backupJobService": {
+		"serviceName": "BackupJobService",
+		"successToCloseCount": 10,
+		"failureToOpenCount": 10,
+		"halfOpenRetryDelayMs": 250,
+		"closedRetryDelayMs": 100,
+		"openAliveCheckDelayMs": 60000
+	}
+}
