@@ -6,7 +6,7 @@ import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 import { BackupJob, IBackupJobProps } from '../../domain/BackupJob';
 import { BackupProviderTypeValues } from '../../domain/BackupProviderType';
 import { IBackupJobServiceAdapter } from '../BackupJobServiceAdapter';
-//import { delay } from '../../../utils/utils';
+//import { delay } from '../../../common/utils/utils';
 //import { logger } from '../../../infrastructure/pinoLogger';
 
 export const mockBackupJobProps = {

@@ -7,7 +7,7 @@ import {
 	RestError,
 	StorageSharedKeyCredential,
 } from '@azure/storage-queue';
-import { fromBase64, toBase64 } from '../utils/utils';
+import { fromBase64, toBase64 } from '../common/utils/utils';
 import { BaseError } from '../common/core/BaseError';
 import { err, ok, Result } from '../common/core/Result';
 import * as InfrastructureErrors from '../common/infrastructure/InfrastructureErrors';

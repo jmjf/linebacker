@@ -2,7 +2,7 @@ import {
 	mockBackupJobProps,
 	MockBackupJobServiceAdapter,
 } from '../../backup-job/adapter/impl/MockBackupJobServiceAdapter';
-import { TypeormContext } from '../../infrastructure/typeormContext';
+import { TypeormContext } from '../../infrastructure/typeorm/typeormContext';
 import { ExpressCreateBackupRequestController } from '../adapter/impl/ExpressCreateBackupRequestController';
 
 import { FastifyCreateBackupRequestController } from '../adapter/impl/FastifyCreateBackupRequestController';

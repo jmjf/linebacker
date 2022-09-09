@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 
-import { prismaCtx } from './infrastructure/prismaContext';
+import { prismaCtx } from './infrastructure/prisma/prismaContext';
 import { logger } from './infrastructure/winstonLogger';
 import { buildApp } from './expressAppPrisma';
 import { buildCircuitBreakers } from './infrastructure/buildCircuitBreakers.prisma';

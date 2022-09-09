@@ -1,8 +1,8 @@
-import { BaseError } from '../common/core/BaseError';
-import { Result, ok, err } from '../common/core/Result';
-import { DatabaseError } from '../common/adapter/AdapterErrors';
+import { BaseError } from '../../common/core/BaseError';
+import { Result, ok, err } from '../../common/core/Result';
+import { DatabaseError } from '../../common/adapter/AdapterErrors';
 
-import { prismaCtx } from '../infrastructure/prismaContext';
+import { prismaCtx } from './prismaContext';
 
 export async function isPrismaConnected(): Promise<Result<boolean, BaseError>> {
 	try {

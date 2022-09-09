@@ -5,7 +5,7 @@ import { DomainEventBus, IDomainEventSubscriber } from '../../../common/domain/D
 import { ConnectFailureErrorData } from '../../../infrastructure/CircuitBreakerWithRetry';
 import { logger } from '../../../infrastructure/pinoLogger';
 
-import { Dictionary } from '../../../utils/utils';
+import { Dictionary } from '../../../common/utils/utils';
 
 import { BackupRequestCreated } from '../../domain/BackupRequestCreated';
 import { CheckRequestAllowedUseCase } from './CheckRequestAllowedUseCase';

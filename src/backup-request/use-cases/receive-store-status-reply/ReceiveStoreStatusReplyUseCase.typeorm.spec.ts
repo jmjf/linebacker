@@ -17,11 +17,15 @@ import { ReceiveStoreStatusReplyUseCase } from './ReceiveStoreStatusReplyUseCase
 
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 
-import { MockTypeormContext, TypeormContext, createMockTypeormContext } from '../../../infrastructure/typeormContext';
+import {
+	MockTypeormContext,
+	TypeormContext,
+	createMockTypeormContext,
+} from '../../../infrastructure/typeorm/typeormContext';
 import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
-import { TypeormBackupRequest } from '../../../typeorm/entity/TypeormBackupRequest.entity';
+import { TypeormBackupRequest } from '../../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
 import { TypeormBackupRepo } from '../../../backup/adapter/impl/TypeormBackupRepo';
-import { TypeormBackup } from '../../../typeorm/entity/TypeormBackup.entity';
+import { TypeormBackup } from '../../../infrastructure/typeorm/entity/TypeormBackup.entity';
 
 describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 	let mockTypeormCtx: MockTypeormContext;

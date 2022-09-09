@@ -1,6 +1,6 @@
 import fastify from 'fastify';
 
-import { PrismaContext } from './infrastructure/prismaContext';
+import { PrismaContext } from './infrastructure/prisma/prismaContext';
 
 import { addBackupRequestRoutes } from './backup-request/infrastructure/fastifyRoutes';
 import { ICircuitBreakers } from './infrastructure/buildCircuitBreakers.typeorm';

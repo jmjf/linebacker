@@ -12,10 +12,14 @@ import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 import { CheckRequestAllowedDTO } from './CheckRequestAllowedDTO';
 import { CheckRequestAllowedUseCase } from './CheckRequestAllowedUseCase';
 
-import { MockTypeormContext, TypeormContext, createMockTypeormContext } from '../../../infrastructure/typeormContext';
+import {
+	MockTypeormContext,
+	TypeormContext,
+	createMockTypeormContext,
+} from '../../../infrastructure/typeorm/typeormContext';
 import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
-import { TypeormBackupRequest } from '../../../typeorm/entity/TypeormBackupRequest.entity';
-import { Dictionary } from '../../../utils/utils';
+import { TypeormBackupRequest } from '../../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
+import { Dictionary } from '../../../common/utils/utils';
 
 describe('CheckRequestAllowedUseCase - typeorm', () => {
 	let mockTypeormCtx: MockTypeormContext;

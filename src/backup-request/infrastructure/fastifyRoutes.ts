@@ -1,4 +1,4 @@
-import { PrismaContext } from '../../infrastructure/prismaContext';
+import { PrismaContext } from '../../infrastructure/prisma/prismaContext';
 
 import { RealFastifyReply, RealFastifyRequest, RealFastifyInstance } from '../../common/adapter/FastifyController';
 import * as AdapterErrors from '../../common/adapter/AdapterErrors';

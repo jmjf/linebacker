@@ -13,10 +13,14 @@ import { SendRequestToInterfaceDTO } from './SendRequestToInterfaceDTO';
 import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
 import { ok } from '../../../common/core/Result';
 
-import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../../../infrastructure/prismaContext';
+import {
+	MockPrismaContext,
+	PrismaContext,
+	createMockPrismaContext,
+} from '../../../infrastructure/prisma/prismaContext';
 import { PrismaBackupRequest } from '@prisma/client';
 import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
-import { delay, Dictionary } from '../../../utils/utils';
+import { delay, Dictionary } from '../../../common/utils/utils';
 import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
 
 describe('SendRequestToInterfaceUseCase - Prisma', () => {

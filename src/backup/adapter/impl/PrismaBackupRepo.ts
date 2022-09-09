@@ -1,4 +1,4 @@
-import { PrismaContext } from '../../../infrastructure/prismaContext';
+import { PrismaContext } from '../../../infrastructure/prisma/prismaContext';
 import { CircuitBreakerWithRetry, ConnectFailureErrorData } from '../../../infrastructure/CircuitBreakerWithRetry';
 
 import { DomainEventBus } from '../../../common/domain/DomainEventBus';
@@ -13,7 +13,7 @@ import { BackupProviderType } from '../../../backup-job/domain/BackupProviderTyp
 import { Backup } from '../../domain/Backup';
 import { IBackupRepo } from '../IBackupRepo';
 import { PrismaBackup } from '@prisma/client';
-import { isPrismaConnectError } from '../../../prisma/isPrismaConnectError';
+import { isPrismaConnectError } from '../../../infrastructure/prisma/isPrismaConnectError';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 export class PrismaBackupRepo implements IBackupRepo {

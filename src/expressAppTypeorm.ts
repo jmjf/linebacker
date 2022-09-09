@@ -3,7 +3,7 @@ import { buildPinomor } from './infrastructure/middleware/pinomor';
 import { handleBodyJsonErrors } from './infrastructure/middleware/handleBodyJsonError';
 
 import { addBackupRequestRoutes } from './backup-request/infrastructure/expressRoutesTypeorm';
-import { TypeormContext } from './infrastructure/typeormContext';
+import { TypeormContext } from './infrastructure/typeorm/typeormContext';
 import { ICircuitBreakers } from './infrastructure/buildCircuitBreakers.typeorm';
 
 export function buildApp(typeormCtx: TypeormContext, circuitBreakers: ICircuitBreakers) {

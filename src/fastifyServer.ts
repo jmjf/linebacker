@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import { logger } from './infrastructure/pinoLogger';
 
-import { prismaCtx } from './infrastructure/prismaContext';
+import { prismaCtx } from './infrastructure/prisma/prismaContext';
 import { buildApp } from './fastifyApp';
 import { buildCircuitBreakers } from './infrastructure/buildCircuitBreakers.prisma';
 

@@ -6,9 +6,13 @@ import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestR
 import { ok } from '../../../common/core/Result';
 import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
 
-import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../../../infrastructure/prismaContext';
+import {
+	MockPrismaContext,
+	PrismaContext,
+	createMockPrismaContext,
+} from '../../../infrastructure/prisma/prismaContext';
 import { PrismaBackupRequest } from '@prisma/client';
-import { Dictionary } from '../../../utils/utils';
+import { Dictionary } from '../../../common/utils/utils';
 
 describe('CreateBackupRequestUseCase - Prisma', () => {
 	let mockPrismaCtx: MockPrismaContext;

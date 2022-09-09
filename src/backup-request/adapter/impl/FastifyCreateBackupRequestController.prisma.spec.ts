@@ -8,10 +8,14 @@ import { ok } from '../../../common/core/Result';
 
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
-import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../../../infrastructure/prismaContext';
+import {
+	MockPrismaContext,
+	PrismaContext,
+	createMockPrismaContext,
+} from '../../../infrastructure/prisma/prismaContext';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
 
-import { delay } from '../../../utils/utils';
+import { delay } from '../../../common/utils/utils';
 
 describe('FastifyCreateBackupRequestController', () => {
 	let mockPrismaCtx: MockPrismaContext;

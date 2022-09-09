@@ -2,7 +2,7 @@ import {
 	mockBackupJobProps,
 	MockBackupJobServiceAdapter,
 } from '../../backup-job/adapter/impl/MockBackupJobServiceAdapter';
-import { PrismaContext } from '../../infrastructure/prismaContext';
+import { PrismaContext } from '../../infrastructure/prisma/prismaContext';
 import { ExpressCreateBackupRequestController } from '../adapter/impl/ExpressCreateBackupRequestController';
 
 import { FastifyCreateBackupRequestController } from '../adapter/impl/FastifyCreateBackupRequestController';

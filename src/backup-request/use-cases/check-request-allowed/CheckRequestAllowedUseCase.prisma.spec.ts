@@ -11,11 +11,15 @@ import { CheckRequestAllowedUseCase } from './CheckRequestAllowedUseCase';
 import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
 import { ok } from '../../../common/core/Result';
 
-import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../../../infrastructure/prismaContext';
+import {
+	MockPrismaContext,
+	PrismaContext,
+	createMockPrismaContext,
+} from '../../../infrastructure/prisma/prismaContext';
 import { PrismaBackupRequest } from '@prisma/client';
 import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
-import { Dictionary } from '../../../utils/utils';
+import { Dictionary } from '../../../common/utils/utils';
 
 describe('CheckRequestAllowedUseCase - Prisma', () => {
 	let mockPrismaCtx: MockPrismaContext;

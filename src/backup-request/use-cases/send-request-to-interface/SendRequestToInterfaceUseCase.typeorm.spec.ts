@@ -13,10 +13,14 @@ import { AzureBackupInterfaceStoreAdapter } from '../../adapter/impl/AzureBackup
 import { SendRequestToInterfaceUseCase } from './SendRequestToInterfaceUseCase';
 import { SendRequestToInterfaceDTO } from './SendRequestToInterfaceDTO';
 
-import { MockTypeormContext, TypeormContext, createMockTypeormContext } from '../../../infrastructure/typeormContext';
+import {
+	MockTypeormContext,
+	TypeormContext,
+	createMockTypeormContext,
+} from '../../../infrastructure/typeorm/typeormContext';
 import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
-import { TypeormBackupRequest } from '../../../typeorm/entity/TypeormBackupRequest.entity';
-import { delay, Dictionary } from '../../../utils/utils';
+import { TypeormBackupRequest } from '../../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
+import { delay, Dictionary } from '../../../common/utils/utils';
 import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
 
 describe('SendRequestToInterfaceUseCase - typeorm', () => {

@@ -4,7 +4,7 @@ import * as mockQueueSDK from '@azure/storage-queue';
 
 import { ReceivedMessageItem } from '@azure/storage-queue';
 
-import { delay } from '../../utils/utils';
+import { delay } from '../../common/utils/utils';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
 
 import { RequestTransportTypeValues } from '../domain/RequestTransportType';
@@ -25,7 +25,7 @@ import { ReceiveStoreStatusReplyUseCase } from '../use-cases/receive-store-statu
 
 import { AzureBackupInterfaceStoreAdapter } from '../adapter/impl/AzureBackupInterfaceStoreAdapter';
 
-import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../../infrastructure/prismaContext';
+import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../../infrastructure/prisma/prismaContext';
 import { PrismaBackupRequest } from '@prisma/client';
 import { PrismaBackupRequestRepo } from '../adapter/impl/PrismaBackupRequestRepo';
 import { PrismaBackupRepo } from '../../backup/adapter/impl/PrismaBackupRepo';

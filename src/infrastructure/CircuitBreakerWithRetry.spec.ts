@@ -9,7 +9,7 @@ import { UseCase } from '../common/application/UseCase';
 import * as AdapterErrors from '../common/adapter/AdapterErrors';
 
 import { CircuitBreakerStateValues, CircuitBreakerWithRetry, ConnectFailureErrorData } from './CircuitBreakerWithRetry';
-import { delay, Dictionary } from '../utils/utils';
+import { delay, Dictionary } from '../common/utils/utils';
 
 const VERBOSE_LOGS = false; // set true to get verbose console.logs for event tracing
 class TestService {

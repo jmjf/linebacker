@@ -12,8 +12,8 @@ if (!process.env.APP_ENV) {
 logger.info(logContext, 'APP_ENV ${process.env.APP_ENV}');
 dotenv.config({ path: `./env/${process.env.APP_ENV}.env` });
 
-import { typeormDataSource } from './typeorm/typeormDataSource';
-import { typeormCtx } from './infrastructure/typeormContext';
+import { typeormDataSource } from './infrastructure/typeorm/typeormDataSource';
+import { typeormCtx } from './infrastructure/typeorm/typeormContext';
 import { buildCircuitBreakers } from './infrastructure/buildCircuitBreakers.typeorm';
 
 import { buildApp } from './expressAppTypeorm';

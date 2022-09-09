@@ -114,12 +114,6 @@
 	"ts-node": {
 		"esm": true
 	},
-	"include": [
-		"./src/*.ts",
-		"./src/**/*.ts",
-		"src/backup-job/test-utils/backupRepoFactory.tsno",
-		"src/backup/test-utils/backupJobServiceAdapterFactory.ts.zzz",
-		"src/backup-job/test-utils/backupJobServiceAdapterFactory.ts.zzz"
-	],
-	"exclude": ["./node_modules", "./node_modules/@types", "./dist", "./src/**/*.spec.ts", "./src/zz-learn-fastify"]
+	"include": ["./src/*.ts", "./src/**/*.ts"],
+	"exclude": ["./node_modules", "./node_modules/@types", "./dist", "./src/**/*.spec.ts"]
 }

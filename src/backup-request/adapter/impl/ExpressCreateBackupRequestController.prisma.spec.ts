@@ -7,12 +7,16 @@ import { ICreateBackupRequestBody } from './ExpressCreateBackupRequestController
 import { ok } from '../../../common/core/Result';
 
 import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
-import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../../../infrastructure/prismaContext';
+import {
+	MockPrismaContext,
+	PrismaContext,
+	createMockPrismaContext,
+} from '../../../infrastructure/prisma/prismaContext';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
 
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 
-import { delay } from '../../../utils/utils';
+import { delay } from '../../../common/utils/utils';
 import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
 
 describe('ExpressCreateBackupRequestController - prisma', () => {

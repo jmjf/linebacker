@@ -1,4 +1,4 @@
-import { isPrismaConnected } from '../prisma/isPrismaConnected';
+import { isPrismaConnected } from '../infrastructure/prisma/isPrismaConnected';
 import { CircuitBreakerWithRetry } from './CircuitBreakerWithRetry';
 
 import circuitBreakerConfig from '../circuitBreakerConfig.json';

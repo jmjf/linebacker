@@ -1,6 +1,6 @@
 import { Application, Request, Response } from 'express';
 
-import { PrismaContext } from '../../infrastructure/prismaContext';
+import { PrismaContext } from '../../infrastructure/prisma/prismaContext';
 import { BaseError } from '../../common/core/BaseError';
 import { DatabaseError } from '../../common/adapter/AdapterErrors';
 

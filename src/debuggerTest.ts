@@ -6,8 +6,8 @@ import {
 	CircuitBreakerStateValues,
 	CircuitBreakerWithRetry,
 	ConnectFailureErrorData,
-} from './utils/CircuitBreakerWithRetry';
-import { delay, Dictionary } from './utils/utils';
+} from './common/utils/CircuitBreakerWithRetry';
+import { delay, Dictionary } from './common/utils/utils';
 import { UniqueIdentifier } from './common/domain/UniqueIdentifier';
 import { UseCase } from './common/application/UseCase';
 import { DomainEventBus, IDomainEvent, IDomainEventSubscriber } from './common/domain/DomainEventBus';

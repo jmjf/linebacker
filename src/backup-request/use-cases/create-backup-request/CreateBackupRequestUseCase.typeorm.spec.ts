@@ -4,10 +4,14 @@ import { CreateBackupRequestUseCase } from './CreateBackupRequestUseCase';
 import { CreateBackupRequestDTO } from './CreateBackupRequestDTO';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 
-import { MockTypeormContext, TypeormContext, createMockTypeormContext } from '../../../infrastructure/typeormContext';
+import {
+	MockTypeormContext,
+	TypeormContext,
+	createMockTypeormContext,
+} from '../../../infrastructure/typeorm/typeormContext';
 import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
-import { TypeormBackupRequest } from '../../../typeorm/entity/TypeormBackupRequest.entity';
-import { Dictionary } from '../../../utils/utils';
+import { TypeormBackupRequest } from '../../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
+import { Dictionary } from '../../../common/utils/utils';
 import { DatabaseError } from '../../../common/adapter/AdapterErrors';
 import { ok } from '../../../common/core/Result';
 

@@ -1,6 +1,6 @@
 import { Application, Request, Response } from 'express';
 
-import { TypeormContext } from '../../infrastructure/typeormContext';
+import { TypeormContext } from '../../infrastructure/typeorm/typeormContext';
 import { BaseError } from '../../common/core/BaseError';
 import { DatabaseError } from '../../common/adapter/AdapterErrors';
 

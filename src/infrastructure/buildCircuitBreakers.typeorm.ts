@@ -1,4 +1,4 @@
-import { isTypeormConnected } from '../typeorm/isTypeormConnected';
+import { isTypeormConnected } from '../infrastructure/typeorm/isTypeormConnected';
 import { CircuitBreakerWithRetry } from './CircuitBreakerWithRetry';
 
 import circuitBreakerConfig from '../circuitBreakerConfig.json';

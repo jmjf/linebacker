@@ -4,7 +4,7 @@ import * as mockQueueSDK from '@azure/storage-queue';
 
 import { ReceivedMessageItem } from '@azure/storage-queue';
 
-import { delay } from '../../utils/utils';
+import { delay } from '../../common/utils/utils';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
 
 import { RequestTransportTypeValues } from '../domain/RequestTransportType';
@@ -28,11 +28,15 @@ import { ReceiveStoreStatusReplyUseCase } from '../use-cases/receive-store-statu
 import { AzureStoreStatusMessageHandler } from '../adapter/impl/AzureStoreStatusMessageHandler';
 import { AzureBackupInterfaceStoreAdapter } from '../adapter/impl/AzureBackupInterfaceStoreAdapter';
 
-import { MockTypeormContext, TypeormContext, createMockTypeormContext } from '../../infrastructure/typeormContext';
+import {
+	MockTypeormContext,
+	TypeormContext,
+	createMockTypeormContext,
+} from '../../infrastructure/typeorm/typeormContext';
 import { TypeormBackupRequestRepo } from '../adapter/impl/TypeormBackupRequestRepo';
-import { TypeormBackupRequest } from '../../typeorm/entity/TypeormBackupRequest.entity';
+import { TypeormBackupRequest } from '../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
 import { TypeormBackupRepo } from '../../backup/adapter/impl/TypeormBackupRepo';
-import { TypeormBackup } from '../../typeorm/entity/TypeormBackup.entity';
+import { TypeormBackup } from '../../infrastructure/typeorm/entity/TypeormBackup.entity';
 import { buildCircuitBreakers } from '../../infrastructure/buildCircuitBreakers.typeorm';
 
 const TEST_EVENTS = true;

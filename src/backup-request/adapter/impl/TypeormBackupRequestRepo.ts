@@ -1,6 +1,6 @@
-import { TypeormBackupRequest } from '../../../typeorm/entity/TypeormBackupRequest.entity';
-import { isTypeormConnectError } from '../../../typeorm/isTypeormConnectError';
-import { TypeormContext } from '../../../infrastructure/typeormContext';
+import { TypeormBackupRequest } from '../../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
+import { isTypeormConnectError } from '../../../infrastructure/typeorm/isTypeormConnectError';
+import { TypeormContext } from '../../../infrastructure/typeorm/typeormContext';
 import { CircuitBreakerWithRetry, ConnectFailureErrorData } from '../../../infrastructure/CircuitBreakerWithRetry';
 
 import { err, ok, Result } from '../../../common/core/Result';

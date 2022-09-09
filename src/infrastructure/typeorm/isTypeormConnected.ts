@@ -1,7 +1,7 @@
-import { BaseError } from '../common/core/BaseError';
-import { Result, ok, err } from '../common/core/Result';
-import { DatabaseError } from '../common/adapter/AdapterErrors';
-import { typeormCtx } from '../infrastructure/typeormContext';
+import { BaseError } from '../../common/core/BaseError';
+import { Result, ok, err } from '../../common/core/Result';
+import { DatabaseError } from '../../common/adapter/AdapterErrors';
+import { typeormCtx } from './typeormContext';
 
 export async function isTypeormConnected(): Promise<Result<boolean, BaseError>> {
 	try {

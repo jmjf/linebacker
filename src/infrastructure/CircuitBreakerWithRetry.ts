@@ -1,7 +1,7 @@
 import { BaseError } from '../common/core/BaseError';
 import { Result } from '../common/core/Result';
 import { IDomainEvent, DomainEventBus } from '../common/domain/DomainEventBus';
-import { delay } from '../utils/utils';
+import { delay } from '../common/utils/utils';
 
 export const CircuitBreakerStateValues = {
 	Open: 'Open', // no connection

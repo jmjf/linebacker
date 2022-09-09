@@ -1,4 +1,4 @@
-import { TypeormContext } from '../../../infrastructure/typeormContext';
+import { TypeormContext } from '../../../infrastructure/typeorm/typeormContext';
 import { CircuitBreakerWithRetry, ConnectFailureErrorData } from '../../../infrastructure/CircuitBreakerWithRetry';
 
 import { err, ok, Result } from '../../../common/core/Result';
@@ -11,8 +11,8 @@ import { BackupProviderType } from '../../../backup-job/domain/BackupProviderTyp
 
 import { Backup } from '../../domain/Backup';
 import { IBackupRepo } from '../IBackupRepo';
-import { TypeormBackup } from '../../../typeorm/entity/TypeormBackup.entity';
-import { isTypeormConnectError } from '../../../typeorm/isTypeormConnectError';
+import { TypeormBackup } from '../../../infrastructure/typeorm/entity/TypeormBackup.entity';
+import { isTypeormConnectError } from '../../../infrastructure/typeorm/isTypeormConnectError';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 export class TypeormBackupRepo implements IBackupRepo {

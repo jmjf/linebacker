@@ -13,7 +13,7 @@ import { AzureBackupInterfaceStoreAdapter } from './AzureBackupInterfaceStoreAda
 import { AzureStoreStatusMessageHandler } from './AzureStoreStatusMessageHandler';
 
 import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
-import { delay } from '../../../utils/utils';
+import { delay } from '../../../common/utils/utils';
 
 const now = new Date();
 const offsetMs = 15 * 60 * 1000;

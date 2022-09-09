@@ -18,7 +18,11 @@ import { PrismaBackupRepo } from '../../../backup/adapter/impl/PrismaBackupRepo'
 import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
 import { ok } from '../../../common/core/Result';
 
-import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../../../infrastructure/prismaContext';
+import {
+	MockPrismaContext,
+	PrismaContext,
+	createMockPrismaContext,
+} from '../../../infrastructure/prisma/prismaContext';
 import { PrismaBackup, PrismaBackupRequest } from '@prisma/client';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 

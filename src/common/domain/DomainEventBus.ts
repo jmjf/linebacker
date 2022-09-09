@@ -1,4 +1,4 @@
-import { Dictionary } from '../../utils/utils';
+import { Dictionary } from '../../common/utils/utils';
 import { logger } from '../../infrastructure/pinoLogger';
 import { AggregateRoot } from './AggregateRoot';
 import { UniqueIdentifier } from './UniqueIdentifier';

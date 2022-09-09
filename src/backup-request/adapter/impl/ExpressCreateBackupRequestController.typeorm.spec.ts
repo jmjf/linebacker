@@ -6,12 +6,16 @@ import { buildApp } from '../../../expressAppTypeorm';
 
 import { ICreateBackupRequestBody } from './ExpressCreateBackupRequestController';
 
-import { MockTypeormContext, TypeormContext, createMockTypeormContext } from '../../../infrastructure/typeormContext';
+import {
+	MockTypeormContext,
+	TypeormContext,
+	createMockTypeormContext,
+} from '../../../infrastructure/typeorm/typeormContext';
 import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
 
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { TypeORMError } from 'typeorm';
-import { delay } from '../../../utils/utils';
+import { delay } from '../../../common/utils/utils';
 
 describe('ExpressCreateBackupRequestController - typeorm', () => {
 	let mockTypeormCtx: MockTypeormContext;
