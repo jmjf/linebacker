@@ -1,4 +1,4 @@
-import { dateOrUndefinedAsDate } from '../../utils/utils';
+import { dateOrUndefinedAsDate } from '../../common/utils/utils';
 
 import { Guard, GuardArgumentCollection } from '../../common/core/Guard';
 import { Result, ok, err } from '../../common/core/Result';

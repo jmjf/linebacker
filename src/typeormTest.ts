@@ -1,9 +1,9 @@
 import dotenv from 'dotenv';
 dotenv.config({ path: './env/dev.env' });
 
-import { TypeormBackupRequest } from './typeorm/entity/TypeormBackupRequest.entity';
-import { TypeormBackup } from './typeorm/entity/TypeormBackup.entity';
-import { typeormDataSource } from './typeorm/typeormDataSource';
+import { TypeormBackupRequest } from './infrastructure/typeorm/entity/TypeormBackupRequest.entity';
+import { TypeormBackup } from './infrastructure/typeorm/entity/TypeormBackup.entity';
+import { typeormDataSource } from './infrastructure/typeorm/typeormDataSource';
 
 async function main() {
 	await typeormDataSource.initialize();

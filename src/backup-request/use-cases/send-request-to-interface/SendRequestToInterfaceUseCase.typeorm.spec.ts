@@ -2,6 +2,9 @@
 jest.mock('@azure/storage-queue');
 import * as mockQueueSDK from '@azure/storage-queue';
 
+import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
+import { ok } from '../../../common/core/Result';
+
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 
@@ -14,18 +17,34 @@ import {
 	MockTypeormContext,
 	TypeormContext,
 	createMockTypeormContext,
-} from '../../../common/infrastructure/typeormContext';
+} from '../../../infrastructure/typeorm/typeormContext';
 import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
-import { TypeormBackupRequest } from '../../../typeorm/entity/TypeormBackupRequest.entity';
-import { Dictionary } from '../../../utils/utils';
+import { TypeormBackupRequest } from '../../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
+import { delay, Dictionary } from '../../../common/utils/utils';
+import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
 
 describe('SendRequestToInterfaceUseCase - typeorm', () => {
 	let mockTypeormCtx: MockTypeormContext;
 	let typeormCtx: TypeormContext;
+	let dbCircuitBreaker: CircuitBreakerWithRetry;
+	let azureQueueCircuitBreaker: CircuitBreakerWithRetry;
+	let abortController: AbortController;
 
 	beforeEach(() => {
 		mockTypeormCtx = createMockTypeormContext();
 		typeormCtx = mockTypeormCtx as unknown as TypeormContext;
+
+		const isAlive = () => {
+			return Promise.resolve(ok(true));
+		};
+		abortController = new AbortController();
+		dbCircuitBreaker = getLenientCircuitBreaker('TypeORM', abortController.signal);
+		azureQueueCircuitBreaker = getLenientCircuitBreaker('AzureQueue', abortController.signal);
+	});
+
+	afterEach(() => {
+		abortController.abort();
+		delay(100);
 	});
 
 	const baseDto = {
@@ -106,11 +125,11 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockTypeormCtx.manager.findOne.mockResolvedValue(resultBackupRequest as TypeormBackupRequest);
 
-		const brRepo = new TypeormBackupRequestRepo(typeormCtx);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, dbCircuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
-		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker);
 		const sendSpy = jest.spyOn(qAdapter, 'send');
 
 		const useCase = new SendRequestToInterfaceUseCase({
@@ -140,11 +159,11 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockTypeormCtx.manager.findOne.mockResolvedValue(null as unknown as TypeormBackupRequest);
 
-		const brRepo = new TypeormBackupRequestRepo(typeormCtx);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, dbCircuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
-		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker);
 		const sendSpy = jest.spyOn(qAdapter, 'send');
 
 		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, interfaceStoreAdapter: qAdapter });
@@ -176,11 +195,11 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockTypeormCtx.manager.findOne.mockResolvedValue(resultBackupRequest);
 
-		const brRepo = new TypeormBackupRequestRepo(typeormCtx);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, dbCircuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
-		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker);
 		const sendSpy = jest.spyOn(qAdapter, 'send');
 
 		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, interfaceStoreAdapter: qAdapter });
@@ -210,11 +229,11 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockTypeormCtx.manager.findOne.mockResolvedValue(resultBackupRequest);
 
-		const brRepo = new TypeormBackupRequestRepo(typeormCtx);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, dbCircuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockResolvedValueOnce(mockSendError);
-		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker);
 		const sendSpy = jest.spyOn(qAdapter, 'send');
 
 		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, interfaceStoreAdapter: qAdapter });
@@ -239,7 +258,7 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockTypeormCtx.manager.findOne.mockResolvedValue(dbBackupRequest);
-		const brRepo = new TypeormBackupRequestRepo(typeormCtx);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, dbCircuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockImplementation((message: string) => {
@@ -253,7 +272,7 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 			mockResult._response.bodyAsText = message;
 			return mockResult;
 		});
-		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker);
 		const sendSpy = jest.spyOn(qAdapter, 'send');
 
 		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, interfaceStoreAdapter: qAdapter });

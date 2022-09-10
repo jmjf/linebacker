@@ -1,6 +1,12 @@
 import { BaseError } from '../../../common/core/BaseError';
+
 import { DomainEventBus, IDomainEventSubscriber } from '../../../common/domain/DomainEventBus';
-import { logger } from '../../../common/infrastructure/pinoLogger';
+
+import { ConnectFailureErrorData } from '../../../infrastructure/CircuitBreakerWithRetry';
+import { logger } from '../../../infrastructure/pinoLogger';
+
+import { Dictionary } from '../../../common/utils/utils';
+
 import { BackupRequestAllowed } from '../../domain/BackupRequestAllowed';
 import { SendRequestToInterfaceUseCase } from './SendRequestToInterfaceUseCase';
 
@@ -8,6 +14,7 @@ const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 
 export class BackupRequestAllowedSubscriber implements IDomainEventSubscriber<BackupRequestAllowed> {
 	private useCase: SendRequestToInterfaceUseCase;
+	private failedServices: Dictionary = {};
 
 	constructor(useCase: SendRequestToInterfaceUseCase) {
 		this.setupSubscriptions();
@@ -26,6 +33,20 @@ export class BackupRequestAllowedSubscriber implements IDomainEventSubscriber<Ba
 			backupRequestId: backupRequestId.value,
 			eventName: event.constructor.name,
 		};
+
+		if (Object.keys(this.failedServices).length > 0) {
+			// have connection checks
+			for (const serviceName in this.failedServices) {
+				if (!this.failedServices[serviceName].isConnected()) {
+					event.retryCount++;
+					this.failedServices[serviceName].addRetryEvent(event);
+					return; // something is down so no need to check further
+				}
+
+				// if it doesn't fail, don't need to check again
+				delete this.failedServices[serviceName];
+			}
+		}
 
 		try {
 			logger.debug({ ...logContext, msg: 'execute use case' });
@@ -54,6 +75,19 @@ export class BackupRequestAllowedSubscriber implements IDomainEventSubscriber<Ba
 					},
 					'Use case error'
 				);
+
+				const errorData = result.error.errorData as ConnectFailureErrorData;
+				if (errorData.isConnectFailure) {
+					if (errorData.serviceName && errorData.isConnected && !this.failedServices[errorData.serviceName]) {
+						this.failedServices[errorData.serviceName] = { isConnected: undefined, addRetryEvent: undefined };
+						this.failedServices[errorData.serviceName].isConnected = errorData.isConnected;
+						this.failedServices[errorData.serviceName].addRetryEvent = errorData.addRetryEvent;
+					}
+					if (errorData.addRetryEvent) {
+						event.retryCount++;
+						errorData.addRetryEvent(event);
+					}
+				}
 			}
 		} catch (e) {
 			const { message, ...error } = e as BaseError;

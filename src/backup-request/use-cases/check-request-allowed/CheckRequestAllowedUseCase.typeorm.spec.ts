@@ -1,3 +1,5 @@
+import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
+import { ok } from '../../../common/core/Result';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 
 import { IBackupJobProps } from '../../../backup-job/domain/BackupJob';
@@ -14,18 +16,35 @@ import {
 	MockTypeormContext,
 	TypeormContext,
 	createMockTypeormContext,
-} from '../../../common/infrastructure/typeormContext';
+} from '../../../infrastructure/typeorm/typeormContext';
 import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
-import { TypeormBackupRequest } from '../../../typeorm/entity/TypeormBackupRequest.entity';
-import { Dictionary } from '../../../utils/utils';
+import { TypeormBackupRequest } from '../../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
+import { Dictionary } from '../../../common/utils/utils';
 
 describe('CheckRequestAllowedUseCase - typeorm', () => {
 	let mockTypeormCtx: MockTypeormContext;
 	let typeormCtx: TypeormContext;
+	let circuitBreaker: CircuitBreakerWithRetry;
+	let abortController: AbortController;
 
 	beforeEach(() => {
 		mockTypeormCtx = createMockTypeormContext();
 		typeormCtx = mockTypeormCtx as unknown as TypeormContext;
+
+		const isAlive = () => {
+			return Promise.resolve(ok(true));
+		};
+		abortController = new AbortController();
+		circuitBreaker = new CircuitBreakerWithRetry({
+			isAlive,
+			abortSignal: abortController.signal,
+			serviceName: 'TypeORM',
+			successToCloseCount: 1,
+			failureToOpenCount: 100,
+			halfOpenRetryDelayMs: 5,
+			closedRetryDelayMs: 5,
+			openAliveCheckDelayMs: 5,
+		});
 	});
 
 	const baseDto: CheckRequestAllowedDTO = {
@@ -63,7 +82,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		// findOne() returns null if not found
 		mockTypeormCtx.manager.findOne.mockResolvedValueOnce(null);
 
-		const repo = new TypeormBackupRequestRepo(typeormCtx);
+		const repo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 
 		const adapter = new MockBackupJobServiceAdapter({
 			getByIdError: new AdapterErrors.NotFoundError(
@@ -93,7 +112,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		// Arrange
 		mockTypeormCtx.manager.findOne.mockResolvedValueOnce(dbBackupRequest);
 
-		const repo = new TypeormBackupRequestRepo(typeormCtx);
+		const repo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 
 		const adapter = new MockBackupJobServiceAdapter({
 			getByIdError: new AdapterErrors.BackupJobServiceError(`{msg: 'backupJobId not found' }`),
@@ -124,7 +143,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 			statusTypeCode: 'INVALID',
 		});
 
-		const repo = new TypeormBackupRequestRepo(typeormCtx);
+		const repo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 
 		const adapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });
 
@@ -180,7 +199,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 
 			mockTypeormCtx.manager.findOne.mockResolvedValueOnce(resultBackupRequest);
 
-			const repo = new TypeormBackupRequestRepo(typeormCtx);
+			const repo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 			const saveSpy = jest.spyOn(repo, 'save');
 
 			const adapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });
@@ -210,7 +229,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		mockTypeormCtx.manager.findOne.mockResolvedValueOnce(dbBackupRequest);
 		mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackupRequest);
 
-		const repo = new TypeormBackupRequestRepo(typeormCtx);
+		const repo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 
 		const adapter = new MockBackupJobServiceAdapter({
 			getByIdResult: { ...backupJobProps },

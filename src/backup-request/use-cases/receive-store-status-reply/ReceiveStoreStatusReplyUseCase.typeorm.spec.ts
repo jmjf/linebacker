@@ -1,3 +1,6 @@
+import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
+import { ok } from '../../../common/core/Result';
+
 import { IBackupJobProps } from '../../../backup-job/domain/BackupJob';
 import {
 	mockBackupJobProps,
@@ -18,19 +21,40 @@ import {
 	MockTypeormContext,
 	TypeormContext,
 	createMockTypeormContext,
-} from '../../../common/infrastructure/typeormContext';
+} from '../../../infrastructure/typeorm/typeormContext';
 import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
-import { TypeormBackupRequest } from '../../../typeorm/entity/TypeormBackupRequest.entity';
+import { TypeormBackupRequest } from '../../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
 import { TypeormBackupRepo } from '../../../backup/adapter/impl/TypeormBackupRepo';
-import { TypeormBackup } from '../../../typeorm/entity/TypeormBackup.entity';
+import { TypeormBackup } from '../../../infrastructure/typeorm/entity/TypeormBackup.entity';
 
 describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 	let mockTypeormCtx: MockTypeormContext;
 	let typeormCtx: TypeormContext;
+	let circuitBreaker: CircuitBreakerWithRetry;
+	let abortController: AbortController;
 
 	beforeEach(() => {
 		mockTypeormCtx = createMockTypeormContext();
 		typeormCtx = mockTypeormCtx as unknown as TypeormContext;
+
+		const isAlive = () => {
+			return Promise.resolve(ok(true));
+		};
+		abortController = new AbortController();
+		circuitBreaker = new CircuitBreakerWithRetry({
+			isAlive,
+			abortSignal: abortController.signal,
+			serviceName: 'TypeORM',
+			successToCloseCount: 1,
+			failureToOpenCount: 100,
+			halfOpenRetryDelayMs: 5,
+			closedRetryDelayMs: 5,
+			openAliveCheckDelayMs: 5,
+		});
+	});
+
+	afterEach(() => {
+		circuitBreaker.halt();
 	});
 
 	const createBackupReply: StoreStatusReplyDTO = {
@@ -93,10 +117,10 @@ describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 			// Arrange
 
 			// no database calls should happen, so no mocks
-			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
+			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 			const backupRequestRepoSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-			const backupRepo = new TypeormBackupRepo(typeormCtx);
+			const backupRepo = new TypeormBackupRepo(typeormCtx, circuitBreaker);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...mockBackupJobProps } });
@@ -129,10 +153,10 @@ describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 			// Arrange
 
 			// no database calls should happen, so no mocks
-			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
+			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 			const backupRequestRepoSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-			const backupRepo = new TypeormBackupRepo(typeormCtx);
+			const backupRepo = new TypeormBackupRepo(typeormCtx, circuitBreaker);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...mockBackupJobProps } });
@@ -166,10 +190,10 @@ describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 
 			// findOne() returns null if not found, no other database calls should happen
 			mockTypeormCtx.manager.findOne.mockResolvedValue(null);
-			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
+			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 			const backupRequestRepoSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-			const backupRepo = new TypeormBackupRepo(typeormCtx);
+			const backupRepo = new TypeormBackupRepo(typeormCtx, circuitBreaker);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...mockBackupJobProps } });
@@ -203,10 +227,10 @@ describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 
 			// findOne() returns null if not found, no other database calls should happen
 			mockTypeormCtx.manager.findOne.mockRejectedValue(new Error('simulated database error'));
-			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
+			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 			const backupRequestRepoSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-			const backupRepo = new TypeormBackupRepo(typeormCtx);
+			const backupRepo = new TypeormBackupRepo(typeormCtx, circuitBreaker);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...mockBackupJobProps } });
@@ -238,10 +262,10 @@ describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 
 			// BackupJob get will fail, so only need to mock BackupRequest return
 			mockTypeormCtx.manager.findOne.mockResolvedValue(dbBackupRequest);
-			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
+			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 			const backupRequestRepoSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-			const backupRepo = new TypeormBackupRepo(typeormCtx);
+			const backupRepo = new TypeormBackupRepo(typeormCtx, circuitBreaker);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({
@@ -278,10 +302,10 @@ describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 			// BackupRequest read will succeed, Backup read will fail
 			mockTypeormCtx.manager.findOne.mockResolvedValueOnce(dbBackupRequest);
 			mockTypeormCtx.manager.findOne.mockRejectedValueOnce(new Error('simulated Backup database error'));
-			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
+			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 			const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-			const backupRepo = new TypeormBackupRepo(typeormCtx);
+			const backupRepo = new TypeormBackupRepo(typeormCtx, circuitBreaker);
 			const backupRepoGetSpy = jest.spyOn(backupRepo, 'getByBackupRequestId');
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
@@ -344,10 +368,10 @@ describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 				// Should never call save, so no need for extra mocks
 				mockTypeormCtx.manager.save.mockResolvedValue(null); // default return after mock once used up
 
-				const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
+				const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 				const backupRequestRepoSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-				const backupRepo = new TypeormBackupRepo(typeormCtx);
+				const backupRepo = new TypeormBackupRepo(typeormCtx, circuitBreaker);
 				const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
 				const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobDTO } });
@@ -383,12 +407,12 @@ describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 			// BackupRequest read will succeed, Backup read will return not found
 			mockTypeormCtx.manager.findOne.mockResolvedValueOnce(dbBackupRequest); // 1st return -> BackupRequest
 			mockTypeormCtx.manager.findOne.mockResolvedValueOnce(null); // 2nd return -> Backup not found (good)
-			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
+			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 			const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
 			// Backup save failure
 			mockTypeormCtx.manager.save.mockRejectedValueOnce(new Error('simulate Backup database error'));
-			const backupRepo = new TypeormBackupRepo(typeormCtx);
+			const backupRepo = new TypeormBackupRepo(typeormCtx, circuitBreaker);
 			const backupRepoGetSpy = jest.spyOn(backupRepo, 'getByBackupRequestId');
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
@@ -435,11 +459,11 @@ describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 			mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackup); // Backup save succeeds
 			mockTypeormCtx.manager.save.mockRejectedValueOnce(new Error('simulate Backup Request database error'));
 
-			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
+			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 			const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
 			// Backup save failure
-			const backupRepo = new TypeormBackupRepo(typeormCtx);
+			const backupRepo = new TypeormBackupRepo(typeormCtx, circuitBreaker);
 			const backupRepoGetSpy = jest.spyOn(backupRepo, 'getByBackupRequestId');
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
@@ -484,11 +508,11 @@ describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 			// mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackup); // Backup save succeeds
 			mockTypeormCtx.manager.save.mockRejectedValueOnce(new Error('simulate Backup Request database error'));
 
-			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
+			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 			const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
 			// Backup save failure
-			const backupRepo = new TypeormBackupRepo(typeormCtx);
+			const backupRepo = new TypeormBackupRepo(typeormCtx, circuitBreaker);
 			const backupRepoGetSpy = jest.spyOn(backupRepo, 'getByBackupRequestId');
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
@@ -588,11 +612,11 @@ describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 					// mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackup);
 					mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackupRequest);
 
-					const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
+					const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 					const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
 					// Backup save failure
-					const backupRepo = new TypeormBackupRepo(typeormCtx);
+					const backupRepo = new TypeormBackupRepo(typeormCtx, circuitBreaker);
 					const backupRepoGetSpy = jest.spyOn(backupRepo, 'getByBackupRequestId');
 					const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
@@ -695,11 +719,11 @@ describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 					mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackup);
 					mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackupRequest);
 
-					const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
+					const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 					const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
 					// Backup save failure
-					const backupRepo = new TypeormBackupRepo(typeormCtx);
+					const backupRepo = new TypeormBackupRepo(typeormCtx, circuitBreaker);
 					const backupRepoGetSpy = jest.spyOn(backupRepo, 'getByBackupRequestId');
 					const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
@@ -765,10 +789,10 @@ describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 					// mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackup);
 					mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackupRequest);
 
-					const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
+					const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 					const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-					const backupRepo = new TypeormBackupRepo(typeormCtx);
+					const backupRepo = new TypeormBackupRepo(typeormCtx, circuitBreaker);
 					const backupRepoGetSpy = jest.spyOn(backupRepo, 'getByBackupRequestId');
 					const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
@@ -844,10 +868,10 @@ describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 					// mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackup);
 					mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackupRequest);
 
-					const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
+					const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 					const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-					const backupRepo = new TypeormBackupRepo(typeormCtx);
+					const backupRepo = new TypeormBackupRepo(typeormCtx, circuitBreaker);
 					const backupRepoGetSpy = jest.spyOn(backupRepo, 'getByBackupRequestId');
 					const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 

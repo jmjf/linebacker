@@ -10,23 +10,42 @@ import { AzureBackupInterfaceStoreAdapter } from '../../adapter/impl/AzureBackup
 import { SendRequestToInterfaceUseCase } from './SendRequestToInterfaceUseCase';
 import { SendRequestToInterfaceDTO } from './SendRequestToInterfaceDTO';
 
+import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
+import { ok } from '../../../common/core/Result';
+
 import {
 	MockPrismaContext,
 	PrismaContext,
 	createMockPrismaContext,
-} from '../../../common/infrastructure/prismaContext';
+} from '../../../infrastructure/prisma/prismaContext';
 import { PrismaBackupRequest } from '@prisma/client';
 import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
-import { Dictionary } from '../../../utils/utils';
+import { delay, Dictionary } from '../../../common/utils/utils';
+import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
 
 describe('SendRequestToInterfaceUseCase - Prisma', () => {
 	let mockPrismaCtx: MockPrismaContext;
 	let prismaCtx: PrismaContext;
+	let dbCircuitBreaker: CircuitBreakerWithRetry;
+	let azureQueueCircuitBreaker: CircuitBreakerWithRetry;
+	let abortController: AbortController;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
 		mockPrismaCtx = createMockPrismaContext();
 		prismaCtx = mockPrismaCtx as unknown as PrismaContext;
+
+		const isAlive = () => {
+			return Promise.resolve(ok(true));
+		};
+
+		abortController = new AbortController();
+		dbCircuitBreaker = getLenientCircuitBreaker('Prisma', abortController.signal);
+		azureQueueCircuitBreaker = getLenientCircuitBreaker('AzureQueue', abortController.signal);
+	});
+
+	afterEach(() => {
+		abortController.abort();
+		delay(100);
 	});
 
 	const baseDto = {
@@ -108,11 +127,11 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(resultBackupRequest as PrismaBackupRequest);
 
-		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
+		const brRepo = new PrismaBackupRequestRepo(prismaCtx, dbCircuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
-		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker);
 		const sendSpy = jest.spyOn(qAdapter, 'send');
 
 		const useCase = new SendRequestToInterfaceUseCase({
@@ -142,11 +161,11 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(null as unknown as PrismaBackupRequest);
 
-		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
+		const brRepo = new PrismaBackupRequestRepo(prismaCtx, dbCircuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
-		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker);
 		const sendSpy = jest.spyOn(qAdapter, 'send');
 
 		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, interfaceStoreAdapter: qAdapter });
@@ -178,11 +197,11 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(resultBackupRequest);
 
-		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
+		const brRepo = new PrismaBackupRequestRepo(prismaCtx, dbCircuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		// should not call adapter, so no need to mock SDK
-		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker);
 		const sendSpy = jest.spyOn(qAdapter, 'send');
 
 		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, interfaceStoreAdapter: qAdapter });
@@ -212,11 +231,11 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(resultBackupRequest);
 
-		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
+		const brRepo = new PrismaBackupRequestRepo(prismaCtx, dbCircuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockResolvedValueOnce(mockSendError);
-		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker);
 		const sendSpy = jest.spyOn(qAdapter, 'send');
 
 		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, interfaceStoreAdapter: qAdapter });
@@ -241,7 +260,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(dbBackupRequest);
-		const brRepo = new PrismaBackupRequestRepo(prismaCtx);
+		const brRepo = new PrismaBackupRequestRepo(prismaCtx, dbCircuitBreaker);
 		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockImplementation((message: string) => {
@@ -255,7 +274,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 			mockResult._response.bodyAsText = message;
 			return mockResult;
 		});
-		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+		const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker);
 		const sendSpy = jest.spyOn(qAdapter, 'send');
 
 		const useCase = new SendRequestToInterfaceUseCase({ backupRequestRepo: brRepo, interfaceStoreAdapter: qAdapter });

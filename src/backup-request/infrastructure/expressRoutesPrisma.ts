@@ -1,16 +1,17 @@
 import { Application, Request, Response } from 'express';
 
-import { PrismaContext } from '../../common/infrastructure/prismaContext';
+import { PrismaContext } from '../../infrastructure/prisma/prismaContext';
 import { BaseError } from '../../common/core/BaseError';
 import { DatabaseError } from '../../common/adapter/AdapterErrors';
 
 import { ExpressCreateBackupRequestController } from '../adapter/impl/ExpressCreateBackupRequestController';
 import { initBackupRequestModule } from './initBackupRequestModulePrisma';
+import { ICircuitBreakers } from '../../infrastructure/buildCircuitBreakers.typeorm';
 
-export function addBackupRequestRoutes(app: Application, prismaCtx: PrismaContext) {
-	const { createBackupRequestController } = initBackupRequestModule(prismaCtx, 'Express');
+export function addBackupRequestRoutes(app: Application, prismaCtx: PrismaContext, circuitBreakers: ICircuitBreakers) {
+	const { createBackupRequestController } = initBackupRequestModule(prismaCtx, circuitBreakers, 'Express');
 
-	app.post('/backup-requests', async function (request: Request, response: Response) {
+	app.post('/api/backup-requests', async function (request: Request, response: Response) {
 		let result = await (createBackupRequestController as ExpressCreateBackupRequestController).execute(
 			request,
 			response

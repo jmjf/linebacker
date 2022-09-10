@@ -2,7 +2,7 @@
 jest.mock('@azure/storage-queue');
 import * as mockQueueSDK from '@azure/storage-queue';
 
-import { toBase64 } from '../../utils/utils';
+import { toBase64 } from '../common/utils/utils';
 
 import { AzureQueue } from './AzureQueue';
 

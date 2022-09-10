@@ -1,10 +1,11 @@
-import { Dictionary } from '../../utils/utils';
-import { logger } from '../infrastructure/pinoLogger';
+import { Dictionary } from '../../common/utils/utils';
+import { logger } from '../../infrastructure/pinoLogger';
 import { AggregateRoot } from './AggregateRoot';
 import { UniqueIdentifier } from './UniqueIdentifier';
 
 export interface IDomainEvent {
 	eventTimestamp: Date;
+	// retryCount: number;
 	getAggregateId(): UniqueIdentifier;
 }
 
@@ -55,7 +56,7 @@ export class DomainEventBus {
 	}
 
 	public static clearHandlers(): void {
-		this.handlersMap = [];
+		this.handlersMap = {};
 	}
 
 	public static clearMarkedAggregates(): void {

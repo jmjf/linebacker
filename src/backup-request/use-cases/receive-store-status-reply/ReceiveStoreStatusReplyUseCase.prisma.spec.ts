@@ -15,21 +15,46 @@ import { ReceiveStoreStatusReplyUseCase } from './ReceiveStoreStatusReplyUseCase
 import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
 import { PrismaBackupRepo } from '../../../backup/adapter/impl/PrismaBackupRepo';
 
+import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
+import { ok } from '../../../common/core/Result';
+
 import {
 	MockPrismaContext,
 	PrismaContext,
 	createMockPrismaContext,
-} from '../../../common/infrastructure/prismaContext';
+} from '../../../infrastructure/prisma/prismaContext';
 import { PrismaBackup, PrismaBackupRequest } from '@prisma/client';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 
 describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 	let mockPrismaCtx: MockPrismaContext;
 	let prismaCtx: PrismaContext;
+	let circuitBreaker: CircuitBreakerWithRetry;
+	let abortController: AbortController;
 
 	beforeEach(() => {
 		mockPrismaCtx = createMockPrismaContext();
 		prismaCtx = mockPrismaCtx as unknown as PrismaContext;
+
+		const isAlive = () => {
+			return Promise.resolve(ok(true));
+		};
+
+		abortController = new AbortController();
+		circuitBreaker = new CircuitBreakerWithRetry({
+			isAlive,
+			abortSignal: abortController.signal,
+			serviceName: 'TypeORM',
+			successToCloseCount: 1,
+			failureToOpenCount: 100,
+			halfOpenRetryDelayMs: 5,
+			closedRetryDelayMs: 5,
+			openAliveCheckDelayMs: 5,
+		});
+	});
+
+	afterEach(() => {
+		circuitBreaker.halt();
 	});
 
 	const createBackupReply: StoreStatusReplyDTO = {
@@ -92,10 +117,10 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 			// Arrange
 
 			// no database calls should happen, so no mocks
-			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 			const backupRequestRepoSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-			const backupRepo = new PrismaBackupRepo(prismaCtx);
+			const backupRepo = new PrismaBackupRepo(prismaCtx, circuitBreaker);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...mockBackupJobProps } });
@@ -128,10 +153,10 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 			// Arrange
 
 			// no database calls should happen, so no mocks
-			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 			const backupRequestRepoSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-			const backupRepo = new PrismaBackupRepo(prismaCtx);
+			const backupRepo = new PrismaBackupRepo(prismaCtx, circuitBreaker);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...mockBackupJobProps } });
@@ -164,11 +189,11 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 			// Arrange
 
 			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(null);
-			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 			const backupRequestRepoSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
 			// should never call backup repo
-			const backupRepo = new PrismaBackupRepo(prismaCtx);
+			const backupRepo = new PrismaBackupRepo(prismaCtx, circuitBreaker);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...mockBackupJobProps } });
@@ -201,11 +226,11 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 			// Arrange
 
 			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockRejectedValue(new Error('simulated database error'));
-			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 			const backupRequestRepoSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
 			// should never call backupRepo
-			const backupRepo = new PrismaBackupRepo(prismaCtx);
+			const backupRepo = new PrismaBackupRepo(prismaCtx, circuitBreaker);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...mockBackupJobProps } });
@@ -237,10 +262,10 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 
 			// BackupJob get will fail, so only need to mock BackupRequest return
 			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(dbBackupRequest);
-			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 			const backupRequestRepoSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-			const backupRepo = new PrismaBackupRepo(prismaCtx);
+			const backupRepo = new PrismaBackupRepo(prismaCtx, circuitBreaker);
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({
@@ -275,13 +300,13 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 			// Arrange
 
 			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValueOnce(dbBackupRequest);
-			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 			const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
 			mockPrismaCtx.prisma.prismaBackup.findFirst.mockRejectedValueOnce(
 				new Error('simulated Backup database error')
 			);
-			const backupRepo = new PrismaBackupRepo(prismaCtx);
+			const backupRepo = new PrismaBackupRepo(prismaCtx, circuitBreaker);
 			const backupRepoGetSpy = jest.spyOn(backupRepo, 'getByBackupRequestId');
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
@@ -339,11 +364,11 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 
 				// Should never call either save, so no need for upsert mocks
 				mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValueOnce(dbBackupRequest);
-				const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+				const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 				const backupRequestRepoSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
 				mockPrismaCtx.prisma.prismaBackup.findFirst.mockResolvedValueOnce(null);
-				const backupRepo = new PrismaBackupRepo(prismaCtx);
+				const backupRepo = new PrismaBackupRepo(prismaCtx, circuitBreaker);
 				const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
 				const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobDTO } });
@@ -377,13 +402,13 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 			// Arrange
 
 			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValueOnce(dbBackupRequest);
-			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 			const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
 			// Backup save fails
 			mockPrismaCtx.prisma.prismaBackup.findFirst.mockResolvedValueOnce(null);
 			mockPrismaCtx.prisma.prismaBackup.upsert.mockRejectedValueOnce(new Error('simulate Backup database error'));
-			const backupRepo = new PrismaBackupRepo(prismaCtx);
+			const backupRepo = new PrismaBackupRepo(prismaCtx, circuitBreaker);
 			const backupRepoGetSpy = jest.spyOn(backupRepo, 'getByBackupRequestId');
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
@@ -427,12 +452,12 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 			mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockRejectedValueOnce(
 				new Error('simulate Backup Request database error')
 			);
-			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 			const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
 			mockPrismaCtx.prisma.prismaBackup.findFirst.mockResolvedValueOnce(null);
 			mockPrismaCtx.prisma.prismaBackup.upsert.mockResolvedValueOnce({} as PrismaBackup);
-			const backupRepo = new PrismaBackupRepo(prismaCtx);
+			const backupRepo = new PrismaBackupRepo(prismaCtx, circuitBreaker);
 			const backupRepoGetSpy = jest.spyOn(backupRepo, 'getByBackupRequestId');
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
@@ -475,12 +500,12 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 			mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockRejectedValueOnce(
 				new Error('simulate Backup Request database error')
 			);
-			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 			const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
 			mockPrismaCtx.prisma.prismaBackup.findFirst.mockResolvedValueOnce(dbBackup);
 			// Backup save not called because found
-			const backupRepo = new PrismaBackupRepo(prismaCtx);
+			const backupRepo = new PrismaBackupRepo(prismaCtx, circuitBreaker);
 			const backupRepoGetSpy = jest.spyOn(backupRepo, 'getByBackupRequestId');
 			const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
@@ -575,12 +600,12 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 						replyTimestamp: backupRequestReplyTimestamp,
 					} as PrismaBackupRequest); // 1st return -> BackupRequest
 					mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockResolvedValueOnce({} as PrismaBackupRequest);
-					const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+					const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 					const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
 					mockPrismaCtx.prisma.prismaBackup.findFirst.mockResolvedValueOnce(null);
 					// Backup save not called because store status result is Failed for all cases
-					const backupRepo = new PrismaBackupRepo(prismaCtx);
+					const backupRepo = new PrismaBackupRepo(prismaCtx, circuitBreaker);
 					const backupRepoGetSpy = jest.spyOn(backupRepo, 'getByBackupRequestId');
 					const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
@@ -677,13 +702,13 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 						replyTimestamp: backupRequestReplyTimestamp,
 					} as PrismaBackupRequest);
 					mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockResolvedValueOnce({} as PrismaBackupRequest);
-					const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+					const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 					const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
 					// Backup read will return not found, result Succeeded so save should be called
 					mockPrismaCtx.prisma.prismaBackup.findFirst.mockResolvedValueOnce(null);
 					mockPrismaCtx.prisma.prismaBackup.upsert.mockResolvedValueOnce({} as PrismaBackup);
-					const backupRepo = new PrismaBackupRepo(prismaCtx);
+					const backupRepo = new PrismaBackupRepo(prismaCtx, circuitBreaker);
 					const backupRepoGetSpy = jest.spyOn(backupRepo, 'getByBackupRequestId');
 					const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
@@ -744,12 +769,12 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 						replyTimestamp: new Date(),
 					} as PrismaBackupRequest);
 					mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockResolvedValueOnce({} as PrismaBackupRequest);
-					const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+					const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 					const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
 					mockPrismaCtx.prisma.prismaBackup.findFirst.mockResolvedValueOnce(dbBackup);
 					// Backup save not called because found
-					const backupRepo = new PrismaBackupRepo(prismaCtx);
+					const backupRepo = new PrismaBackupRepo(prismaCtx, circuitBreaker);
 					const backupRepoGetSpy = jest.spyOn(backupRepo, 'getByBackupRequestId');
 					const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 
@@ -820,12 +845,12 @@ describe('ReceiveStoreStatusReplyUseCase - Prisma', () => {
 						statusTypeCode: backupRequestStatus,
 					} as PrismaBackupRequest);
 					mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockResolvedValueOnce({} as PrismaBackupRequest);
-					const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+					const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 					const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
 					mockPrismaCtx.prisma.prismaBackup.findFirst.mockResolvedValueOnce(dbBackup);
 					// Backup save not called because found
-					const backupRepo = new PrismaBackupRepo(prismaCtx);
+					const backupRepo = new PrismaBackupRepo(prismaCtx, circuitBreaker);
 					const backupRepoGetSpy = jest.spyOn(backupRepo, 'getByBackupRequestId');
 					const backupRepoSaveSpy = jest.spyOn(backupRepo, 'save');
 

@@ -4,7 +4,7 @@ import * as mockQueueSDK from '@azure/storage-queue';
 
 import { ReceivedMessageItem } from '@azure/storage-queue';
 
-import { delay } from '../../utils/utils';
+import { delay } from '../../common/utils/utils';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
 
 import { RequestTransportTypeValues } from '../domain/RequestTransportType';
@@ -12,6 +12,8 @@ import { RequestStatusTypeValues } from '../domain/RequestStatusType';
 
 import { BackupJob, IBackupJobProps } from '../../backup-job/domain/BackupJob';
 import { MockBackupJobServiceAdapter } from '../../backup-job/adapter/impl/MockBackupJobServiceAdapter';
+
+import { BackupProviderTypeValues } from '../../backup-job/domain/BackupProviderType';
 
 import { SendRequestToInterfaceUseCase } from '../use-cases/send-request-to-interface/SendRequestToInterfaceUseCase';
 import { BackupRequestAllowedSubscriber } from '../use-cases/send-request-to-interface/BackupRequestAllowedSubscriber';
@@ -23,28 +25,33 @@ import { CreateBackupRequestUseCase } from '../use-cases/create-backup-request/C
 import { StoreStatusReceivedSubscriber } from '../use-cases/receive-store-status-reply/StoreStatusReceivedSubscriber';
 import { ReceiveStoreStatusReplyUseCase } from '../use-cases/receive-store-status-reply/ReceiveStoreStatusReplyUseCase';
 
+import { AzureStoreStatusMessageHandler } from '../adapter/impl/AzureStoreStatusMessageHandler';
 import { AzureBackupInterfaceStoreAdapter } from '../adapter/impl/AzureBackupInterfaceStoreAdapter';
 
-import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../../common/infrastructure/prismaContext';
-import { PrismaBackupRequest } from '@prisma/client';
-import { PrismaBackupRequestRepo } from '../adapter/impl/PrismaBackupRequestRepo';
-import { PrismaBackupRepo } from '../../backup/adapter/impl/PrismaBackupRepo';
-import { BackupProviderTypeValues } from '../../backup-job/domain/BackupProviderType';
-import { AzureStoreStatusMessageHandler } from '../adapter/impl/AzureStoreStatusMessageHandler';
+import {
+	MockTypeormContext,
+	TypeormContext,
+	createMockTypeormContext,
+} from '../../infrastructure/typeorm/typeormContext';
+import { TypeormBackupRequestRepo } from '../adapter/impl/TypeormBackupRequestRepo';
+import { TypeormBackupRequest } from '../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
+import { TypeormBackupRepo } from '../../backup/adapter/impl/TypeormBackupRepo';
+import { TypeormBackup } from '../../infrastructure/typeorm/entity/TypeormBackup.entity';
+import { buildCircuitBreakers } from '../../infrastructure/buildCircuitBreakers.typeorm';
 
 const TEST_EVENTS = true;
 
 if (TEST_EVENTS) {
 	describe('Events: create -> check allowed -> send to interface', () => {
-		let mockPrismaCtx: MockPrismaContext;
-		let prismaCtx: PrismaContext;
+		let mockTypeormCtx: MockTypeormContext;
+		let typeormCtx: TypeormContext;
 
 		beforeEach(() => {
-			mockPrismaCtx = createMockPrismaContext();
-			prismaCtx = mockPrismaCtx as unknown as PrismaContext;
+			mockTypeormCtx = createMockTypeormContext();
+			typeormCtx = mockTypeormCtx as unknown as TypeormContext;
 		});
 
-		const dbBackupRequest: PrismaBackupRequest = {
+		const dbBackupRequest: TypeormBackupRequest = {
 			backupRequestId: 'event-test-backup-request-id',
 			backupJobId: 'event-test-backup-job-id',
 			dataDate: new Date(),
@@ -117,18 +124,22 @@ if (TEST_EVENTS) {
 			process.env.AZURE_QUEUE_ACCOUNT_URI = 'uri';
 
 			// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue({ ...dbBackupRequest }); // default after responses below
-			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValueOnce({ ...dbBackupRequest }); // first response -- for check allowed
-			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValueOnce({
+			mockTypeormCtx.manager.findOne.mockResolvedValue({ ...dbBackupRequest }); // default after responses below
+			mockTypeormCtx.manager.findOne.mockResolvedValueOnce({ ...dbBackupRequest }); // first response -- for check allowed
+			mockTypeormCtx.manager.findOne.mockResolvedValueOnce({
 				...dbBackupRequest,
 				statusTypeCode: RequestStatusTypeValues.Allowed,
 				checkedTimestamp: new Date(),
 			}); // second reponse -- for send to interface
 
 			// save() just needs to succeed; result value doesn't affect outcome
-			mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockResolvedValue({} as unknown as PrismaBackupRequest);
+			mockTypeormCtx.manager.save.mockResolvedValue({} as TypeormBackupRequest);
 
-			const repo = new PrismaBackupRequestRepo(prismaCtx);
+			// can use the default circuit breakers because this should be a non-failure test
+			const abortController = new AbortController();
+			const circuitBreakers = buildCircuitBreakers(abortController.signal);
+
+			const repo = new TypeormBackupRequestRepo(typeormCtx, circuitBreakers.dbCircuitBreaker);
 			const saveSpy = jest.spyOn(repo, 'save');
 
 			new BackupRequestCreatedSubscriber(
@@ -140,7 +151,7 @@ if (TEST_EVENTS) {
 
 			// can mockResolvedValue here because we don't reuse the data structure, so no problem if it gets changed
 			mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockResolvedValue(interfaceSendOk);
-			const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue');
+			const qAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', circuitBreakers.azureQueueCircuitBreaker);
 			const sendSpy = jest.spyOn(qAdapter, 'send');
 
 			new BackupRequestAllowedSubscriber(
@@ -169,20 +180,24 @@ if (TEST_EVENTS) {
 			expect(result.isOk()).toBe(true);
 			expect(saveSpy).toHaveBeenCalledTimes(3); // create, check, send
 			expect(sendSpy).toHaveBeenCalledTimes(1);
+
+			abortController.abort();
+			delay(250);
 		});
 	});
 
 	describe('Events: reply -> runs use case', () => {
-		let mockPrismaCtx: MockPrismaContext;
-		let prismaCtx: PrismaContext;
+		let mockTypeormCtx: MockTypeormContext;
+		let typeormCtx: TypeormContext;
 
 		beforeEach(() => {
-			mockPrismaCtx = createMockPrismaContext();
-			prismaCtx = mockPrismaCtx as unknown as PrismaContext;
+			mockTypeormCtx = createMockTypeormContext();
+			typeormCtx = mockTypeormCtx as unknown as TypeormContext;
 		});
 
 		const now = new Date();
 		const offset = 40 * 60 * 1000;
+
 		const statusMessage = {
 			backupRequestId: 'reply-requestId',
 			storagePathName: 'reply-storagePathName',
@@ -237,7 +252,7 @@ if (TEST_EVENTS) {
 			},
 		};
 
-		const dbBackupRequest: PrismaBackupRequest = {
+		const dbBackupRequest: TypeormBackupRequest = {
 			backupRequestId: 'event-test-backup-request-id',
 			backupJobId: 'event-test-backup-job-id',
 			dataDate: new Date(),
@@ -284,21 +299,37 @@ if (TEST_EVENTS) {
 
 			//** Use case requirements **//
 
-			// Mock database results
-			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue({ ...dbBackupRequest });
-			mockPrismaCtx.prisma.prismaBackup.findFirst.mockResolvedValue(null); // no backup exists
+			// I need to return different results from TypeORM for different calls. Prisma
+			// puts the methods on the entity type, but TypeORM puts them on the manager.
+			mockTypeormCtx.manager.findOne.mockResolvedValue(null); // default return after mock once used up
+			mockTypeormCtx.manager.findOne.mockResolvedValueOnce(dbBackupRequest); // first return (backup request read first)
+			// Backup read returns no result for this test case, so no need for another mock
 
-			const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx);
+			mockTypeormCtx.manager.save.mockResolvedValue(null); // default return after mock once used up
+			mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackup); // first return (backup saved first)
+			// BackupRequest save() will fail
+			mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackupRequest); // second return (backup request saved second)
+
+			// can use the default circuit breakers because this should be a non-failure test
+			const abortController = new AbortController();
+			const circuitBreakers = buildCircuitBreakers(abortController.signal);
+
+			// Mock database results
+			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreakers.dbCircuitBreaker);
 			const backupRequestSaveSpy = jest.spyOn(backupRequestRepo, 'save');
 
-			const backupRepo = new PrismaBackupRepo(prismaCtx);
+			const backupRepo = new TypeormBackupRepo(typeormCtx, circuitBreakers.dbCircuitBreaker);
 			const backupSaveSpy = jest.spyOn(backupRepo, 'save');
 
 			// Backup job service
 			const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobDTO } });
 
 			// set up adapter, use case, and subscriber
-			const abisa = new AzureBackupInterfaceStoreAdapter('test-queue', false);
+			const abisa = new AzureBackupInterfaceStoreAdapter(
+				'test-queue',
+				circuitBreakers.azureQueueCircuitBreaker,
+				false
+			);
 			const rcvUseCase = new ReceiveStoreStatusReplyUseCase({
 				backupRequestRepo,
 				backupRepo,
@@ -325,6 +356,9 @@ if (TEST_EVENTS) {
 			expect(deleteSpy).toBeCalledTimes(1);
 			expect(backupRequestSaveSpy).toBeCalledTimes(1);
 			expect(backupSaveSpy).toBeCalledTimes(1);
+
+			abortController.abort();
+			delay(250);
 		});
 	});
 } else {

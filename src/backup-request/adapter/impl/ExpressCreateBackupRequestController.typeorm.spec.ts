@@ -1,5 +1,7 @@
 import request from 'supertest';
 
+import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
+
 import { buildApp } from '../../../expressAppTypeorm';
 
 import { ICreateBackupRequestBody } from './ExpressCreateBackupRequestController';
@@ -8,18 +10,32 @@ import {
 	MockTypeormContext,
 	TypeormContext,
 	createMockTypeormContext,
-} from '../../../common/infrastructure/typeormContext';
+} from '../../../infrastructure/typeorm/typeormContext';
+import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
 
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { TypeORMError } from 'typeorm';
+import { delay } from '../../../common/utils/utils';
 
 describe('ExpressCreateBackupRequestController - typeorm', () => {
 	let mockTypeormCtx: MockTypeormContext;
 	let typeormCtx: TypeormContext;
+	let dbCircuitBreaker: CircuitBreakerWithRetry;
+	let azureQueueCircuitBreaker: CircuitBreakerWithRetry;
+	let abortController: AbortController;
 
 	beforeEach(() => {
 		mockTypeormCtx = createMockTypeormContext();
 		typeormCtx = mockTypeormCtx as unknown as TypeormContext;
+
+		abortController = new AbortController();
+		dbCircuitBreaker = getLenientCircuitBreaker('TypeORM', abortController.signal);
+		azureQueueCircuitBreaker = getLenientCircuitBreaker('AzureQueue', abortController.signal);
+	});
+
+	afterEach(() => {
+		abortController.abort();
+		delay(250);
 	});
 
 	const testUrl = '/api/backup-requests';
@@ -33,7 +49,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 
 	test('when apiVersion is invalid, it returns 400 and an error', async () => {
 		// Arrange
-		const app = buildApp(typeormCtx);
+		const app = buildApp(typeormCtx, { dbCircuitBreaker, azureQueueCircuitBreaker });
 
 		// Act
 		const response = await request(app)
@@ -54,7 +70,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 		// Arrange
 		// simulate a database error
 		mockTypeormCtx.manager.save.mockRejectedValue(new TypeORMError('Key is already defined'));
-		const app = buildApp(typeormCtx);
+		const app = buildApp(typeormCtx, { dbCircuitBreaker, azureQueueCircuitBreaker });
 
 		// Act
 		const response = await request(app)
@@ -73,7 +89,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 
 	test('when the use case returns a PropsError, the controller returns 400 and an error', async () => {
 		// Arrange
-		const app = buildApp(typeormCtx);
+		const app = buildApp(typeormCtx, { dbCircuitBreaker, azureQueueCircuitBreaker });
 
 		// Act
 		const response = await request(app)
@@ -93,7 +109,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 
 	test('when request data is good, the controller returns Accepted and a result payload', async () => {
 		// Arrange
-		const app = buildApp(typeormCtx);
+		const app = buildApp(typeormCtx, { dbCircuitBreaker, azureQueueCircuitBreaker });
 
 		// Act
 		const startTime = new Date();

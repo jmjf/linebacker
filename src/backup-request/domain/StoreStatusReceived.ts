@@ -24,10 +24,12 @@ export interface StoreStatusMessage {
 
 export class StoreStatusReceived implements IDomainEvent {
 	public eventTimestamp: Date;
+	public retryCount: number;
 	public messageItem: StoreStatusMessageItem;
 
 	constructor(messageItem: StoreStatusMessageItem) {
 		this.eventTimestamp = new Date();
+		this.retryCount = 0;
 		this.messageItem = messageItem;
 
 		// temporary, for early testing

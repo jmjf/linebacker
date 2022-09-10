@@ -1,4 +1,4 @@
-import { dateOrUndefinedAsDate } from '../../utils/utils';
+import { dateOrUndefinedAsDate } from '../../common/utils/utils';
 
 import { isDate } from 'util/types';
 import { AggregateRoot } from '../../common/domain/AggregateRoot';

@@ -1,5 +1,7 @@
-import { TypeormBackupRequest } from '../../../typeorm/entity/TypeormBackupRequest.entity';
-import { TypeormContext } from '../../../common/infrastructure/typeormContext';
+import { TypeormBackupRequest } from '../../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
+import { isTypeormConnectError } from '../../../infrastructure/typeorm/isTypeormConnectError';
+import { TypeormContext } from '../../../infrastructure/typeorm/typeormContext';
+import { CircuitBreakerWithRetry, ConnectFailureErrorData } from '../../../infrastructure/CircuitBreakerWithRetry';
 
 import { err, ok, Result } from '../../../common/core/Result';
 import { DomainEventBus } from '../../../common/domain/DomainEventBus';
@@ -18,15 +20,34 @@ import { RequestStatusType } from '../../domain/RequestStatusType';
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 	private typeormCtx: TypeormContext;
+	private circuitBreaker: CircuitBreakerWithRetry;
+	private connectFailureErrorData: ConnectFailureErrorData;
 
-	constructor(typeormCtx: TypeormContext) {
+	constructor(typeormCtx: TypeormContext, circuitBreaker: CircuitBreakerWithRetry) {
 		// Use TypeORM's EntityManager because I don't want to put my repo intelligence in
 		// a TypeORM construct because doing so creates tight coupling to TypeORM.
 		this.typeormCtx = typeormCtx;
+		this.circuitBreaker = circuitBreaker;
+		this.connectFailureErrorData = {
+			isConnectFailure: true,
+			isConnected: this.circuitBreaker.isConnected.bind(this.circuitBreaker),
+			addRetryEvent: this.circuitBreaker.addRetryEvent.bind(this.circuitBreaker),
+			serviceName: this.circuitBreaker.serviceName,
+		};
 	}
 
 	public async exists(backupRequestId: string): Promise<Result<boolean, AdapterErrors.DatabaseError>> {
 		const functionName = 'exists';
+
+		if (!this.circuitBreaker.isConnected()) {
+			return err(
+				new AdapterErrors.DatabaseError('Fast fail', {
+					...this.connectFailureErrorData,
+					moduleName,
+					functionName,
+				})
+			);
+		}
 		// count the number of rows that meet the condition
 		try {
 			const count = await this.typeormCtx.manager.count(TypeormBackupRequest, {
@@ -35,10 +56,26 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 				},
 			});
 
+			this.circuitBreaker.onSuccess();
+
 			return ok(count > 0);
 		} catch (e) {
 			const { message, ...error } = e as Error;
-			return err(new AdapterErrors.DatabaseError(message, { ...error, moduleName, functionName }));
+			let errorData = { isConnectFailure: false };
+
+			if (isTypeormConnectError(error)) {
+				this.circuitBreaker.onFailure();
+				errorData = this.connectFailureErrorData;
+			}
+
+			return err(
+				new AdapterErrors.DatabaseError(message, {
+					...error,
+					...errorData,
+					moduleName,
+					functionName,
+				})
+			);
 		}
 	}
 
@@ -48,12 +85,25 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 		Result<BackupRequest, AdapterErrors.DatabaseError | AdapterErrors.NotFoundError | DomainErrors.PropsError>
 	> {
 		const functionName = 'getById';
+
+		if (!this.circuitBreaker.isConnected()) {
+			return err(
+				new AdapterErrors.DatabaseError('Fast fail', {
+					...this.connectFailureErrorData,
+					moduleName,
+					functionName,
+				})
+			);
+		}
+
 		try {
 			const data = await this.typeormCtx.manager.findOne(TypeormBackupRequest, {
 				where: {
 					backupRequestId: backupRequestId,
 				},
 			});
+
+			this.circuitBreaker.onSuccess();
 
 			if (data === null) {
 				return err(
@@ -64,19 +114,51 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 			return this.mapToDomain(data);
 		} catch (e) {
 			const { message, ...error } = e as Error;
-			return err(new AdapterErrors.DatabaseError(message, { ...error, moduleName, functionName }));
+			let errorData = { isConnectFailure: false };
+
+			if (isTypeormConnectError(error)) {
+				this.circuitBreaker.onFailure();
+				errorData = this.connectFailureErrorData;
+			}
+
+			return err(new AdapterErrors.DatabaseError(message, { ...error, ...errorData, moduleName, functionName }));
 		}
 	}
 
 	public async save(backupRequest: BackupRequest): Promise<Result<BackupRequest, AdapterErrors.DatabaseError>> {
 		const functionName = 'save';
-		const raw = this.mapToDb(backupRequest);
 
+		if (!this.circuitBreaker.isConnected()) {
+			return err(
+				new AdapterErrors.DatabaseError('Fast fail', {
+					...this.connectFailureErrorData,
+					moduleName,
+					functionName,
+				})
+			);
+		}
+
+		const raw = this.mapToDb(backupRequest);
 		try {
 			await this.typeormCtx.manager.save(TypeormBackupRequest, { ...raw });
+			this.circuitBreaker.onSuccess();
 		} catch (e) {
 			const { message, ...error } = e as Error;
-			return err(new AdapterErrors.DatabaseError(message, { ...error, moduleName, functionName }));
+			let errorData = { isConnectFailure: false };
+
+			if (isTypeormConnectError(error)) {
+				this.circuitBreaker.onFailure();
+				errorData = this.connectFailureErrorData;
+			}
+
+			return err(
+				new AdapterErrors.DatabaseError(message, {
+					...error,
+					...errorData,
+					moduleName,
+					functionName,
+				})
+			);
 		}
 
 		// trigger domain events

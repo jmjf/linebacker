@@ -1,4 +1,5 @@
 import { isDate } from 'util/types';
+import { setTimeout as setTimeoutPromise } from 'timers/promises';
 
 export type Dictionary = { [index: string]: any };
 
@@ -9,8 +10,21 @@ export function dateOrUndefinedAsDate(date: any): Date {
 	return undefined as unknown as Date;
 }
 
-export function delay(ms: number): Promise<unknown> {
-	return new Promise((resolve) => setTimeout(resolve, ms));
+// if delay gets
+export function delay(ms: number, signal?: AbortSignal): Promise<string> {
+	if (signal && typeof signal === 'object' && signal.constructor.name === 'AbortSignal') {
+		return setTimeoutPromise(ms, 'ok', { signal }).catch((e) => {
+			if (e.name === 'AbortError') return 'AbortError';
+			// else
+			throw e;
+		});
+	} else {
+		return new Promise((resolve) =>
+			setTimeout(() => {
+				resolve('ok');
+			}, ms)
+		);
+	}
 }
 
 export function isDev(): boolean {

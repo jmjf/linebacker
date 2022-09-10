@@ -7,10 +7,10 @@ import {
 	RestError,
 	StorageSharedKeyCredential,
 } from '@azure/storage-queue';
-import { fromBase64, toBase64 } from '../../utils/utils';
-import { BaseError } from '../core/BaseError';
-import { err, ok, Result } from '../core/Result';
-import * as InfrastructureErrors from './InfrastructureErrors';
+import { fromBase64, toBase64 } from '../common/utils/utils';
+import { BaseError } from '../common/core/BaseError';
+import { err, ok, Result } from '../common/core/Result';
+import * as InfrastructureErrors from '../common/infrastructure/InfrastructureErrors';
 
 export type CredentialType = 'ADCC' | 'SASK';
 // ADCC -> AD Client Credentials
@@ -276,6 +276,49 @@ export class AzureQueue {
 			});
 		} catch (e) {
 			const { message, ...error } = e as RestError;
+			return err(new InfrastructureErrors.SDKError(message, { error, moduleName, functionName }));
+		}
+	}
+
+	public static isConnectError(error: any): boolean {
+		let errorCode: string | undefined = undefined;
+		if (error && error.errorData && error.errorData.error && error.errorData.error.code) {
+			errorCode = error.errorData.error.code;
+		} else if (error && error.code) {
+			errorCode = error.code;
+		}
+		return (
+			// list of retriable errors from the Azure Queue SDK
+			// azure-sdk-for-js/sdk/storage/storage-queue/src/policies/StorageRetryPolicy.ts
+			errorCode !== undefined &&
+			[
+				'ETIMEDOUT',
+				'ESOCKETTIMEDOUT',
+				'ECONNREFUSED',
+				'ECONNRESET',
+				'ENOENT',
+				'ENOTFOUND',
+				'TIMEOUT',
+				'EPIPE',
+			].includes(errorCode)
+		);
+	}
+
+	public static async isConnected(): Promise<Result<boolean, InfrastructureErrors.SDKError>> {
+		const functionName = 'isConnected';
+		// queue name doesn't matter; connection is what matters
+		const initResult = this.initMethod({ queueName: 'test-connection' });
+		if (initResult.isErr()) {
+			return err(initResult.error);
+		}
+		const { queueClient } = initResult.value;
+
+		try {
+			await queueClient.exists();
+			return ok(true);
+		} catch (e) {
+			const { message, ...error } = e as RestError;
+			// console.log('AQ.isConnected', e);
 			return err(new InfrastructureErrors.SDKError(message, { error, moduleName, functionName }));
 		}
 	}

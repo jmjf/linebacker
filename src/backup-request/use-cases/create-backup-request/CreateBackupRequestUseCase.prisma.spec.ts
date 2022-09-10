@@ -3,21 +3,46 @@ import { CreateBackupRequestDTO } from './CreateBackupRequestDTO';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
 
+import { ok } from '../../../common/core/Result';
+import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
+
 import {
 	MockPrismaContext,
 	PrismaContext,
 	createMockPrismaContext,
-} from '../../../common/infrastructure/prismaContext';
+} from '../../../infrastructure/prisma/prismaContext';
 import { PrismaBackupRequest } from '@prisma/client';
-import { Dictionary } from '../../../utils/utils';
+import { Dictionary } from '../../../common/utils/utils';
 
 describe('CreateBackupRequestUseCase - Prisma', () => {
 	let mockPrismaCtx: MockPrismaContext;
 	let prismaCtx: PrismaContext;
+	let circuitBreaker: CircuitBreakerWithRetry;
+	let abortController: AbortController;
 
 	beforeEach(() => {
 		mockPrismaCtx = createMockPrismaContext();
 		prismaCtx = mockPrismaCtx as unknown as PrismaContext;
+
+		const isAlive = () => {
+			return Promise.resolve(ok(true));
+		};
+
+		abortController = new AbortController();
+		circuitBreaker = new CircuitBreakerWithRetry({
+			isAlive,
+			abortSignal: abortController.signal,
+			serviceName: 'TypeORM',
+			successToCloseCount: 1,
+			failureToOpenCount: 100,
+			halfOpenRetryDelayMs: 5,
+			closedRetryDelayMs: 5,
+			openAliveCheckDelayMs: 5,
+		});
+	});
+
+	afterEach(() => {
+		circuitBreaker.halt();
 	});
 
 	const baseDto = {
@@ -33,7 +58,7 @@ describe('CreateBackupRequestUseCase - Prisma', () => {
 		// Arrange
 		// this test fails before it calls the repo, so no need to mock upsert
 
-		const repo = new PrismaBackupRequestRepo(prismaCtx);
+		const repo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 		const saveSpy = jest.spyOn(repo, 'save');
 
 		const useCase = new CreateBackupRequestUseCase(repo);
@@ -62,7 +87,7 @@ describe('CreateBackupRequestUseCase - Prisma', () => {
 		// Arrange
 		// this test fails before it calls the repo, so no need to mock upsert
 
-		const repo = new PrismaBackupRequestRepo(prismaCtx);
+		const repo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 		const saveSpy = jest.spyOn(repo, 'save');
 
 		const useCase = new CreateBackupRequestUseCase(repo);
@@ -87,7 +112,7 @@ describe('CreateBackupRequestUseCase - Prisma', () => {
 		// Arrange
 		// this test fails before it calls the repo, so no need to mock upsert
 
-		const repo = new PrismaBackupRequestRepo(prismaCtx);
+		const repo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 		const saveSpy = jest.spyOn(repo, 'save');
 
 		const useCase = new CreateBackupRequestUseCase(repo);
@@ -113,7 +138,7 @@ describe('CreateBackupRequestUseCase - Prisma', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockResolvedValue({} as unknown as PrismaBackupRequest);
 
-		const repo = new PrismaBackupRequestRepo(prismaCtx);
+		const repo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 		const saveSpy = jest.spyOn(repo, 'save');
 
 		const useCase = new CreateBackupRequestUseCase(repo);

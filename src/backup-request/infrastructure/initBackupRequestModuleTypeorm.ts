@@ -2,7 +2,7 @@ import {
 	mockBackupJobProps,
 	MockBackupJobServiceAdapter,
 } from '../../backup-job/adapter/impl/MockBackupJobServiceAdapter';
-import { TypeormContext } from '../../common/infrastructure/typeormContext';
+import { TypeormContext } from '../../infrastructure/typeorm/typeormContext';
 import { ExpressCreateBackupRequestController } from '../adapter/impl/ExpressCreateBackupRequestController';
 
 import { FastifyCreateBackupRequestController } from '../adapter/impl/FastifyCreateBackupRequestController';
@@ -14,9 +14,14 @@ import { CheckRequestAllowedUseCase } from '../use-cases/check-request-allowed/C
 import { CreateBackupRequestUseCase } from '../use-cases/create-backup-request/CreateBackupRequestUseCase';
 import { BackupRequestAllowedSubscriber } from '../use-cases/send-request-to-interface/BackupRequestAllowedSubscriber';
 import { SendRequestToInterfaceUseCase } from '../use-cases/send-request-to-interface/SendRequestToInterfaceUseCase';
+import { ICircuitBreakers } from '../../infrastructure/buildCircuitBreakers.typeorm';
 
-export const initBackupRequestModule = (typeormCtx: TypeormContext, controllerType: 'Fastify' | 'Express') => {
-	const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx);
+export const initBackupRequestModule = (
+	typeormCtx: TypeormContext,
+	circuitBreakers: ICircuitBreakers,
+	controllerType: 'Fastify' | 'Express'
+) => {
+	const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreakers.dbCircuitBreaker);
 
 	const createBackupRequestUseCase = new CreateBackupRequestUseCase(backupRequestRepo);
 
@@ -29,7 +34,10 @@ export const initBackupRequestModule = (typeormCtx: TypeormContext, controllerTy
 	new BackupRequestCreatedSubscriber(checkRequestAllowedUseCase);
 
 	// subscribe BackupRequestAllowedSubscriber
-	const interfaceStoreAdapter = new AzureBackupInterfaceStoreAdapter('allowed-backup-requests');
+	const interfaceStoreAdapter = new AzureBackupInterfaceStoreAdapter(
+		'allowed-backup-requests',
+		circuitBreakers.azureQueueCircuitBreaker
+	);
 	const sendRequestToInterfaceUseCase = new SendRequestToInterfaceUseCase({
 		backupRequestRepo,
 		interfaceStoreAdapter,

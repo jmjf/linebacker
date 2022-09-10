@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import { logger } from '../common/infrastructure/pinoLogger';
+import { logger } from '../pinoLogger';
 
 export interface RequestWithHrTimeTraceId extends Request {
 	hrTimeTraceId?: string;

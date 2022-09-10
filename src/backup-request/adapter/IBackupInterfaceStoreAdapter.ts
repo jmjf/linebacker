@@ -40,6 +40,4 @@ export interface IBackupInterfaceStoreAdapter {
 		messageId: string,
 		popReceipt: string
 	): Promise<Result<StoreDeleteResponse, AdapterErrors.InterfaceAdapterError>>;
-
-	isReady(): Promise<Result<boolean, AdapterErrors.InterfaceAdapterError>>;
 }

@@ -8,23 +8,48 @@ import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 import { CheckRequestAllowedDTO } from './CheckRequestAllowedDTO';
 import { CheckRequestAllowedUseCase } from './CheckRequestAllowedUseCase';
 
+import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
+import { ok } from '../../../common/core/Result';
+
 import {
 	MockPrismaContext,
 	PrismaContext,
 	createMockPrismaContext,
-} from '../../../common/infrastructure/prismaContext';
+} from '../../../infrastructure/prisma/prismaContext';
 import { PrismaBackupRequest } from '@prisma/client';
 import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
-import { Dictionary } from '../../../utils/utils';
+import { Dictionary } from '../../../common/utils/utils';
 
 describe('CheckRequestAllowedUseCase - Prisma', () => {
 	let mockPrismaCtx: MockPrismaContext;
 	let prismaCtx: PrismaContext;
+	let circuitBreaker: CircuitBreakerWithRetry;
+	let abortController: AbortController;
 
 	beforeEach(() => {
 		mockPrismaCtx = createMockPrismaContext();
 		prismaCtx = mockPrismaCtx as unknown as PrismaContext;
+
+		const isAlive = () => {
+			return Promise.resolve(ok(true));
+		};
+
+		abortController = new AbortController();
+		circuitBreaker = new CircuitBreakerWithRetry({
+			isAlive,
+			abortSignal: abortController.signal,
+			serviceName: 'TypeORM',
+			successToCloseCount: 1,
+			failureToOpenCount: 100,
+			halfOpenRetryDelayMs: 5,
+			closedRetryDelayMs: 5,
+			openAliveCheckDelayMs: 5,
+		});
+	});
+
+	afterEach(() => {
+		circuitBreaker.halt();
 	});
 
 	const baseDto: CheckRequestAllowedDTO = {
@@ -63,7 +88,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(dbBackupRequest);
 
-		const repo = new PrismaBackupRequestRepo(prismaCtx);
+		const repo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 
 		const adapter = new MockBackupJobServiceAdapter({
 			getByIdResult: { ...backupJobProps },
@@ -95,7 +120,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(null as unknown as PrismaBackupRequest);
 
-		const repo = new PrismaBackupRequestRepo(prismaCtx);
+		const repo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 
 		const adapter = new MockBackupJobServiceAdapter({
 			getByIdError: new AdapterErrors.NotFoundError(
@@ -127,7 +152,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(dbBackupRequest);
 
-		const repo = new PrismaBackupRequestRepo(prismaCtx);
+		const repo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 
 		const adapter = new MockBackupJobServiceAdapter({
 			getByIdError: new AdapterErrors.BackupJobServiceError(`{msg: 'backupJobId not found' }`),
@@ -160,7 +185,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 			statusTypeCode: 'INVALID',
 		});
 
-		const repo = new PrismaBackupRequestRepo(prismaCtx);
+		const repo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 
 		const adapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });
 
@@ -219,7 +244,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 				resultBackupRequest as PrismaBackupRequest
 			);
 
-			const repo = new PrismaBackupRequestRepo(prismaCtx);
+			const repo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
 			const saveSpy = jest.spyOn(repo, 'save');
 
 			const adapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });

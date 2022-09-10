@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { InvalidApiVersionError } from '../../../common/adapter/AdapterErrors';
 import { ExpressController, LinebackerRequest } from '../../../common/adapter/ExpressController';
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
-import { safeJsonParse } from '../../../utils/utils';
+import { safeJsonParse } from '../../../common/utils/utils';
 import { CreateBackupRequestUseCase } from '../../use-cases/create-backup-request/CreateBackupRequestUseCase';
 
 export interface ICreateBackupRequestBody {

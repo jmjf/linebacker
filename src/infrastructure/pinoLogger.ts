@@ -1,5 +1,5 @@
 import pino from 'pino';
-import { isDev, isTest } from '../../utils/utils';
+import { isDev, isTest } from '../common/utils/utils';
 
 const baseOptions = {
 	name: 'linebacker',
