@@ -36,7 +36,7 @@ export abstract class FastifyController {
 		try {
 			return await this.execImpl(request, reply);
 		} catch (e) {
-			console.log(e);
+			console.log('FastifyController.execute', e);
 		}
 		return;
 	}

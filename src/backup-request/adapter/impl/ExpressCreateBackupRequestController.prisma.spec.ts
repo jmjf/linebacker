@@ -44,7 +44,7 @@ describe('ExpressCreateBackupRequestController - prisma', () => {
 		delay(250);
 	});
 
-	const testUrl = '/backup-requests';
+	const testUrl = '/api/backup-requests';
 
 	const basePayload = {
 		apiVersion: '2022-05-22',

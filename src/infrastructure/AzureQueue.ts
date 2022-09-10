@@ -318,7 +318,7 @@ export class AzureQueue {
 			return ok(true);
 		} catch (e) {
 			const { message, ...error } = e as RestError;
-			console.log('AQ.isConnected', e);
+			// console.log('AQ.isConnected', e);
 			return err(new InfrastructureErrors.SDKError(message, { error, moduleName, functionName }));
 		}
 	}

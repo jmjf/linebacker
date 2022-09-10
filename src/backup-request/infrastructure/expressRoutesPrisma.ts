@@ -11,7 +11,7 @@ import { ICircuitBreakers } from '../../infrastructure/buildCircuitBreakers.type
 export function addBackupRequestRoutes(app: Application, prismaCtx: PrismaContext, circuitBreakers: ICircuitBreakers) {
 	const { createBackupRequestController } = initBackupRequestModule(prismaCtx, circuitBreakers, 'Express');
 
-	app.post('/backup-requests', async function (request: Request, response: Response) {
+	app.post('/api/backup-requests', async function (request: Request, response: Response) {
 		let result = await (createBackupRequestController as ExpressCreateBackupRequestController).execute(
 			request,
 			response

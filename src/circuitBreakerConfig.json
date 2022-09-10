@@ -20,10 +20,10 @@
 	"azureQueue": {
 		"serviceName": "AzureQueue",
 		"successToCloseCount": 10,
-		"failureToOpenCount": 10,
+		"failureToOpenCount": 1,
 		"halfOpenRetryDelayMs": 500,
 		"closedRetryDelayMs": 250,
-		"openAliveCheckDelayMs": 300000
+		"openAliveCheckDelayMs": 30000
 	},
 
 	"backupJobService": {

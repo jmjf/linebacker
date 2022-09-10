@@ -18,7 +18,7 @@ export abstract class ExpressController {
 		try {
 			return await this.execImpl(request, response);
 		} catch (e) {
-			console.log(e);
+			console.log('ExpressController.execute', e);
 			return e;
 		}
 	}

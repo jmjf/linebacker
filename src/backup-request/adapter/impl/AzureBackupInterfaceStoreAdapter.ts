@@ -54,7 +54,7 @@ export class AzureBackupInterfaceStoreAdapter {
 		const endTime = new Date();
 
 		if (result.isErr()) {
-			console.log('send error', AzureQueue.isConnectError(result.error), result.error);
+			// console.log('send error', AzureQueue.isConnectError(result.error), result.error);
 			if (AzureQueue.isConnectError(result.error)) {
 				this.circuitBreaker.onFailure();
 				result.error.errorData = { ...result.error.errorData, ...this.connectFailureErrorData };

@@ -13,7 +13,8 @@
 		"express:dev:prisma": "APP_ENV=dev ts-node src/expressServerPrisma.ts",
 		"express:dev:typeorm": "APP_ENV=dev ts-node src/expressServerTypeorm.ts",
 		"build:testApp": "npx tsc",
-		"run:testApp": "node ./dist/test.js"
+		"run:testApp": "node ./dist/test.js",
+		"read:azurite": "ts-node src/test-helpers/readLocalQueue.ts"
 	},
 	"author": "Jamee Mikell",
 	"license": "MIT",
