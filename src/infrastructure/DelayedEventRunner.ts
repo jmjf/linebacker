@@ -23,6 +23,12 @@ export class DelayedEventRunner {
 		return this._events.map((ev) => ev.getAggregateId().value);
 	}
 
+	public get events() {
+		return this._events.map((ev) => {
+			return { ...ev };
+		});
+	}
+
 	public get eventCount() {
 		return this._events.length;
 	}
@@ -60,9 +66,13 @@ export class DelayedEventRunner {
 		}
 	}
 
+	public clearEvents() {
+		this._events = [];
+	}
+
 	public async runEvents() {
 		// if called, assume it should run; in circuit breaker check for Halted before calling
-		this._state = DelayedEventRunnerStateValues.Run;
+		this.setStateRun();
 
 		let ev: IDomainEvent | undefined;
 		// Array.prototype.shift() removes the first element from the array and returns it (or undefined if none)

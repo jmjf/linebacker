@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 
 dotenv.config({ path: './env/dev.env' });
 
-async function main() {
+async function getQueueClient(): Promise<QueueClient | undefined> {
 	const accountName = (process.env.SASK_ACCOUNT_NAME || '').trim();
 	const accountKey = (process.env.SASK_ACCOUNT_KEY || '').trim();
 
@@ -13,8 +13,10 @@ async function main() {
 	}
 
 	const cred = new StorageSharedKeyCredential(accountName, accountKey);
-	const queueClient = new QueueClient(`${process.env.AZURE_QUEUE_ACCOUNT_URI}/allowed-backup-requests`, cred);
+	return new QueueClient(`${process.env.AZURE_QUEUE_ACCOUNT_URI}/allowed-backup-requests`, cred);
+}
 
+async function readQueue(queueClient: QueueClient) {
 	let res: QueueReceiveMessageResponse;
 	do {
 		try {
@@ -25,6 +27,29 @@ async function main() {
 			return;
 		}
 	} while (res.receivedMessageItems.length >= 1);
+}
+
+async function main() {
+	const action = process.argv[2];
+	if (!(typeof action === 'string') || !['read', 'clear'].includes(action.toLowerCase())) {
+		console.log('Unknown action', action);
+		return;
+	}
+
+	const queueClient = await getQueueClient();
+	if (queueClient === undefined) {
+		console.log('Failed getting QueueClient');
+		return;
+	}
+
+	switch (action.toLowerCase()) {
+		case 'read':
+			await readQueue(queueClient);
+			break;
+		case 'clear':
+			await queueClient.clearMessages();
+			break;
+	}
 }
 
 main();
