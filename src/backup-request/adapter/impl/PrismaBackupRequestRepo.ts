@@ -14,7 +14,7 @@ import { BackupRequest } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
 import { IBackupRequestRepo } from '../IBackupRequestRepo';
 import { PrismaBackupRequest } from '@prisma/client';
-import { RequestStatusType } from '../../domain/RequestStatusType';
+import { RequestStatusType, RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { isPrismaConnectError } from '../../../infrastructure/prisma/isPrismaConnectError';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
@@ -127,6 +127,82 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 					functionName,
 				})
 			);
+		}
+	}
+
+	public async getRequestIdsByStatusBeforeTimestamp(
+		status: RequestStatusType,
+		beforeTimestamp: Date
+	): Promise<Result<string[], AdapterErrors.DatabaseError | AdapterErrors.NotFoundError>> {
+		const functionName = 'getRequestIdsByStatus';
+
+		if (!this.circuitBreaker.isConnected()) {
+			return err(
+				new AdapterErrors.DatabaseError('Fast fail', {
+					...this.connectFailureErrorData,
+					moduleName,
+					functionName,
+				})
+			);
+		}
+
+		let whereDateTerm = {};
+		switch (status) {
+			case RequestStatusTypeValues.Received:
+				whereDateTerm = {
+					receivedTimestamp: { lt: beforeTimestamp },
+				};
+				break;
+			case RequestStatusTypeValues.Allowed:
+			case RequestStatusTypeValues.NotAllowed:
+				whereDateTerm = {
+					checkedTimestamp: { lt: beforeTimestamp },
+				};
+				break;
+			case RequestStatusTypeValues.Sent:
+				whereDateTerm = {
+					sentToInterfaceTimestamp: { lt: beforeTimestamp },
+				};
+				break;
+			case RequestStatusTypeValues.Succeeded:
+			case RequestStatusTypeValues.Failed:
+				whereDateTerm = {
+					replyTimestamp: { lt: beforeTimestamp },
+				};
+				break;
+		}
+
+		try {
+			const data = await this.prisma.prismaBackupRequest.findMany({
+				select: { backupRequestId: true },
+				where: {
+					...whereDateTerm,
+					statusTypeCode: status,
+				},
+			});
+
+			this.circuitBreaker.onSuccess();
+
+			if (data.length === 0) {
+				return err(
+					new AdapterErrors.NotFoundError('BackupRequests not found for status and timestamp', {
+						status,
+						beforeTimestamp,
+					})
+				);
+			}
+
+			return ok(data.map((br) => br.backupRequestId));
+		} catch (e) {
+			const { message, ...error } = e as Error;
+			let errorData = { isConnectFailure: false };
+
+			if (isPrismaConnectError(error)) {
+				this.circuitBreaker.onFailure();
+				errorData = this.connectFailureErrorData;
+			}
+
+			return err(new AdapterErrors.DatabaseError(message, { ...error, ...errorData, moduleName, functionName }));
 		}
 	}
 

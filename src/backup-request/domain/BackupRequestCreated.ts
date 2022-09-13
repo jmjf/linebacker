@@ -10,7 +10,7 @@ export class BackupRequestCreated implements IDomainEvent {
 	constructor(backupRequest: BackupRequest) {
 		this.eventTimestamp = new Date();
 		this.retryCount = 0;
-		this.backupRequestId = backupRequest.backupRequestId;
+		this.backupRequestId = backupRequest.id;
 	}
 
 	getAggregateId(): UniqueIdentifier {

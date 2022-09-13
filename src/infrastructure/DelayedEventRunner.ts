@@ -56,6 +56,7 @@ export class DelayedEventRunner {
 	public addEvent(ev: IDomainEvent): void {
 		// only add when ev doesn't already exist in event array
 		if (
+			this._events.length === 0 ||
 			this._events.find(
 				(arrEvent) =>
 					arrEvent.constructor.name === ev.constructor.name &&
