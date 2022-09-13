@@ -55,14 +55,15 @@ export class DelayedEventRunner {
 
 	public addEvent(ev: IDomainEvent): void {
 		// only add when ev doesn't already exist in event array
+		// console.log('DER addEvent', ev);
 		if (
-			this._events.length === 0 ||
 			this._events.find(
 				(arrEvent) =>
 					arrEvent.constructor.name === ev.constructor.name &&
 					arrEvent.getAggregateId().value === ev.getAggregateId().value
 			) === undefined
 		) {
+			// console.log('DER adding', ev);
 			this._events.push(ev);
 		}
 	}

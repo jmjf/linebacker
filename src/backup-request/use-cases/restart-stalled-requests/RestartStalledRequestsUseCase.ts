@@ -43,9 +43,7 @@ export class RestartStalledRequestsUseCase implements UseCase<RestartStalledRequ
 		);
 		if (allowedQueryResult.isOk()) {
 			// the event wants a "BackupRequest", but only needs the id as a UniqueIdentifier
-			allowedEvents = allowedQueryResult.value.map(
-				(id) => new BackupRequestAllowed({ id: new UniqueIdentifier(id) } as BackupRequest)
-			);
+			allowedEvents = allowedQueryResult.value.map((id) => new BackupRequestAllowed(new UniqueIdentifier(id)));
 		}
 		// console.log('RSRUC allowedEvents', allowedEvents);
 
@@ -55,9 +53,7 @@ export class RestartStalledRequestsUseCase implements UseCase<RestartStalledRequ
 		);
 		if (receivedQueryResult.isOk()) {
 			// console.log('RSRUC receivedQueryResult', receivedQueryResult);
-			receivedEvents = receivedQueryResult.value.map(
-				(id) => new BackupRequestCreated({ id: new UniqueIdentifier(id) } as BackupRequest)
-			);
+			receivedEvents = receivedQueryResult.value.map((id) => new BackupRequestCreated(new UniqueIdentifier(id)));
 		}
 		// console.log('RSRUC receivedEvents', receivedEvents);
 

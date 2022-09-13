@@ -78,6 +78,12 @@ export class BackupRequestAllowedSubscriber implements IDomainEventSubscriber<Ba
 
 				const errorData = result.error.errorData as ConnectFailureErrorData;
 				if (errorData.isConnectFailure) {
+					// console.log(
+					// 	'BRAS connect failure',
+					// 	errorData.serviceName,
+					// 	errorData.isConnected,
+					// 	errorData.addRetryEvent
+					// );
 					if (errorData.serviceName && errorData.isConnected && !this.failedServices[errorData.serviceName]) {
 						this.failedServices[errorData.serviceName] = { isConnected: undefined, addRetryEvent: undefined };
 						this.failedServices[errorData.serviceName].isConnected = errorData.isConnected;
@@ -85,6 +91,7 @@ export class BackupRequestAllowedSubscriber implements IDomainEventSubscriber<Ba
 					}
 					if (errorData.addRetryEvent) {
 						event.retryCount++;
+						// console.log('BRAS add retry event', event);
 						errorData.addRetryEvent(event);
 					}
 				}
