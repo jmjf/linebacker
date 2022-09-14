@@ -25,7 +25,7 @@ export class BackupRequestCreatedSubscriber implements IDomainEventSubscriber<Ba
 	}
 
 	async onBackupRequestCreated(event: BackupRequestCreated): Promise<void> {
-		const backupRequestId = event.getAggregateId();
+		const backupRequestId = event.getId();
 		const eventName = event.constructor.name;
 		const logContext = {
 			moduleName,

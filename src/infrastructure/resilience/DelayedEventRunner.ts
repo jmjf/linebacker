@@ -20,7 +20,7 @@ export class DelayedEventRunner {
 	}
 
 	public get eventIds() {
-		return this._events.map((ev) => ev.getAggregateId().value);
+		return this._events.map((ev) => ev.getId().value);
 	}
 
 	public get events() {
@@ -60,7 +60,7 @@ export class DelayedEventRunner {
 			this._events.find(
 				(arrEvent) =>
 					arrEvent.constructor.name === ev.constructor.name &&
-					arrEvent.getAggregateId().value === ev.getAggregateId().value
+					(ev.getId() === undefined || arrEvent.getId().equals(ev.getId()))
 			) === undefined
 		) {
 			// console.log('DER adding', ev);

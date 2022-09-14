@@ -12,7 +12,7 @@ export class BackupRequestAllowed implements IDomainEvent {
 		this.id = id;
 	}
 
-	getAggregateId(): UniqueIdentifier {
+	getId(): UniqueIdentifier {
 		return this.id;
 	}
 }

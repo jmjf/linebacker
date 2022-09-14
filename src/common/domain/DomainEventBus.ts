@@ -6,7 +6,7 @@ import { UniqueIdentifier } from './UniqueIdentifier';
 export interface IDomainEvent {
 	eventTimestamp: Date;
 	// retryCount: number;
-	getAggregateId(): UniqueIdentifier;
+	getId(): UniqueIdentifier;
 }
 
 export interface IDomainEventSubscriber<IDomainEvent> {

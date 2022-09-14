@@ -128,7 +128,7 @@ describe('RestartStalledRequestsUseCase - typeorm', () => {
 		expect(result.receivedResult.isOk()).toBe(true);
 		if (result.receivedResult.isOk()) {
 			expect(result.receivedResult.value.length).toBe(2);
-			expect(result.receivedResult.value[0].getAggregateId().value).toBe(dbReceivedResults[0].backupRequestId);
+			expect(result.receivedResult.value[0].getId().value).toBe(dbReceivedResults[0].backupRequestId);
 		}
 	});
 
@@ -152,7 +152,7 @@ describe('RestartStalledRequestsUseCase - typeorm', () => {
 		}
 		if (result.receivedResult.isOk()) {
 			expect(result.receivedResult.value.length).toBe(2);
-			expect(result.receivedResult.value[0].getAggregateId().value).toBe(dbReceivedResults[0].backupRequestId);
+			expect(result.receivedResult.value[0].getId().value).toBe(dbReceivedResults[0].backupRequestId);
 		}
 	});
 
@@ -173,7 +173,7 @@ describe('RestartStalledRequestsUseCase - typeorm', () => {
 		expect(result.receivedResult.isErr()).toBe(true);
 		if (result.allowedResult.isOk()) {
 			expect(result.allowedResult.value.length).toBe(2);
-			expect(result.allowedResult.value[0].getAggregateId().value).toBe(dbAllowedResults[0].backupRequestId);
+			expect(result.allowedResult.value[0].getId().value).toBe(dbAllowedResults[0].backupRequestId);
 		}
 	});
 
@@ -197,7 +197,7 @@ describe('RestartStalledRequestsUseCase - typeorm', () => {
 		}
 		if (result.allowedResult.isOk()) {
 			expect(result.allowedResult.value.length).toBe(2);
-			expect(result.allowedResult.value[0].getAggregateId().value).toBe(dbAllowedResults[0].backupRequestId);
+			expect(result.allowedResult.value[0].getId().value).toBe(dbAllowedResults[0].backupRequestId);
 		}
 	});
 
@@ -218,11 +218,11 @@ describe('RestartStalledRequestsUseCase - typeorm', () => {
 		expect(result.receivedResult.isOk()).toBe(true);
 		if (result.allowedResult.isOk()) {
 			expect(result.allowedResult.value.length).toBe(2);
-			expect(result.allowedResult.value[0].getAggregateId().value).toBe(dbAllowedResults[0].backupRequestId);
+			expect(result.allowedResult.value[0].getId().value).toBe(dbAllowedResults[0].backupRequestId);
 		}
 		if (result.receivedResult.isOk()) {
 			expect(result.receivedResult.value.length).toBe(2);
-			expect(result.receivedResult.value[0].getAggregateId().value).toBe(dbReceivedResults[0].backupRequestId);
+			expect(result.receivedResult.value[0].getId().value).toBe(dbReceivedResults[0].backupRequestId);
 		}
 	});
 });

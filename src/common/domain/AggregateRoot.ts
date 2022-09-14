@@ -37,7 +37,7 @@ export abstract class AggregateRoot<T> extends Entity<T> {
 		logger.debug({
 			eventName: domainEventName,
 			aggregateName: `${aggregateName}`,
-			aggregateId: domainEvent.getAggregateId().value,
+			aggregateId: domainEvent.getId().value,
 			msg: 'added event',
 		});
 	}

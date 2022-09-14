@@ -102,7 +102,7 @@ class TestEvent implements IDomainEvent {
 		this.retryCount = 0;
 	}
 
-	getAggregateId(): UniqueIdentifier {
+	getId(): UniqueIdentifier {
 		return this.id;
 	}
 }
@@ -125,7 +125,7 @@ class TestSubscriber implements IDomainEventSubscriber<TestEvent> {
 	}
 
 	async onEvent(event: TestEvent): Promise<void> {
-		const id = event.getAggregateId();
+		const id = event.getId();
 		const eventName = event.constructor.name;
 
 		if (VERBOSE_LOGS) console.log('subscriber event', id.value, event.retryCount, this.failedServiceNames);

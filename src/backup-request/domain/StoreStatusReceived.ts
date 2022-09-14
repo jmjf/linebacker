@@ -36,8 +36,8 @@ export class StoreStatusReceived implements IDomainEvent {
 		// console.log('StoreStatusReceived constructor called with messageItem', messageItem);
 	}
 
-	// this event isn't related to an aggregate
-	getAggregateId(): UniqueIdentifier {
+	getId(): UniqueIdentifier {
+		// this event isn't related to an aggregate; returns data in the messageItem
 		return undefined as unknown as UniqueIdentifier;
 	}
 }
