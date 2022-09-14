@@ -1,4 +1,4 @@
-import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
+import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 import { ok } from '../../../common/core/Result';
 
 import { IBackupJobProps } from '../../../backup-job/domain/BackupJob';

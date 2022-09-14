@@ -7,7 +7,7 @@ import { ICreateBackupRequestBody } from './FastifyCreateBackupRequestController
 import { ok } from '../../../common/core/Result';
 
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
-import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
+import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 import {
 	MockPrismaContext,
 	PrismaContext,

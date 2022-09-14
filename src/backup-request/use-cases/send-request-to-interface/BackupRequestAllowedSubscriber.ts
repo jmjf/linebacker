@@ -2,8 +2,8 @@ import { BaseError } from '../../../common/core/BaseError';
 
 import { DomainEventBus, IDomainEventSubscriber } from '../../../common/domain/DomainEventBus';
 
-import { ConnectFailureErrorData } from '../../../infrastructure/CircuitBreakerWithRetry';
-import { logger } from '../../../infrastructure/pinoLogger';
+import { ConnectFailureErrorData } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
+import { logger } from '../../../infrastructure/logging/pinoLogger';
 
 import { Dictionary } from '../../../common/utils/utils';
 

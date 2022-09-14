@@ -1,4 +1,4 @@
-import { logger } from '../../infrastructure/pinoLogger';
+import { logger } from '../../infrastructure/logging/pinoLogger';
 
 import { Entity } from './Entity';
 import { DomainEventBus, IDomainEvent } from './DomainEventBus';

@@ -6,7 +6,7 @@ import { IStoreStatusMessageHandler } from '../IStoreStatusMessageHandler';
 import { StoreStatusMessage, StoreStatusMessageItem, StoreStatusReceived } from '../../domain/StoreStatusReceived';
 
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
-import { logger } from '../../../infrastructure/pinoLogger';
+import { logger } from '../../../infrastructure/logging/pinoLogger';
 import { DomainEventBus } from '../../../common/domain/DomainEventBus';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);

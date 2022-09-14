@@ -11,7 +11,7 @@ import { BackupRequestAllowed } from '../../domain/BackupRequestAllowed';
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 import { BackupRequest } from '../../domain/BackupRequest';
 import { BackupRequestCreated } from '../../domain/BackupRequestCreated';
-import { DelayedEventRunner } from '../../../infrastructure/DelayedEventRunner';
+import { DelayedEventRunner } from '../../../infrastructure/resilience/DelayedEventRunner';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 

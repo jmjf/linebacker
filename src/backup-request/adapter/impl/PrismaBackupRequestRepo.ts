@@ -1,5 +1,8 @@
 import { PrismaContext } from '../../../infrastructure/prisma/prismaContext';
-import { CircuitBreakerWithRetry, ConnectFailureErrorData } from '../../../infrastructure/CircuitBreakerWithRetry';
+import {
+	CircuitBreakerWithRetry,
+	ConnectFailureErrorData,
+} from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 
 import { DomainEventBus } from '../../../common/domain/DomainEventBus';
 

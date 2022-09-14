@@ -15,7 +15,7 @@ import { ReceiveStoreStatusReplyUseCase } from './ReceiveStoreStatusReplyUseCase
 import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
 import { PrismaBackupRepo } from '../../../backup/adapter/impl/PrismaBackupRepo';
 
-import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
+import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 import { ok } from '../../../common/core/Result';
 
 import {

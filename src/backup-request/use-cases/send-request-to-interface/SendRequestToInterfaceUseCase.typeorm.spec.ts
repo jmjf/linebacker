@@ -2,7 +2,7 @@
 jest.mock('@azure/storage-queue');
 import * as mockQueueSDK from '@azure/storage-queue';
 
-import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
+import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 import { ok } from '../../../common/core/Result';
 
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';

@@ -6,7 +6,7 @@ import { ICreateBackupRequestBody } from './ExpressCreateBackupRequestController
 
 import { ok } from '../../../common/core/Result';
 
-import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
+import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 import {
 	MockPrismaContext,
 	PrismaContext,

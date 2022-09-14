@@ -1,4 +1,4 @@
-import { logger } from '../../../infrastructure/pinoLogger';
+import { logger } from '../../../infrastructure/logging/pinoLogger';
 import { err, ok, Result } from '../../../common/core/Result';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 

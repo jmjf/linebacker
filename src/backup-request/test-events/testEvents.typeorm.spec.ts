@@ -37,7 +37,7 @@ import { TypeormBackupRequestRepo } from '../adapter/impl/TypeormBackupRequestRe
 import { TypeormBackupRequest } from '../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
 import { TypeormBackupRepo } from '../../backup/adapter/impl/TypeormBackupRepo';
 import { TypeormBackup } from '../../infrastructure/typeorm/entity/TypeormBackup.entity';
-import { buildCircuitBreakers } from '../../infrastructure/buildCircuitBreakers.typeorm';
+import { buildCircuitBreakers } from '../../infrastructure/typeorm/buildCircuitBreakers.typeorm';
 
 const TEST_EVENTS = true;
 

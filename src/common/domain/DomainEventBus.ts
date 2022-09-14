@@ -1,5 +1,5 @@
 import { Dictionary } from '../../common/utils/utils';
-import { logger } from '../../infrastructure/pinoLogger';
+import { logger } from '../../infrastructure/logging/pinoLogger';
 import { AggregateRoot } from './AggregateRoot';
 import { UniqueIdentifier } from './UniqueIdentifier';
 

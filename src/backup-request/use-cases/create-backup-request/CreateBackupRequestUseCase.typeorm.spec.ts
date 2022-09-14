@@ -1,4 +1,4 @@
-import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
+import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 
 import { CreateBackupRequestUseCase } from './CreateBackupRequestUseCase';
 import { CreateBackupRequestDTO } from './CreateBackupRequestDTO';

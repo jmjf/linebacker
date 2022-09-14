@@ -1,5 +1,8 @@
 import { TypeormContext } from '../../../infrastructure/typeorm/typeormContext';
-import { CircuitBreakerWithRetry, ConnectFailureErrorData } from '../../../infrastructure/CircuitBreakerWithRetry';
+import {
+	CircuitBreakerWithRetry,
+	ConnectFailureErrorData,
+} from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 
 import { err, ok, Result } from '../../../common/core/Result';
 import { DomainEventBus } from '../../../common/domain/DomainEventBus';

@@ -5,7 +5,7 @@ import * as mockQueueSDK from '@azure/storage-queue';
 import { ReceivedMessageItem } from '@azure/storage-queue';
 
 import { DomainEventBus } from '../../../common/domain/DomainEventBus';
-import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
+import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 
 import { StoreStatusMessage } from '../../domain/StoreStatusReceived';
 import { AzureBackupInterfaceStoreAdapter } from './AzureBackupInterfaceStoreAdapter';

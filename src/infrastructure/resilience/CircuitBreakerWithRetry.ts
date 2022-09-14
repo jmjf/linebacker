@@ -1,7 +1,7 @@
-import { BaseError } from '../common/core/BaseError';
-import { Result } from '../common/core/Result';
-import { IDomainEvent } from '../common/domain/DomainEventBus';
-import { delay } from '../common/utils/utils';
+import { BaseError } from '../../common/core/BaseError';
+import { Result } from '../../common/core/Result';
+import { IDomainEvent } from '../../common/domain/DomainEventBus';
+import { delay } from '../../common/utils/utils';
 import { DelayedEventRunner } from './DelayedEventRunner';
 
 export const CircuitBreakerStateValues = {

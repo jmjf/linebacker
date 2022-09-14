@@ -11,7 +11,7 @@ import {
 	TypeormContext,
 	createMockTypeormContext,
 } from '../../../infrastructure/typeorm/typeormContext';
-import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
+import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { TypeORMError } from 'typeorm';

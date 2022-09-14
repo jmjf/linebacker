@@ -1,5 +1,5 @@
-import { DomainEventBus, IDomainEvent } from '../common/domain/DomainEventBus';
-import { delay } from '../common/utils/utils';
+import { DomainEventBus, IDomainEvent } from '../../common/domain/DomainEventBus';
+import { delay } from '../../common/utils/utils';
 
 const DelayedEventRunnerStateValues = {
 	Run: 'Run',

@@ -5,7 +5,7 @@ import * as AdapterErrors from '../../common/adapter/AdapterErrors';
 import { FastifyCreateBackupRequestController } from '../adapter/impl/FastifyCreateBackupRequestController';
 
 import { initBackupRequestModule } from './initBackupRequestModulePrisma';
-import { ICircuitBreakers } from '../../infrastructure/buildCircuitBreakers.typeorm';
+import { ICircuitBreakers } from '../../infrastructure/prisma/buildCircuitBreakers.prisma';
 
 export function addBackupRequestRoutes(
 	app: RealFastifyInstance,
