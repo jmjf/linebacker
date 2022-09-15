@@ -6,7 +6,7 @@ import { addBackupRequestRoutes } from './backup-request/infrastructure/expressR
 import { TypeormContext } from './infrastructure/typeorm/typeormContext';
 import { ICircuitBreakers } from './infrastructure/typeorm/buildCircuitBreakers.typeorm';
 
-export function buildApp(typeormCtx: TypeormContext, circuitBreakers: ICircuitBreakers) {
+export function buildApp(typeormCtx: TypeormContext, circuitBreakers: ICircuitBreakers, abortSignal: AbortSignal) {
 	const app = express();
 
 	// request/response logging
@@ -18,7 +18,7 @@ export function buildApp(typeormCtx: TypeormContext, circuitBreakers: ICircuitBr
 
 	app.use(handleBodyJsonErrors());
 
-	addBackupRequestRoutes(app, typeormCtx, circuitBreakers);
+	addBackupRequestRoutes(app, typeormCtx, circuitBreakers, abortSignal);
 
 	return app;
 }
