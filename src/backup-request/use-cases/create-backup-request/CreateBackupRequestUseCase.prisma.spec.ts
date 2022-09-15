@@ -4,7 +4,7 @@ import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
 
 import { ok } from '../../../common/core/Result';
-import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
+import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 
 import {
 	MockPrismaContext,

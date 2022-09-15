@@ -1,19 +1,18 @@
 import { IDomainEvent } from '../../common/domain/DomainEventBus';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
-import { BackupRequest } from './BackupRequest';
 
 export class BackupRequestCreated implements IDomainEvent {
 	public eventTimestamp: Date;
 	public retryCount: number;
-	public backupRequestId: UniqueIdentifier;
+	public id: UniqueIdentifier;
 
-	constructor(backupRequest: BackupRequest) {
+	constructor(id: UniqueIdentifier) {
 		this.eventTimestamp = new Date();
 		this.retryCount = 0;
-		this.backupRequestId = backupRequest.backupRequestId;
+		this.id = id;
 	}
 
-	getAggregateId(): UniqueIdentifier {
-		return this.backupRequestId;
+	getId(): UniqueIdentifier {
+		return this.id;
 	}
 }

@@ -10,7 +10,7 @@ import { AzureBackupInterfaceStoreAdapter } from '../../adapter/impl/AzureBackup
 import { SendRequestToInterfaceUseCase } from './SendRequestToInterfaceUseCase';
 import { SendRequestToInterfaceDTO } from './SendRequestToInterfaceDTO';
 
-import { CircuitBreakerWithRetry } from '../../../infrastructure/CircuitBreakerWithRetry';
+import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 import { ok } from '../../../common/core/Result';
 
 import {

@@ -1,7 +1,10 @@
 import { TypeormBackupRequest } from '../../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
 import { isTypeormConnectError } from '../../../infrastructure/typeorm/isTypeormConnectError';
 import { TypeormContext } from '../../../infrastructure/typeorm/typeormContext';
-import { CircuitBreakerWithRetry, ConnectFailureErrorData } from '../../../infrastructure/CircuitBreakerWithRetry';
+import {
+	CircuitBreakerWithRetry,
+	ConnectFailureErrorData,
+} from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 
 import { err, ok, Result } from '../../../common/core/Result';
 import { DomainEventBus } from '../../../common/domain/DomainEventBus';
@@ -15,7 +18,9 @@ import { BackupRequest } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
 import { IBackupRequestRepo } from '../IBackupRequestRepo';
 
-import { RequestStatusType } from '../../domain/RequestStatusType';
+import { RequestStatusType, RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { isDate } from 'util/types';
+import { LessThan } from 'typeorm';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 export class TypeormBackupRequestRepo implements IBackupRequestRepo {
@@ -112,6 +117,82 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 			}
 
 			return this.mapToDomain(data);
+		} catch (e) {
+			const { message, ...error } = e as Error;
+			let errorData = { isConnectFailure: false };
+
+			if (isTypeormConnectError(error)) {
+				this.circuitBreaker.onFailure();
+				errorData = this.connectFailureErrorData;
+			}
+
+			return err(new AdapterErrors.DatabaseError(message, { ...error, ...errorData, moduleName, functionName }));
+		}
+	}
+
+	public async getRequestIdsByStatusBeforeTimestamp(
+		status: RequestStatusType,
+		beforeTimestamp: Date
+	): Promise<Result<string[], AdapterErrors.DatabaseError | AdapterErrors.NotFoundError>> {
+		const functionName = 'getRequestIdsByStatus';
+
+		if (!this.circuitBreaker.isConnected()) {
+			return err(
+				new AdapterErrors.DatabaseError('Fast fail', {
+					...this.connectFailureErrorData,
+					moduleName,
+					functionName,
+				})
+			);
+		}
+
+		let whereDateTerm = {};
+		switch (status) {
+			case RequestStatusTypeValues.Received:
+				whereDateTerm = {
+					receivedTimestamp: LessThan(beforeTimestamp),
+				};
+				break;
+			case RequestStatusTypeValues.Allowed:
+			case RequestStatusTypeValues.NotAllowed:
+				whereDateTerm = {
+					checkedTimestamp: LessThan(beforeTimestamp),
+				};
+				break;
+			case RequestStatusTypeValues.Sent:
+				whereDateTerm = {
+					sentToInterfaceTimestamp: LessThan(beforeTimestamp),
+				};
+				break;
+			case RequestStatusTypeValues.Succeeded:
+			case RequestStatusTypeValues.Failed:
+				whereDateTerm = {
+					replyTimestamp: LessThan(beforeTimestamp),
+				};
+				break;
+		}
+
+		try {
+			const data = await this.typeormCtx.manager.find(TypeormBackupRequest, {
+				select: { backupRequestId: true },
+				where: {
+					...whereDateTerm,
+					statusTypeCode: status,
+				},
+			});
+
+			this.circuitBreaker.onSuccess();
+
+			if (data.length === 0) {
+				return err(
+					new AdapterErrors.NotFoundError('BackupRequests not found for status and timestamp', {
+						status,
+						beforeTimestamp,
+					})
+				);
+			}
+
+			return ok(data.map((br) => br.backupRequestId));
 		} catch (e) {
 			const { message, ...error } = e as Error;
 			let errorData = { isConnectFailure: false };

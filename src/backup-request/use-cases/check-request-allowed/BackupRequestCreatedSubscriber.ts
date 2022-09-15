@@ -2,8 +2,8 @@ import { BaseError } from '../../../common/core/BaseError';
 
 import { DomainEventBus, IDomainEventSubscriber } from '../../../common/domain/DomainEventBus';
 
-import { ConnectFailureErrorData } from '../../../infrastructure/CircuitBreakerWithRetry';
-import { logger } from '../../../infrastructure/pinoLogger';
+import { ConnectFailureErrorData } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
+import { logger } from '../../../infrastructure/logging/pinoLogger';
 
 import { Dictionary } from '../../../common/utils/utils';
 
@@ -25,7 +25,7 @@ export class BackupRequestCreatedSubscriber implements IDomainEventSubscriber<Ba
 	}
 
 	async onBackupRequestCreated(event: BackupRequestCreated): Promise<void> {
-		const backupRequestId = event.getAggregateId();
+		const backupRequestId = event.getId();
 		const eventName = event.constructor.name;
 		const logContext = {
 			moduleName,

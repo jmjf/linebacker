@@ -31,7 +31,7 @@ import { PrismaBackupRequestRepo } from '../adapter/impl/PrismaBackupRequestRepo
 import { PrismaBackupRepo } from '../../backup/adapter/impl/PrismaBackupRepo';
 import { BackupProviderTypeValues } from '../../backup-job/domain/BackupProviderType';
 import { AzureStoreStatusMessageHandler } from '../adapter/impl/AzureStoreStatusMessageHandler';
-import { buildCircuitBreakers } from '../../infrastructure/buildCircuitBreakers.prisma';
+import { buildCircuitBreakers } from '../../infrastructure/prisma/buildCircuitBreakers.prisma';
 
 const TEST_EVENTS = true;
 

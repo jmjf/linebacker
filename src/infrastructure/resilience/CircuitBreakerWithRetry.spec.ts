@@ -1,15 +1,15 @@
-import { Result, ok, err } from '../common/core/Result';
-import { BaseError } from '../common/core/BaseError';
+import { Result, ok, err } from '../../common/core/Result';
+import { BaseError } from '../../common/core/BaseError';
 
-import { DomainEventBus, IDomainEvent, IDomainEventSubscriber } from '../common/domain/DomainEventBus';
-import { UniqueIdentifier } from '../common/domain/UniqueIdentifier';
+import { DomainEventBus, IDomainEvent, IDomainEventSubscriber } from '../../common/domain/DomainEventBus';
+import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
 
-import { UseCase } from '../common/application/UseCase';
+import { UseCase } from '../../common/application/UseCase';
 
-import * as AdapterErrors from '../common/adapter/AdapterErrors';
+import * as AdapterErrors from '../../common/adapter/AdapterErrors';
 
 import { CircuitBreakerStateValues, CircuitBreakerWithRetry, ConnectFailureErrorData } from './CircuitBreakerWithRetry';
-import { delay, Dictionary } from '../common/utils/utils';
+import { delay, Dictionary } from '../../common/utils/utils';
 
 const VERBOSE_LOGS = false; // set true to get verbose console.logs for event tracing
 class TestService {
@@ -102,7 +102,7 @@ class TestEvent implements IDomainEvent {
 		this.retryCount = 0;
 	}
 
-	getAggregateId(): UniqueIdentifier {
+	getId(): UniqueIdentifier {
 		return this.id;
 	}
 }
@@ -125,7 +125,7 @@ class TestSubscriber implements IDomainEventSubscriber<TestEvent> {
 	}
 
 	async onEvent(event: TestEvent): Promise<void> {
-		const id = event.getAggregateId();
+		const id = event.getId();
 		const eventName = event.constructor.name;
 
 		if (VERBOSE_LOGS) console.log('subscriber event', id.value, event.retryCount, this.failedServiceNames);

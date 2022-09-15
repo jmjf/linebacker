@@ -3,7 +3,10 @@ import { err, ok, Result } from '../../../common/core/Result';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 
 import { AzureQueue } from '../../../infrastructure/AzureQueue';
-import { CircuitBreakerWithRetry, ConnectFailureErrorData } from '../../../infrastructure/CircuitBreakerWithRetry';
+import {
+	CircuitBreakerWithRetry,
+	ConnectFailureErrorData,
+} from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 
 import { BackupRequest } from '../../domain/BackupRequest';
 import { StoreDeleteResponse, StoreReceiveResponse, StoreSendResponse } from '../IBackupInterfaceStoreAdapter';

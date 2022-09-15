@@ -6,7 +6,7 @@ import { DatabaseError } from '../../common/adapter/AdapterErrors';
 
 import { ExpressCreateBackupRequestController } from '../adapter/impl/ExpressCreateBackupRequestController';
 import { initBackupRequestModule } from './initBackupRequestModuleTypeorm';
-import { ICircuitBreakers } from '../../infrastructure/buildCircuitBreakers.typeorm';
+import { ICircuitBreakers } from '../../infrastructure/typeorm/buildCircuitBreakers.typeorm';
 
 export function addBackupRequestRoutes(
 	app: Application,

@@ -1,5 +1,5 @@
 import { ok } from '../common/core/Result';
-import { CircuitBreakerWithRetry } from '../infrastructure/CircuitBreakerWithRetry';
+import { CircuitBreakerWithRetry } from '../infrastructure/resilience/CircuitBreakerWithRetry';
 
 export function getLenientCircuitBreaker(serviceName: string, abortSignal: AbortSignal): CircuitBreakerWithRetry {
 	const isAlive = () => {

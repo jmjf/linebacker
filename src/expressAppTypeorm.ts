@@ -4,7 +4,7 @@ import { handleBodyJsonErrors } from './infrastructure/middleware/handleBodyJson
 
 import { addBackupRequestRoutes } from './backup-request/infrastructure/expressRoutesTypeorm';
 import { TypeormContext } from './infrastructure/typeorm/typeormContext';
-import { ICircuitBreakers } from './infrastructure/buildCircuitBreakers.typeorm';
+import { ICircuitBreakers } from './infrastructure/typeorm/buildCircuitBreakers.typeorm';
 
 export function buildApp(typeormCtx: TypeormContext, circuitBreakers: ICircuitBreakers) {
 	const app = express();

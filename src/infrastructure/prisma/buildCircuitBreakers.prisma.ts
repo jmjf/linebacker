@@ -1,8 +1,8 @@
-import { isTypeormConnected } from '../infrastructure/typeorm/isTypeormConnected';
-import { CircuitBreakerWithRetry } from './CircuitBreakerWithRetry';
+import { isPrismaConnected } from './isPrismaConnected';
+import { CircuitBreakerWithRetry } from '../resilience/CircuitBreakerWithRetry';
 
-import circuitBreakerConfig from '../circuitBreakerConfig.json';
-import { AzureQueue } from './AzureQueue';
+import circuitBreakerConfig from '../resilience/circuitBreakerConfig.json';
+import { AzureQueue } from '../AzureQueue';
 
 export interface ICircuitBreakers {
 	dbCircuitBreaker: CircuitBreakerWithRetry;
@@ -12,9 +12,9 @@ export interface ICircuitBreakers {
 
 export function buildCircuitBreakers(abortSignal: AbortSignal): ICircuitBreakers {
 	const dbCircuitBreaker = new CircuitBreakerWithRetry({
-		isAlive: isTypeormConnected,
+		isAlive: isPrismaConnected,
 		abortSignal,
-		...circuitBreakerConfig.typeorm,
+		...circuitBreakerConfig.prisma,
 	});
 
 	const azureQueueCircuitBreaker = new CircuitBreakerWithRetry({

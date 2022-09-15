@@ -4,7 +4,7 @@ import { handleBodyJsonErrors } from './infrastructure/middleware/handleBodyJson
 
 import { addBackupRequestRoutes } from './backup-request/infrastructure/expressRoutesPrisma';
 import { PrismaContext } from './infrastructure/prisma/prismaContext';
-import { ICircuitBreakers } from './infrastructure/buildCircuitBreakers.prisma';
+import { ICircuitBreakers } from './infrastructure/prisma/buildCircuitBreakers.prisma';
 
 export function buildApp(prismaCtx: PrismaContext, circuitBreakers: ICircuitBreakers) {
 	const app = express();

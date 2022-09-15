@@ -14,7 +14,7 @@ import { CheckRequestAllowedUseCase } from '../use-cases/check-request-allowed/C
 import { CreateBackupRequestUseCase } from '../use-cases/create-backup-request/CreateBackupRequestUseCase';
 import { BackupRequestAllowedSubscriber } from '../use-cases/send-request-to-interface/BackupRequestAllowedSubscriber';
 import { SendRequestToInterfaceUseCase } from '../use-cases/send-request-to-interface/SendRequestToInterfaceUseCase';
-import { ICircuitBreakers } from '../../infrastructure/buildCircuitBreakers.typeorm';
+import { ICircuitBreakers } from '../../infrastructure/prisma/buildCircuitBreakers.prisma';
 
 export const initBackupRequestModule = (
 	prismaCtx: PrismaContext,

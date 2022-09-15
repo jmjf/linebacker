@@ -1,6 +1,6 @@
 import { BaseError } from '../../../common/core/BaseError';
 import { DomainEventBus, IDomainEventSubscriber } from '../../../common/domain/DomainEventBus';
-import { logger } from '../../../infrastructure/pinoLogger';
+import { logger } from '../../../infrastructure/logging/pinoLogger';
 import { IBackupInterfaceStoreAdapter } from '../../adapter/IBackupInterfaceStoreAdapter';
 import { StoreStatusReceived } from '../../domain/StoreStatusReceived';
 import { ReceiveStoreStatusReplyUseCase } from './ReceiveStoreStatusReplyUseCase';

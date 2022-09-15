@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { RequestWithHrTimeTraceId } from '../../infrastructure/middleware/pinomor';
-import { logger } from '../../infrastructure/pinoLogger';
+import { logger } from '../../infrastructure/logging/pinoLogger';
 
 export const responseTypes = {
 	json: 'application/json',

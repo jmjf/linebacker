@@ -15,3 +15,8 @@ See notes in 8.3 about `DefaultAzureCredential` "AzureQueue env considerations" 
 
 -  Break dependency on environment variables
 -  I need to investigate specific credential types so I can control the values
+
+## Make event constructors take an id instead of an aggregate
+
+-  Consider consequences and implications before doing this, but it should be okay in cases where we only need an id
+-  Consider making id events store id as a string

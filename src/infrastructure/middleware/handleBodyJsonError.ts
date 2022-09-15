@@ -1,7 +1,7 @@
 import { NextFunction, Response } from 'express';
 
 import { RequestWithHrTimeTraceId } from './pinomor';
-import { logger } from '../pinoLogger';
+import { logger } from '../logging/pinoLogger';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 

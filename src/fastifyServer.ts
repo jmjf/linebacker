@@ -1,9 +1,9 @@
 import dotenv from 'dotenv';
-import { logger } from './infrastructure/pinoLogger';
+import { logger } from './infrastructure/logging/pinoLogger';
 
 import { prismaCtx } from './infrastructure/prisma/prismaContext';
 import { buildApp } from './fastifyApp';
-import { buildCircuitBreakers } from './infrastructure/buildCircuitBreakers.prisma';
+import { buildCircuitBreakers } from './infrastructure/prisma/buildCircuitBreakers.prisma';
 
 const startServer = async () => {
 	const logContext = 'linebacker | Fastify | startServer';

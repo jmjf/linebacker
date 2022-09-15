@@ -6,7 +6,7 @@ import { DatabaseError } from '../../common/adapter/AdapterErrors';
 
 import { ExpressCreateBackupRequestController } from '../adapter/impl/ExpressCreateBackupRequestController';
 import { initBackupRequestModule } from './initBackupRequestModulePrisma';
-import { ICircuitBreakers } from '../../infrastructure/buildCircuitBreakers.typeorm';
+import { ICircuitBreakers } from '../../infrastructure/typeorm/buildCircuitBreakers.typeorm';
 
 export function addBackupRequestRoutes(app: Application, prismaCtx: PrismaContext, circuitBreakers: ICircuitBreakers) {
 	const { createBackupRequestController } = initBackupRequestModule(prismaCtx, circuitBreakers, 'Express');

@@ -1,9 +1,9 @@
 import dotenv from 'dotenv';
 
 import { prismaCtx } from './infrastructure/prisma/prismaContext';
-import { logger } from './infrastructure/winstonLogger';
+import { logger } from './infrastructure/logging/winstonLogger';
 import { buildApp } from './expressAppPrisma';
-import { buildCircuitBreakers } from './infrastructure/buildCircuitBreakers.prisma';
+import { buildCircuitBreakers } from './infrastructure/prisma/buildCircuitBreakers.prisma';
 
 const startServer = async () => {
 	const logContext = 'linebacker | Express | startServer';

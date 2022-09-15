@@ -1,7 +1,8 @@
-import { BaseError } from '../common/core/BaseError';
-import { Result } from '../common/core/Result';
-import { IDomainEvent, DomainEventBus } from '../common/domain/DomainEventBus';
-import { delay } from '../common/utils/utils';
+import { BaseError } from '../../common/core/BaseError';
+import { Result } from '../../common/core/Result';
+import { IDomainEvent } from '../../common/domain/DomainEventBus';
+import { delay } from '../../common/utils/utils';
+import { DelayedEventRunner } from './DelayedEventRunner';
 
 export const CircuitBreakerStateValues = {
 	Open: 'Open', // no connection
@@ -35,35 +36,36 @@ export interface ConnectFailureErrorData {
 
 export class CircuitBreakerWithRetry {
 	private _state: CircuitBreakerStateType;
-	private abortSignal: AbortSignal;
-	private successCount: number;
-	private failureCount: number;
-	private successToCloseCount: number;
-	private failureToOpenCount: number;
-	private halfOpenRetryDelayMs: number;
-	private closedRetryDelayMs: number;
-	private openAliveCheckDelayMs: number;
-	private isAlive: () => Promise<Result<boolean, BaseError>>;
-	private retryEvents: IDomainEvent[] = [];
+	private _abortSignal: AbortSignal;
+	private _successCount: number;
+	private _failureCount: number;
+	private _successToCloseCount: number;
+	private _failureToOpenCount: number;
+	private _halfOpenRetryDelayMs: number;
+	private _closedRetryDelayMs: number;
+	private _openAliveCheckDelayMs: number;
+	private _isAlive: () => Promise<Result<boolean, BaseError>>;
 	private _serviceName: string;
+	private _delayedEventRunner: DelayedEventRunner;
 
 	public halt() {
 		this._state = CircuitBreakerStateValues.Halted;
-		this.retryEvents = [];
+		this._delayedEventRunner.clearEvents();
 	}
 
 	constructor(opts: CircuitBreakerOpts) {
 		this._state = CircuitBreakerStateValues.Closed;
-		this.abortSignal = opts.abortSignal;
-		this.successCount = 0;
-		this.failureCount = 0;
-		this.successToCloseCount = opts.successToCloseCount || 5;
-		this.failureToOpenCount = opts.failureToOpenCount || 5;
-		this.halfOpenRetryDelayMs = opts.halfOpenRetryDelayMs || 500;
-		this.closedRetryDelayMs = opts.closedRetryDelayMs || 100;
-		this.openAliveCheckDelayMs = opts.openAliveCheckDelayMs || 30 * 1000;
-		this.isAlive = opts.isAlive;
+		this._abortSignal = opts.abortSignal;
+		this._successCount = 0;
+		this._failureCount = 0;
+		this._successToCloseCount = opts.successToCloseCount || 5;
+		this._failureToOpenCount = opts.failureToOpenCount || 5;
+		this._halfOpenRetryDelayMs = opts.halfOpenRetryDelayMs || 500;
+		this._closedRetryDelayMs = opts.closedRetryDelayMs || 100;
+		this._openAliveCheckDelayMs = opts.openAliveCheckDelayMs || 30 * 1000;
+		this._isAlive = opts.isAlive;
 		this._serviceName = opts.serviceName;
+		this._delayedEventRunner = new DelayedEventRunner(this._abortSignal, this._closedRetryDelayMs);
 	}
 
 	public get state(): CircuitBreakerStateType {
@@ -75,28 +77,30 @@ export class CircuitBreakerWithRetry {
 	}
 
 	public get retryEventCount(): number {
-		return this.retryEvents.length;
+		return this._delayedEventRunner.eventCount;
 	}
 
 	public get retryEventIds() {
-		return this.retryEvents.map((ev) => ev.getAggregateId().value);
+		return this._delayedEventRunner.eventIds;
 	}
 
 	public async getStatus() {
 		return {
 			state: this._state,
-			successCount: this.successCount,
-			failureCount: this.failureCount,
-			isAlive: (await this.isAlive()).isOk(),
+			successCount: this._successCount,
+			failureCount: this._failureCount,
+			isAlive: (await this._isAlive()).isOk(),
 			retryEventCount: this.retryEventCount,
-			retryEvents: this.retryEvents.map((ev) => {
-				return { ...ev, id: ev.getAggregateId().value };
-			}),
+			retryEvents: this._delayedEventRunner.events,
 		};
 	}
 
 	public isConnected(): boolean {
 		return this._state !== CircuitBreakerStateValues.Open;
+	}
+
+	private setDelayedEventRunnerDelay(delayMs: number) {
+		this._delayedEventRunner.delayMs = delayMs;
 	}
 
 	public onSuccess() {
@@ -106,18 +110,22 @@ export class CircuitBreakerWithRetry {
 		// Callers that don't check for fast fail may call onSuccess and move to Half Open
 		// while awaitIsAlive is waiting. awaitIsAlive will end its loop after its delay ends.
 
-		// when Closed, success resets any accumulated failures
-		if (this._state === CircuitBreakerStateValues.Closed) {
-			this.failureCount = 0;
+		// when Closed, success decrements failure count to 0
+		if (this._state === CircuitBreakerStateValues.Closed && this._failureCount > 0) {
+			this._failureCount--;
 		} else {
 			// Open or Half Open; increment successCount
-			this.successCount++;
+			this._successCount++;
 
 			// any successful call will move to either Closed or HalfOpen
 			this._state =
-				this.successCount >= this.successToCloseCount
+				this._successCount >= this._successToCloseCount
 					? CircuitBreakerStateValues.Closed
 					: CircuitBreakerStateValues.HalfOpen;
+
+			this.setDelayedEventRunnerDelay(
+				this._state === CircuitBreakerStateValues.Closed ? this._closedRetryDelayMs : this._halfOpenRetryDelayMs
+			);
 		}
 	}
 
@@ -125,11 +133,12 @@ export class CircuitBreakerWithRetry {
 		// do nothing if halted
 		if (this._state === CircuitBreakerStateValues.Halted) return;
 
-		if (this._state === CircuitBreakerStateValues.Closed) this.failureCount++;
+		if (this._state === CircuitBreakerStateValues.Closed) this._failureCount++;
 
-		if (this.failureCount >= this.failureToOpenCount) {
+		if (this._failureCount >= this._failureToOpenCount) {
 			this._state = CircuitBreakerStateValues.Open;
-			this.successCount = 0;
+			this._delayedEventRunner.setStateHalt();
+			this._successCount = 0;
 			this.awaitIsAlive();
 		}
 	}
@@ -138,32 +147,7 @@ export class CircuitBreakerWithRetry {
 		// do nothing if halted
 		if (this._state === CircuitBreakerStateValues.Halted) return;
 
-		this.retryEvents.push(ev);
-	}
-
-	private async runRetries() {
-		// do nothing if halted
-		if (this._state === CircuitBreakerStateValues.Halted) return;
-
-		let ev: IDomainEvent | undefined;
-		// Array.prototype.shift() removes the first element from the array and returns it (or undefined if none)
-		while (typeof (ev = this.retryEvents.shift()) !== 'undefined') {
-			DomainEventBus.publishToSubscribers(ev);
-
-			if (
-				(await delay(
-					this._state === CircuitBreakerStateValues.Closed ? this.closedRetryDelayMs : this.halfOpenRetryDelayMs,
-					this.abortSignal
-				)) === 'AbortError'
-			) {
-				this.halt();
-				// console.log('runRetries halting', ev.getAggregateId());
-				return;
-			}
-
-			// If the circuit goes Open or Halted stop
-			if (this._state === CircuitBreakerStateValues.Open || this._state === CircuitBreakerStateValues.Halted) return;
-		}
+		this._delayedEventRunner.addEvent(ev);
 	}
 
 	private async awaitIsAlive() {
@@ -171,18 +155,17 @@ export class CircuitBreakerWithRetry {
 		if (this._state === CircuitBreakerStateValues.Halted) return;
 
 		while (this._state === CircuitBreakerStateValues.Open) {
-			const result = await this.isAlive();
+			const result = await this._isAlive();
 			if (result.isOk()) {
 				this._state = CircuitBreakerStateValues.HalfOpen; // ends loop
 			} else {
-				if ((await delay(this.openAliveCheckDelayMs, this.abortSignal)) === 'AbortError') {
+				if ((await delay(this._openAliveCheckDelayMs, this._abortSignal)) === 'AbortError') {
 					this.halt();
-					// console.log('awaitIsAlive halting');
 					return;
 				}
 			}
 		}
 
-		this.runRetries();
+		this._delayedEventRunner.runEvents();
 	}
 }

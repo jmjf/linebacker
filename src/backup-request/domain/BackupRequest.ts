@@ -172,7 +172,7 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 		this.props.statusTypeCode = isAllowed ? RequestStatusTypeValues.Allowed : RequestStatusTypeValues.NotAllowed;
 		this.props.checkedTimestamp = new Date();
 		if (isAllowed) {
-			this.addDomainEvent(new BackupRequestAllowed(this));
+			this.addDomainEvent(new BackupRequestAllowed(this.backupRequestId));
 		}
 	}
 
@@ -275,7 +275,7 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 
 		// new requests will have an undefined id parameter from the function call
 		if (!!id === false) {
-			backupRequest.addDomainEvent(new BackupRequestCreated(backupRequest));
+			backupRequest.addDomainEvent(new BackupRequestCreated(backupRequest.backupRequestId));
 		}
 
 		return ok(backupRequest);

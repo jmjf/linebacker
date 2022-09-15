@@ -1,12 +1,12 @@
 import { Dictionary } from '../../common/utils/utils';
-import { logger } from '../../infrastructure/pinoLogger';
+import { logger } from '../../infrastructure/logging/pinoLogger';
 import { AggregateRoot } from './AggregateRoot';
 import { UniqueIdentifier } from './UniqueIdentifier';
 
 export interface IDomainEvent {
 	eventTimestamp: Date;
 	// retryCount: number;
-	getAggregateId(): UniqueIdentifier;
+	getId(): UniqueIdentifier;
 }
 
 export interface IDomainEventSubscriber<IDomainEvent> {
