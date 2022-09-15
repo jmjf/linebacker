@@ -14,7 +14,7 @@
 		"express:dev:typeorm": "APP_ENV=dev ts-node src/expressServerTypeorm.ts",
 		"build:testApp": "npx tsc",
 		"run:testApp": "node ./dist/test.js",
-		"read:azurite": "ts-node src/test-helpers/readLocalQueue.ts"
+		"localQueue": "ts-node src/test-helpers/localQueue.ts"
 	},
 	"author": "Jamee Mikell",
 	"license": "MIT",

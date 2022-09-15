@@ -11,9 +11,15 @@ import { ICircuitBreakers } from '../../infrastructure/typeorm/buildCircuitBreak
 export function addBackupRequestRoutes(
 	app: Application,
 	typeormCtx: TypeormContext,
-	circuitBreakers: ICircuitBreakers
+	circuitBreakers: ICircuitBreakers,
+	abortSignal: AbortSignal
 ) {
-	const { createBackupRequestController } = initBackupRequestModule(typeormCtx, circuitBreakers, 'Express');
+	const { createBackupRequestController } = initBackupRequestModule(
+		typeormCtx,
+		circuitBreakers,
+		'Express',
+		abortSignal
+	);
 
 	app.post('/api/backup-requests', async function (request: Request, response: Response) {
 		let result = await (createBackupRequestController as ExpressCreateBackupRequestController).execute(
