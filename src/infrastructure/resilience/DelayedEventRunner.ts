@@ -74,11 +74,13 @@ export class DelayedEventRunner {
 
 	public async runEvents() {
 		// if called, assume it should run; in circuit breaker check for Halted before calling
+		// console.log('DER run events', this.events);
 		this.setStateRun();
 
 		let ev: IDomainEvent | undefined;
 		// Array.prototype.shift() removes the first element from the array and returns it (or undefined if none)
 		while (typeof (ev = this._events.shift()) !== 'undefined') {
+			// console.log('DER publish', ev);
 			DomainEventBus.publishToSubscribers(ev);
 
 			if ((await delay(this._delayMs, this._abortSignal)) === 'AbortError') {

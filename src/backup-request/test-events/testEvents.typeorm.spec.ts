@@ -4,6 +4,10 @@ import * as mockQueueSDK from '@azure/storage-queue';
 
 import { ReceivedMessageItem } from '@azure/storage-queue';
 
+import { ok } from '../../common/core/Result';
+
+import { DomainEventBus } from '../../common/domain/DomainEventBus';
+
 import { delay } from '../../common/utils/utils';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
 
@@ -28,6 +32,11 @@ import { ReceiveStoreStatusReplyUseCase } from '../use-cases/receive-store-statu
 import { AzureStoreStatusMessageHandler } from '../adapter/impl/AzureStoreStatusMessageHandler';
 import { AzureBackupInterfaceStoreAdapter } from '../adapter/impl/AzureBackupInterfaceStoreAdapter';
 
+import { ApplicationResilienceReadySubscriber } from '../use-cases/restart-stalled-requests/ApplicationResilienceReadySubscriber';
+import { RestartStalledRequestsUseCase } from '../use-cases/restart-stalled-requests/RestartStalledRequestsUseCase';
+
+import { CircuitBreakerWithRetry } from '../../infrastructure/resilience/CircuitBreakerWithRetry';
+import { ApplicationResilienceReady } from '../../infrastructure/resilience/ApplicationResilienceReady';
 import {
 	MockTypeormContext,
 	TypeormContext,
@@ -38,6 +47,7 @@ import { TypeormBackupRequest } from '../../infrastructure/typeorm/entity/Typeor
 import { TypeormBackupRepo } from '../../backup/adapter/impl/TypeormBackupRepo';
 import { TypeormBackup } from '../../infrastructure/typeorm/entity/TypeormBackup.entity';
 import { buildCircuitBreakers } from '../../infrastructure/typeorm/buildCircuitBreakers.typeorm';
+import { getLenientCircuitBreaker } from '../../test-helpers/circuitBreakerHelpers';
 
 const TEST_EVENTS = true;
 
@@ -182,7 +192,7 @@ if (TEST_EVENTS) {
 			expect(sendSpy).toHaveBeenCalledTimes(1);
 
 			abortController.abort();
-			delay(250);
+			await delay(10);
 		});
 	});
 
@@ -358,7 +368,130 @@ if (TEST_EVENTS) {
 			expect(backupSaveSpy).toBeCalledTimes(1);
 
 			abortController.abort();
-			delay(250);
+			await delay(10);
+		});
+	});
+
+	describe('Events: restart recovery -> runs use case', () => {
+		let mockTypeormCtx: MockTypeormContext;
+		let typeormCtx: TypeormContext;
+		let circuitBreaker: CircuitBreakerWithRetry;
+		let abortController: AbortController;
+
+		beforeEach(() => {
+			mockTypeormCtx = createMockTypeormContext();
+			typeormCtx = mockTypeormCtx as unknown as TypeormContext;
+
+			DomainEventBus.clearHandlers();
+
+			const isAlive = () => {
+				return Promise.resolve(ok(true));
+			};
+			abortController = new AbortController();
+			circuitBreaker = getLenientCircuitBreaker('TypeORM', abortController.signal);
+		});
+
+		const dbAllowedResults: TypeormBackupRequest[] = [
+			{
+				backupRequestId: 'dbBackupRequestId-ALW1',
+				backupJobId: 'Allowed1',
+				dataDate: new Date(),
+				preparedDataPathName: 'path',
+				getOnStartFlag: true,
+				transportTypeCode: RequestTransportTypeValues.HTTP,
+				statusTypeCode: RequestStatusTypeValues.Allowed,
+				receivedTimestamp: new Date(),
+				requesterId: 'dbRequesterId',
+				backupProviderCode: 'CloudA',
+				checkedTimestamp: new Date(),
+				storagePathName: 'dbStoragePathName',
+				sentToInterfaceTimestamp: null,
+				replyTimestamp: null,
+				replyMessageText: null,
+			},
+			{
+				backupRequestId: 'dbBackupRequestId-ALW2',
+				backupJobId: 'Allowed2',
+				dataDate: new Date(),
+				preparedDataPathName: 'path',
+				getOnStartFlag: true,
+				transportTypeCode: RequestTransportTypeValues.HTTP,
+				statusTypeCode: RequestStatusTypeValues.Allowed,
+				receivedTimestamp: new Date(),
+				requesterId: 'dbRequesterId',
+				backupProviderCode: 'CloudA',
+				checkedTimestamp: new Date(),
+				storagePathName: 'dbStoragePathName',
+				sentToInterfaceTimestamp: null,
+				replyTimestamp: null,
+				replyMessageText: null,
+			},
+		];
+
+		const dbReceivedResults: TypeormBackupRequest[] = [
+			{
+				backupRequestId: 'dbBackupRequestId-RCV1',
+				backupJobId: 'Received1',
+				dataDate: new Date(),
+				preparedDataPathName: 'path',
+				getOnStartFlag: true,
+				transportTypeCode: RequestTransportTypeValues.HTTP,
+				statusTypeCode: RequestStatusTypeValues.Received,
+				receivedTimestamp: new Date(),
+				requesterId: 'dbRequesterId',
+				backupProviderCode: 'CloudA',
+				checkedTimestamp: null,
+				storagePathName: 'dbStoragePathName',
+				sentToInterfaceTimestamp: null,
+				replyTimestamp: null,
+				replyMessageText: null,
+			},
+			{
+				backupRequestId: 'dbBackupRequestId-RCV2',
+				backupJobId: 'Received2',
+				dataDate: new Date(),
+				preparedDataPathName: 'path',
+				getOnStartFlag: true,
+				transportTypeCode: RequestTransportTypeValues.HTTP,
+				statusTypeCode: RequestStatusTypeValues.Received,
+				receivedTimestamp: new Date(),
+				requesterId: 'dbRequesterId',
+				backupProviderCode: 'CloudA',
+				checkedTimestamp: null,
+				storagePathName: 'dbStoragePathName',
+				sentToInterfaceTimestamp: null,
+				replyTimestamp: null,
+				replyMessageText: null,
+			},
+		];
+
+		test('when the ApplicationResilienceReady event publishes, the restart use case runs', async () => {
+			// Arrange
+			mockTypeormCtx.manager.find.mockResolvedValueOnce(dbAllowedResults);
+			mockTypeormCtx.manager.find.mockResolvedValueOnce(dbReceivedResults);
+
+			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+			const brGetBeforeSpy = jest.spyOn(backupRequestRepo, 'getRequestIdsByStatusBeforeTimestamp');
+
+			const useCase = new RestartStalledRequestsUseCase(backupRequestRepo, abortController.signal);
+
+			const subscriber = new ApplicationResilienceReadySubscriber(useCase);
+			const subscriberSpy = jest.spyOn(subscriber, 'onApplicationResilienceReady');
+
+			const event = new ApplicationResilienceReady(new Date());
+
+			// Act
+			DomainEventBus.publishToSubscribers(event);
+
+			await delay(1000);
+
+			// Assert
+			expect(brGetBeforeSpy).toHaveBeenCalledTimes(2);
+			// haven't set up subscribers for the events that are queued so won't run
+			// logging should show 2 events for allowed and received
+
+			abortController.abort();
+			await delay(10);
 		});
 	});
 } else {
