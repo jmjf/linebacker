@@ -6,7 +6,7 @@ function buildPinomor(opts) {
 	return function (req, res, next) {
 		const traceIdLog = reqTraceIdKey ? { traceId: req[reqTraceIdKey] } : {};
 		req[reqStartTimeKey] =
-			reqGetStartFromKey && req[reqGetStartFromKey] ? new BigInt(req[reqGetStartFromKey]) : process.hrtime.bigint();
+			reqGetStartFromKey && req[reqGetStartFromKey] ? BigInt(req[reqGetStartFromKey]) : process.hrtime.bigint();
 
 		log({ ...traceIdLog, requestMethod: req.method, requestUrl: req.originalUrl, requesterIp: req.ip }, 'Received');
 
