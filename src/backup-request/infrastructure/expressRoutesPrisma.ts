@@ -7,6 +7,7 @@ import { DatabaseError } from '../../common/adapter/AdapterErrors';
 import { ExpressCreateBackupRequestController } from '../adapter/impl/ExpressCreateBackupRequestController';
 import { initBackupRequestModule } from './initBackupRequestModulePrisma';
 import { ICircuitBreakers } from '../../infrastructure/typeorm/buildCircuitBreakers.typeorm';
+import { LinebackerRequest } from '../../common/adapter/ExpressController';
 
 export function addBackupRequestRoutes(
 	app: Application,
@@ -23,7 +24,7 @@ export function addBackupRequestRoutes(
 
 	app.post('/api/backup-requests', async function (request: Request, response: Response) {
 		let result = await (createBackupRequestController as ExpressCreateBackupRequestController).execute(
-			request,
+			request as LinebackerRequest,
 			response
 		);
 

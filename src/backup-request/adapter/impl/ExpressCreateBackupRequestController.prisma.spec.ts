@@ -18,6 +18,7 @@ import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 
 import { delay } from '../../../common/utils/utils';
 import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
+import { logger } from '../../../infrastructure/logging/pinoLogger';
 
 describe('ExpressCreateBackupRequestController - prisma', () => {
 	let mockPrismaCtx: MockPrismaContext;
@@ -55,7 +56,7 @@ describe('ExpressCreateBackupRequestController - prisma', () => {
 
 	test('when apiVersion is invalid, it returns 400 and an error', async () => {
 		// Arrange
-		const app = buildApp(prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker });
+		const app = buildApp(logger, prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker }, abortController.signal);
 
 		// Act
 		const response = await request(app)
@@ -79,7 +80,7 @@ describe('ExpressCreateBackupRequestController - prisma', () => {
 		mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockRejectedValue(
 			new PrismaClientKnownRequestError('Key is already defined', prismaCode, '2')
 		);
-		const app = buildApp(prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker });
+		const app = buildApp(logger, prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker }, abortController.signal);
 
 		// Act
 		const response = await request(app)
@@ -98,7 +99,7 @@ describe('ExpressCreateBackupRequestController - prisma', () => {
 
 	test('when the use case returns a PropsError, the controller returns 400 and an error', async () => {
 		// Arrange
-		const app = buildApp(prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker });
+		const app = buildApp(logger, prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker }, abortController.signal);
 
 		// Act
 		const response = await request(app)
@@ -118,7 +119,7 @@ describe('ExpressCreateBackupRequestController - prisma', () => {
 
 	test('when request data is good, the controller returns Accepted and a result payload', async () => {
 		// Arrange
-		const app = buildApp(prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker });
+		const app = buildApp(logger, prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker }, abortController.signal);
 
 		// Act
 		const startTime = new Date();

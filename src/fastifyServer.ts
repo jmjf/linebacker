@@ -31,7 +31,7 @@ const startServer = async () => {
 	const circuitBreakers = buildCircuitBreakers(appAbortController.signal);
 
 	logger.info(`${logContext} | building server`);
-	const server = buildApp(prismaCtx, circuitBreakers, {
+	const server = buildApp(prismaCtx, circuitBreakers, appAbortController.signal, {
 		logger: logger,
 	});
 

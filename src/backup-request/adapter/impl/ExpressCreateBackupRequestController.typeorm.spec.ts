@@ -16,6 +16,7 @@ import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/Circ
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { TypeORMError } from 'typeorm';
 import { delay } from '../../../common/utils/utils';
+import { logger } from '../../../infrastructure/logging/pinoLogger';
 
 describe('ExpressCreateBackupRequestController - typeorm', () => {
 	let mockTypeormCtx: MockTypeormContext;
@@ -49,7 +50,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 
 	test('when apiVersion is invalid, it returns 400 and an error', async () => {
 		// Arrange
-		const app = buildApp(typeormCtx, { dbCircuitBreaker, azureQueueCircuitBreaker }, abortController.signal);
+		const app = buildApp(logger, typeormCtx, { dbCircuitBreaker, azureQueueCircuitBreaker }, abortController.signal);
 
 		// Act
 		const response = await request(app)
@@ -70,7 +71,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 		// Arrange
 		// simulate a database error
 		mockTypeormCtx.manager.save.mockRejectedValue(new TypeORMError('Key is already defined'));
-		const app = buildApp(typeormCtx, { dbCircuitBreaker, azureQueueCircuitBreaker }, abortController.signal);
+		const app = buildApp(logger, typeormCtx, { dbCircuitBreaker, azureQueueCircuitBreaker }, abortController.signal);
 
 		// Act
 		const response = await request(app)
@@ -89,7 +90,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 
 	test('when the use case returns a PropsError, the controller returns 400 and an error', async () => {
 		// Arrange
-		const app = buildApp(typeormCtx, { dbCircuitBreaker, azureQueueCircuitBreaker }, abortController.signal);
+		const app = buildApp(logger, typeormCtx, { dbCircuitBreaker, azureQueueCircuitBreaker }, abortController.signal);
 
 		// Act
 		const response = await request(app)
@@ -109,7 +110,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 
 	test('when request data is good, the controller returns Accepted and a result payload', async () => {
 		// Arrange
-		const app = buildApp(typeormCtx, { dbCircuitBreaker, azureQueueCircuitBreaker }, abortController.signal);
+		const app = buildApp(logger, typeormCtx, { dbCircuitBreaker, azureQueueCircuitBreaker }, abortController.signal);
 
 		// Act
 		const startTime = new Date();
