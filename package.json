@@ -24,6 +24,7 @@
 		"@prisma/client": "^4.1.1",
 		"dotenv": "^16.0.0",
 		"express": "^4.17.3",
+		"fast-jwt": "^1.7.1",
 		"fastify": "^3.29.0",
 		"morgan": "^1.10.0",
 		"mssql": "^7.3.5",
