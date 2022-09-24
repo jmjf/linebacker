@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 
 import { prismaCtx } from './infrastructure/prisma/prismaContext';
-import { logger } from './infrastructure/logging/winstonLogger';
+import { logger } from './infrastructure/logging/pinoLogger';
 import { buildApp } from './expressAppPrisma';
 import { buildCircuitBreakers } from './infrastructure/prisma/buildCircuitBreakers.prisma';
 
@@ -31,7 +31,7 @@ const startServer = async () => {
 	const circuitBreakers = buildCircuitBreakers(appAbortController.signal);
 
 	logger.info(`${logContext} | building server`);
-	const server = buildApp(prismaCtx, circuitBreakers);
+	const server = buildApp(logger, prismaCtx, circuitBreakers, appAbortController.signal);
 
 	logger.info(`${logContext} | starting server`);
 	try {

@@ -1,18 +1,46 @@
 import express from 'express';
-import { morganMiddleware } from './morgan.middleware';
-import { handleBodyJsonErrors } from './infrastructure/middleware/handleBodyJsonError';
+import { buildPinomor, buildTracerizer, buildJsonBodyErrorHandler } from './infrastructure/middleware/index';
 
 import { addBackupRequestRoutes } from './backup-request/infrastructure/expressRoutesPrisma';
 import { PrismaContext } from './infrastructure/prisma/prismaContext';
 import { ICircuitBreakers } from './infrastructure/prisma/buildCircuitBreakers.prisma';
+import { Logger } from 'pino';
 
-export function buildApp(prismaCtx: PrismaContext, circuitBreakers: ICircuitBreakers) {
+export function buildApp(
+	logger: Logger,
+	prismaCtx: PrismaContext,
+	circuitBreakers: ICircuitBreakers,
+	abortSignal: AbortSignal
+) {
+	const reqTraceIdKey = 'tracerizerTraceId';
+	const reqStartTimeKey = 'startHrTime';
+
 	const app = express();
-	app.use(morganMiddleware);
-	app.use(express.json());
-	app.use(handleBodyJsonErrors());
 
-	addBackupRequestRoutes(app, prismaCtx, circuitBreakers);
+	// trace id (and start time)
+	const tracerizer = buildTracerizer({ reqTraceIdKey });
+	app.use(tracerizer);
+
+	// request/response logging
+	const pinomor = buildPinomor({
+		log: logger.info,
+		reqStartTimeKey,
+		reqGetStartFromKey: reqTraceIdKey,
+		reqTraceIdKey: reqTraceIdKey,
+	});
+	app.use(pinomor);
+
+	// parse body as JSON
+	app.use(express.json());
+
+	const jsonBodyErrorHandler = buildJsonBodyErrorHandler({
+		log: logger.error,
+		reqTraceIdKey,
+	});
+
+	app.use(jsonBodyErrorHandler);
+
+	addBackupRequestRoutes(app, prismaCtx, circuitBreakers, abortSignal);
 
 	return app;
 }

@@ -15,11 +15,14 @@ import { CreateBackupRequestUseCase } from '../use-cases/create-backup-request/C
 import { BackupRequestAllowedSubscriber } from '../use-cases/send-request-to-interface/BackupRequestAllowedSubscriber';
 import { SendRequestToInterfaceUseCase } from '../use-cases/send-request-to-interface/SendRequestToInterfaceUseCase';
 import { ICircuitBreakers } from '../../infrastructure/prisma/buildCircuitBreakers.prisma';
+import { RestartStalledRequestsUseCase } from '../use-cases/restart-stalled-requests/RestartStalledRequestsUseCase';
+import { ApplicationResilienceReadySubscriber } from '../use-cases/restart-stalled-requests/ApplicationResilienceReadySubscriber';
 
 export const initBackupRequestModule = (
 	prismaCtx: PrismaContext,
 	circuitBreakers: ICircuitBreakers,
-	controllerType: 'Fastify' | 'Express'
+	controllerType: 'Fastify' | 'Express',
+	abortSignal: AbortSignal
 ) => {
 	const backupRequestRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreakers.dbCircuitBreaker);
 
@@ -48,6 +51,9 @@ export const initBackupRequestModule = (
 		controllerType === 'Fastify'
 			? new FastifyCreateBackupRequestController(createBackupRequestUseCase)
 			: new ExpressCreateBackupRequestController(createBackupRequestUseCase);
+
+	const restartStalledRequestsUseCase = new RestartStalledRequestsUseCase(backupRequestRepo, abortSignal);
+	new ApplicationResilienceReadySubscriber(restartStalledRequestsUseCase);
 
 	return {
 		backupRequestRepo,

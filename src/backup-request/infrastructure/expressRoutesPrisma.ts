@@ -8,8 +8,18 @@ import { ExpressCreateBackupRequestController } from '../adapter/impl/ExpressCre
 import { initBackupRequestModule } from './initBackupRequestModulePrisma';
 import { ICircuitBreakers } from '../../infrastructure/typeorm/buildCircuitBreakers.typeorm';
 
-export function addBackupRequestRoutes(app: Application, prismaCtx: PrismaContext, circuitBreakers: ICircuitBreakers) {
-	const { createBackupRequestController } = initBackupRequestModule(prismaCtx, circuitBreakers, 'Express');
+export function addBackupRequestRoutes(
+	app: Application,
+	prismaCtx: PrismaContext,
+	circuitBreakers: ICircuitBreakers,
+	abortSignal: AbortSignal
+) {
+	const { createBackupRequestController } = initBackupRequestModule(
+		prismaCtx,
+		circuitBreakers,
+		'Express',
+		abortSignal
+	);
 
 	app.post('/api/backup-requests', async function (request: Request, response: Response) {
 		let result = await (createBackupRequestController as ExpressCreateBackupRequestController).execute(
