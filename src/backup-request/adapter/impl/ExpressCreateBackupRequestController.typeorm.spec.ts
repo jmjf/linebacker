@@ -40,6 +40,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 	});
 
 	const testUrl = '/api/backup-requests';
+	const fakeAuthHeader = 'fakeTypeORM|permission1';
 
 	const basePayload = {
 		apiVersion: '2022-05-22',
@@ -55,6 +56,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 		// Act
 		const response = await request(app)
 			.post(testUrl)
+			.set('TestAuth', fakeAuthHeader)
 			.send({
 				...basePayload,
 				apiVersion: 'invalid',
@@ -76,6 +78,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 		// Act
 		const response = await request(app)
 			.post(testUrl)
+			.set('TestAuth', fakeAuthHeader)
 			.send({
 				...basePayload,
 			});
@@ -95,6 +98,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 		// Act
 		const response = await request(app)
 			.post(testUrl)
+			.set('TestAuth', fakeAuthHeader)
 			.send({
 				...basePayload,
 				dataDate: '', // easy error to force
@@ -116,6 +120,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 		const startTime = new Date();
 		const response = await request(app)
 			.post(testUrl)
+			.set('TestAuth', fakeAuthHeader)
 			.send({
 				...basePayload,
 			});

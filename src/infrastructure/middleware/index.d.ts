@@ -22,8 +22,8 @@ export interface JsonBodyErrorHandlerOptions {
 
 export interface AuthnerizerOptions {
 	allowedIssuers: string[];
-	fastjwtVerifierOptions?: VerifierOptions;
-	getPublicKey: (token: string) => Promise<string>;
+	fastjwtVerifierOptions?: Partial<VerifierOptions>;
+	buildGetPublicKey: (domain: string) => (token: { kid: string; alg: string }) => Promise<string>;
 	logError: (obj: object, msg?: string) => void;
 	reqTraceIdKey?: string;
 }
@@ -41,11 +41,14 @@ type JwtPayload = {
 };
 
 export interface AuthnerizerRequest extends Request {
-	jwtHeader: JwtHeader;
 	jwtPayload: JwtPayload;
 }
 
-export type CustomRequest = Request & TracerizerRequest & AuthnerizerRequest;
+export interface AuthzerizerRequest extends Request {
+	clientScopes: string[];
+}
+
+export type CustomRequest = Request & TracerizerRequest & AuthnerizerRequest & AuthzerizerRequest;
 
 declare function SyncMiddleware(req: CustomRequest, res: Response, next: NextFunction);
 declare function ErrorHandlerMiddleware(err: Error, req: CustomRequest, res: Response, next: NextFunction);

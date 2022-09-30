@@ -46,6 +46,7 @@ describe('ExpressCreateBackupRequestController - prisma', () => {
 	});
 
 	const testUrl = '/api/backup-requests';
+	const fakeAuthHeader = 'fakePrisma|permission1';
 
 	const basePayload = {
 		apiVersion: '2022-05-22',
@@ -61,6 +62,7 @@ describe('ExpressCreateBackupRequestController - prisma', () => {
 		// Act
 		const response = await request(app)
 			.post(testUrl)
+			.set('TestAuth', fakeAuthHeader)
 			.send({
 				...basePayload,
 				apiVersion: 'invalid',
@@ -85,6 +87,7 @@ describe('ExpressCreateBackupRequestController - prisma', () => {
 		// Act
 		const response = await request(app)
 			.post(testUrl)
+			.set('TestAuth', fakeAuthHeader)
 			.send({
 				...basePayload,
 			});
@@ -104,6 +107,7 @@ describe('ExpressCreateBackupRequestController - prisma', () => {
 		// Act
 		const response = await request(app)
 			.post(testUrl)
+			.set('TestAuth', fakeAuthHeader)
 			.send({
 				...basePayload,
 				dataDate: '', // easy error to force
@@ -125,6 +129,7 @@ describe('ExpressCreateBackupRequestController - prisma', () => {
 		const startTime = new Date();
 		const response = await request(app)
 			.post(testUrl)
+			.set('TestAuth', fakeAuthHeader)
 			.send({
 				...basePayload,
 			});

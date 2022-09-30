@@ -6,13 +6,22 @@ const { createDecoder, createVerifier } = require('fast-jwt');
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 
 function buildAuthnerizer(opts) {
-	const { allowedIssuers, fastjwtVerifierOptions, getPublicKey, logError, reqTraceIdKey } = opts;
+	const { allowedIssuers, fastjwtVerifierOptions, buildGetPublicKey, logError, reqTraceIdKey } = opts;
 	if (!allowedIssuers || allowedIssuers.length === 0) throw Error('FATAL: Authnerizer requires opts.allowedIssuers');
-	if (typeof getPublicKey !== 'function') throw Error('FATAL: Authnerizer requires a function for opts.getPublicKey');
+	if (typeof buildGetPublicKey !== 'function')
+		throw Error('FATAL: Authnerizer requires a function for opts.buildGetPublicKey');
 	if (typeof logError !== 'function') throw Error('FATAL: Authnerizer requires a function for opts.logError');
 
 	const jwtDecoder = createDecoder({ complete: true });
-	const jwtVerifiers = new Map(allowedIssuers.map((iss) => [iss]));
+	const jwtVerifiers = new Map(
+		allowedIssuers.map((iss) => [
+			iss,
+			createVerifier({
+				...fastjwtVerifierOptions,
+				key: buildGetPublicKey(iss),
+			}),
+		])
+	);
 
 	return async function (req, res, next) {
 		function get401Error(msg, errorData) {
@@ -40,19 +49,19 @@ function buildAuthnerizer(opts) {
 		} catch (e) {
 			return next(get401Error('Cannot decode token', { authType, token, error: e }));
 		}
+		const issuer = decodedToken.payload.iss;
 
-		if (!allowedIssuers.includes(decodedToken.payload.iss))
-			return next(get401Error('Issuer not allowed', { decodedToken }));
+		if (!allowedIssuers.includes(issuer)) return next(get401Error('Issuer not allowed', { decodedToken }));
 
 		let verifiedToken = {};
 		try {
-			const verifyToken = createVerifier({ ...fastjwtVerifierOptions, complete: true, key: getPublicKey });
+			const verifyToken = jwtVerifiers.get(issuer);
 			verifiedToken = await verifyToken(token);
 		} catch (e) {
 			return next(get401Error('Cannot verify token', { decodedToken, error: e }));
 		}
 
-		if (typeof verifiedToken !== 'object' || !verifiedToken.header || !verifiedToken.payload)
+		if (typeof verifiedToken !== 'object' || !verifiedToken.sub)
 			return next(
 				get401Error('Verified token not an object or missing members', {
 					verifiedTokenType: typeof verifiedToken,
@@ -60,7 +69,6 @@ function buildAuthnerizer(opts) {
 				})
 			);
 
-		req.jwtHeader = verifiedToken.header;
 		req.jwtPayload = verifiedToken.payload;
 		return next();
 	};

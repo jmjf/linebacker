@@ -1,10 +1,18 @@
 import express from 'express';
-import { buildPinomor, buildTracerizer, buildJsonBodyErrorHandler } from './infrastructure/middleware/index';
+import buildGetJwks from 'get-jwks';
+import {
+	buildPinomor,
+	buildTracerizer,
+	buildJsonBodyErrorHandler,
+	buildAuthnerizer,
+} from './infrastructure/middleware/index';
 
 import { addBackupRequestRoutes } from './backup-request/infrastructure/expressRoutesTypeorm';
 import { TypeormContext } from './infrastructure/typeorm/typeormContext';
 import { ICircuitBreakers } from './infrastructure/typeorm/buildCircuitBreakers.typeorm';
 import { Logger } from 'pino';
+import { isTest } from './common/utils/utils';
+import { buildFakeAuthNZ } from './test-helpers/index';
 
 export function buildApp(
 	logger: Logger,
@@ -38,6 +46,35 @@ export function buildApp(
 		reqTraceIdKey: reqTraceIdKey,
 	});
 	app.use(pinomor);
+
+	if (isTest()) {
+		logger.warn('Detected test environment; using fake authentication/authorization');
+		app.use(buildFakeAuthNZ());
+	} else {
+		const allowedIssuers = [process.env.AUTH_ISSUER as string];
+		const getJwks = buildGetJwks({
+			allowedDomains: allowedIssuers,
+			ttl: 600 * 1000,
+		});
+
+		const authnerizer = buildAuthnerizer({
+			allowedIssuers,
+			logError: logger.error.bind(logger),
+			reqTraceIdKey,
+			fastjwtVerifierOptions: {
+				cache: 1000,
+				cacheTTL: 600 * 1000,
+				requiredClaims: ['sub'],
+			},
+			buildGetPublicKey: (domain: string) => {
+				return async function (token: { kid: string; alg: string }) {
+					const key = await getJwks.getPublicKey({ kid: token.kid, alg: token.alg, domain });
+					return key;
+				};
+			},
+		});
+		app.use(authnerizer);
+	}
 
 	addBackupRequestRoutes(app, typeormCtx, circuitBreakers, abortSignal);
 
