@@ -5,6 +5,7 @@ import {
 	buildTracerizer,
 	buildJsonBodyErrorHandler,
 	buildAuthnerizer,
+	buildAuthzerizer,
 } from './infrastructure/middleware/index';
 
 import { addBackupRequestRoutes } from './backup-request/infrastructure/expressRoutesTypeorm';
@@ -13,6 +14,7 @@ import { ICircuitBreakers } from './infrastructure/typeorm/buildCircuitBreakers.
 import { Logger } from 'pino';
 import { isTest } from './common/utils/utils';
 import { buildFakeAuthNZ } from './test-helpers/index';
+import { TypeormClientAuthorization } from './infrastructure/typeorm/entity/TypeormClientAuthorization';
 
 export function buildApp(
 	logger: Logger,
@@ -74,6 +76,20 @@ export function buildApp(
 			},
 		});
 		app.use(authnerizer);
+
+		const authzerizer = buildAuthzerizer({
+			cacheMax: 100,
+			ttlMs: 30 * 1000,
+			logError: logger.error.bind(logger),
+			getAuthZFromDb: async (clientId: string) => {
+				return typeormCtx.manager.findOne(TypeormClientAuthorization, {
+					where: {
+						clientIdentifier: clientId,
+					},
+				});
+			},
+		});
+		app.use(authzerizer);
 	}
 
 	addBackupRequestRoutes(app, typeormCtx, circuitBreakers, abortSignal);

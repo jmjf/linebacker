@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import { TypeormBackup } from './entity/TypeormBackup.entity';
 import { TypeormBackupRequest } from './entity/TypeormBackupRequest.entity';
+import { TypeormClientAuthorization } from './entity/TypeormClientAuthorization';
 
 export const typeormDataSource = new DataSource({
 	type: 'mssql',
@@ -13,7 +14,7 @@ export const typeormDataSource = new DataSource({
 	schema: process.env.SQLSERVER_SCHEMA,
 	synchronize: false,
 	logging: false,
-	entities: [TypeormBackupRequest, TypeormBackup],
+	entities: [TypeormBackupRequest, TypeormBackup, TypeormClientAuthorization],
 	migrations: [],
 	subscribers: [],
 	options: { encrypt: false },

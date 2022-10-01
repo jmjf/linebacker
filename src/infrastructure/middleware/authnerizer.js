@@ -69,7 +69,7 @@ function buildAuthnerizer(opts) {
 				})
 			);
 
-		req.jwtPayload = verifiedToken.payload;
+		req.jwtPayload = verifiedToken;
 		return next();
 	};
 }

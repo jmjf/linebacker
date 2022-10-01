@@ -47,6 +47,7 @@ export class ExpressCreateBackupRequestController extends ExpressController {
 			backupDataLocation: body.backupDataLocation,
 			transportType: 'HTTP', // this is an HTTP controller
 			getOnStartFlag: true,
+			requesterId: request.jwtPayload.sub || '',
 		};
 
 		const result = await this.useCase.execute(dto);

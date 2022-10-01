@@ -1,5 +1,6 @@
 import { ErrorRequestHandler, NextFunction, Request, RequestHandler } from 'express';
-import { JwtHeader, VerifierOptions } from 'fast-jwt';
+import { VerifierOptions } from 'fast-jwt';
+import { TypeormClientAuthorization } from '../typeorm/entity/TypeormClientAuthorization';
 
 export interface TracerizerOptions {
 	reqTraceIdKey: string;
@@ -44,17 +45,22 @@ export interface AuthnerizerRequest extends Request {
 	jwtPayload: JwtPayload;
 }
 
+export interface AuthzerizerOptions {
+	cacheMax?: number;
+	ttlMs?: number;
+	reqTraceIdKey?: string;
+	logError: (obj: object, msg?: string) => void;
+	getAuthZFromDb: (clientId: string) => Promise<TypeormClientAuthorization | null>;
+}
 export interface AuthzerizerRequest extends Request {
 	clientScopes: string[];
 }
 
-export type CustomRequest = Request & TracerizerRequest & AuthnerizerRequest & AuthzerizerRequest;
-
-declare function SyncMiddleware(req: CustomRequest, res: Response, next: NextFunction);
-declare function ErrorHandlerMiddleware(err: Error, req: CustomRequest, res: Response, next: NextFunction);
+export interface CustomRequest extends Request, TracerizerRequest, AuthnerizerRequest, AuthzerizerRequest {}
 
 export function buildTracerizer(opts: TracerizerOptions): RequestHandler;
 export function buildPinomor(opts: PinomorOptions): RequestHandler;
 export function buildAuthnerizer(opts: AuthnerizerOptions): RequestHandler;
+export function buildAuthzerizer(opts: AuthzerizerOptions): RequestHandler;
 
 export function buildJsonBodyErrorHandler(opts: JsonBodyErrorHandlerOptions): ErrorRequestHandler;
