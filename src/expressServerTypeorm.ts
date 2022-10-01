@@ -39,7 +39,7 @@ const startServer = async () => {
 	const circuitBreakers = buildCircuitBreakers(appAbortController.signal);
 
 	logger.info(logContext, 'building server');
-	const server = buildApp(typeormCtx, circuitBreakers, appAbortController.signal);
+	const server = buildApp(logger, typeormCtx, circuitBreakers, appAbortController.signal);
 
 	logger.info(logContext, 'publishing ApplicationResilienceReady');
 	publishApplicationResilienceReady(startTimestamp);

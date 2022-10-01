@@ -1,5 +1,5 @@
-import { Request, Response } from 'express';
-import { RequestWithHrTimeTraceId } from '../../infrastructure/middleware/pinomor';
+import { Response } from 'express';
+import { CustomRequest } from '../../infrastructure/middleware';
 import { logger } from '../../infrastructure/logging/pinoLogger';
 
 export const responseTypes = {
@@ -7,7 +7,7 @@ export const responseTypes = {
 	text: 'text/plan',
 };
 
-export type LinebackerRequest = Request & RequestWithHrTimeTraceId;
+export type LinebackerRequest = CustomRequest;
 
 export abstract class ExpressController {
 	protected logger = logger;

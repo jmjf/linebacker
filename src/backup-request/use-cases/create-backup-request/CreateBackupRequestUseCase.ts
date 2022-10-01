@@ -9,8 +9,9 @@ import { IBackupRequestRepo } from '../../adapter/IBackupRequestRepo';
 import { BackupRequest, IBackupRequestProps } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import path from 'node:path';
 
-const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
+const moduleName = path.basename(module.filename);
 
 // add errors when you define them
 type Response = Result<BackupRequest, DomainErrors.PropsError | ApplicationErrors.UnexpectedError | BaseError>;
@@ -35,6 +36,7 @@ export class CreateBackupRequestUseCase implements UseCase<CreateBackupRequestDT
 			transportTypeCode: request.transportType as RequestTransportType,
 			statusTypeCode: RequestStatusTypeValues.Received,
 			receivedTimestamp: new Date(),
+			requesterId: request.requesterId,
 		};
 
 		// get a new BackupRequest (or handle error)

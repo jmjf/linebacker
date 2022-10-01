@@ -53,7 +53,7 @@ describe('FastifyCreateBackupRequestController', () => {
 
 	test('when apiVersion is invalid, it returns 400 and an error', async () => {
 		// Arrange
-		const app = buildApp(prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker });
+		const app = buildApp(prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker }, abortController.signal);
 
 		// Act
 		const response = await app.inject({
@@ -79,7 +79,7 @@ describe('FastifyCreateBackupRequestController', () => {
 		mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockRejectedValue(
 			new PrismaClientKnownRequestError('Key is already defined', prismaCode, '2')
 		);
-		const app = buildApp(prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker });
+		const app = buildApp(prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker }, abortController.signal);
 
 		// Act
 		const response = await app.inject({
@@ -100,7 +100,7 @@ describe('FastifyCreateBackupRequestController', () => {
 
 	test('when the use case returns a PropsError, the controller returns 400 and an error', async () => {
 		// Arrange
-		const app = buildApp(prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker });
+		const app = buildApp(prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker }, abortController.signal);
 
 		// Act
 		const response = await app.inject({
@@ -122,7 +122,7 @@ describe('FastifyCreateBackupRequestController', () => {
 
 	test('when request data is good, the controller returns Accepted and a result payload', async () => {
 		// Arrange
-		const app = buildApp(prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker });
+		const app = buildApp(prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker }, abortController.signal);
 
 		// Act
 		const startTime = new Date();

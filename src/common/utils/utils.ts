@@ -35,7 +35,13 @@ export function isDev(): boolean {
 }
 
 export function isTest(): boolean {
-	return process.env.JEST_WORKER_ID !== undefined;
+	return (
+		process.env.JEST_WORKER_ID !== undefined &&
+		typeof process.env.NODE_ENV === 'string' &&
+		process.env.NODE_ENV.toLowerCase().slice(0, 4) !== 'prod' &&
+		(process.env.APP_ENV === undefined ||
+			(typeof process.env.APP_ENV === 'string' && process.env.NODE_ENV.toLowerCase().slice(0, 3) !== 'prod'))
+	);
 }
 
 export function toBase64(s: string): string {

@@ -24,7 +24,7 @@ export class ExpressCreateBackupRequestController extends ExpressController {
 	protected async execImpl(request: LinebackerRequest, response: Response): Promise<unknown> {
 		const functionName = 'execImpl';
 		const body = request.body as ICreateBackupRequestBody;
-		const traceId = request.hrTimeTraceId;
+		const traceId = request.tracerizerTraceId;
 
 		// TODO: create a different error for missing body
 		// TODO: confirm apiVersion is a known version (in array of converter functions)
@@ -47,6 +47,7 @@ export class ExpressCreateBackupRequestController extends ExpressController {
 			backupDataLocation: body.backupDataLocation,
 			transportType: 'HTTP', // this is an HTTP controller
 			getOnStartFlag: true,
+			requesterId: request.jwtPayload.sub || '',
 		};
 
 		const result = await this.useCase.execute(dto);

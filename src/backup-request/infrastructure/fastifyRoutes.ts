@@ -10,9 +10,15 @@ import { ICircuitBreakers } from '../../infrastructure/prisma/buildCircuitBreake
 export function addBackupRequestRoutes(
 	app: RealFastifyInstance,
 	prismaCtx: PrismaContext,
-	circuitBreakers: ICircuitBreakers
+	circuitBreakers: ICircuitBreakers,
+	abortSignal: AbortSignal
 ) {
-	const { createBackupRequestController } = initBackupRequestModule(prismaCtx, circuitBreakers, 'Fastify');
+	const { createBackupRequestController } = initBackupRequestModule(
+		prismaCtx,
+		circuitBreakers,
+		'Fastify',
+		abortSignal
+	);
 
 	app.post('/api/backup-requests', async function (request: RealFastifyRequest, reply: RealFastifyReply) {
 		let result = await (createBackupRequestController as FastifyCreateBackupRequestController).execute(
