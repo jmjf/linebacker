@@ -630,7 +630,7 @@ describe('CircuitBreakerWithRetry', () => {
 			isAlive: service.isAlive.bind(service),
 			abortSignal: abortController.signal,
 			serviceName: 'TestService',
-			successToCloseCount: 10,
+			successToCloseCount: 2,
 			failureToOpenCount: 1,
 			halfOpenRetryDelayMs: 50,
 			closedRetryDelayMs: 50,
@@ -672,7 +672,7 @@ describe('CircuitBreakerWithRetry', () => {
 		service.setLiveness(false);
 		service.setTestResult(false);
 		if (VERBOSE_LOGS) console.log('FAILED CONNECTION');
-		await delay(250); //
+		await delay(250);
 
 		expect(circuitBreaker.state).toBe(CircuitBreakerStateValues.Open);
 		expect(useCaseSpy).toHaveBeenCalledTimes(3); // 2 ok, 1 failure
@@ -685,6 +685,60 @@ describe('CircuitBreakerWithRetry', () => {
 		expect(retrySum).toBeLessThanOrEqual(2); // proves retries stopped
 
 		if (VERBOSE_LOGS) console.log('Return to open stops retries', await circuitBreaker.getStatus());
+
+		// Cleanup
+		DomainEventBus.clearHandlers();
+		circuitBreaker.halt();
+		abortController.abort();
+		await delay(100);
+	});
+
+	test('when events are awaiting retry and the circuit is Closed and onSuccess() is called, it runs the events', async () => {
+		// Arrange
+		const abortController = new AbortController();
+
+		const service = new TestService();
+		service.setTestResult(true);
+		service.setLiveness(true);
+
+		const circuitBreaker = new CircuitBreakerWithRetry({
+			isAlive: service.isAlive.bind(service),
+			abortSignal: abortController.signal,
+			serviceName: 'TestService',
+			successToCloseCount: 10,
+			failureToOpenCount: 1,
+			halfOpenRetryDelayMs: 10,
+			closedRetryDelayMs: 10,
+			openAliveCheckDelayMs: 10,
+		});
+		// ensure circuit is Closed
+		expect(circuitBreaker.state).toBe(CircuitBreakerStateValues.Closed);
+
+		const adapter = new TestAdapter(service, circuitBreaker);
+
+		const useCase = new TestUseCase(adapter);
+		const useCaseSpy = jest.spyOn(useCase, 'execute');
+
+		const subscriber = new TestSubscriber(useCase);
+
+		// Act
+
+		// add 3 events that will run the test subscriber
+		circuitBreaker.addRetryEvent(getEvent('onSuccess() runs events-Event-1'));
+		circuitBreaker.addRetryEvent(getEvent('onSuccess() runs events-Event-2'));
+		circuitBreaker.addRetryEvent(getEvent('onSuccess() runs events-Event-3'));
+
+		expect(useCaseSpy).not.toHaveBeenCalled();
+		expect(circuitBreaker.retryEventCount).toBe(3);
+
+		// onSuccess() should run retry events
+		circuitBreaker.onSuccess();
+		await delay(100);
+
+		expect(circuitBreaker.state).toBe(CircuitBreakerStateValues.Closed);
+		expect(useCaseSpy).toHaveBeenCalledTimes(3);
+		expect(subscriber.failedServiceNames.length).toBe(0);
+		expect(circuitBreaker.retryEventCount).toBe(0);
 
 		// Cleanup
 		DomainEventBus.clearHandlers();
