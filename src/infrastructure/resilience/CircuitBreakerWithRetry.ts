@@ -99,10 +99,6 @@ export class CircuitBreakerWithRetry {
 		return this._state !== CircuitBreakerStateValues.Open;
 	}
 
-	private setDelayedEventRunnerDelay(delayMs: number) {
-		this._delayedEventRunner.delayMs = delayMs;
-	}
-
 	public onSuccess() {
 		// do nothing if halted
 		if (this._state === CircuitBreakerStateValues.Halted) return;
@@ -111,22 +107,26 @@ export class CircuitBreakerWithRetry {
 		// while awaitIsAlive is waiting. awaitIsAlive will end its loop after its delay ends.
 
 		// when Closed, success decrements failure count to 0
-		if (this._state === CircuitBreakerStateValues.Closed && this._failureCount > 0) {
-			this._failureCount--;
+		if (this._state === CircuitBreakerStateValues.Closed) {
+			this._failureCount = Math.max(0, this._failureCount - 1);
 		} else {
 			// Open or Half Open; increment successCount
 			this._successCount++;
 
 			// any successful call will move to either Closed or HalfOpen
-			this._state =
-				this._successCount >= this._successToCloseCount
-					? CircuitBreakerStateValues.Closed
-					: CircuitBreakerStateValues.HalfOpen;
+			if (this._successCount >= this._successToCloseCount) {
+				this._state = CircuitBreakerStateValues.Closed;
+				this._failureCount = 0;
+			} else {
+				this._state = CircuitBreakerStateValues.HalfOpen;
+			}
 
-			this.setDelayedEventRunnerDelay(
-				this._state === CircuitBreakerStateValues.Closed ? this._closedRetryDelayMs : this._halfOpenRetryDelayMs
-			);
+			this._delayedEventRunner.delayMs =
+				this._state === CircuitBreakerStateValues.Closed ? this._closedRetryDelayMs : this._halfOpenRetryDelayMs;
 		}
+
+		// runEvents() decides if it should run again; avoids conflicts if called while it's running, keeps DER intelligence in DER
+		this._delayedEventRunner.runEvents();
 	}
 
 	public onFailure() {
@@ -137,7 +137,7 @@ export class CircuitBreakerWithRetry {
 
 		if (this._failureCount >= this._failureToOpenCount) {
 			this._state = CircuitBreakerStateValues.Open;
-			this._delayedEventRunner.setStateHalt();
+			this._delayedEventRunner.setStateStop();
 			this._successCount = 0;
 			this.awaitIsAlive();
 		}

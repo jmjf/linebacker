@@ -2,15 +2,16 @@ import { DomainEventBus, IDomainEvent } from '../../common/domain/DomainEventBus
 import { delay } from '../../common/utils/utils';
 
 const DelayedEventRunnerStateValues = {
-	Run: 'Run',
-	Halt: 'Halt',
+	Run: 'Run', // retryEvents() running
+	Stop: 'Stop', // retryEvents() finished or paused
+	Halt: 'Halt', // abort signal received, shutting down
 };
 
 type DelayedEventRunnerStateType = typeof DelayedEventRunnerStateValues[keyof typeof DelayedEventRunnerStateValues];
 
 export class DelayedEventRunner {
 	private _events: IDomainEvent[] = [];
-	private _state: DelayedEventRunnerStateType = DelayedEventRunnerStateValues.Halt;
+	private _state: DelayedEventRunnerStateType = DelayedEventRunnerStateValues.Stop;
 	private _delayMs: number;
 	private _abortSignal: AbortSignal;
 
@@ -45,6 +46,10 @@ export class DelayedEventRunner {
 		return this._state === DelayedEventRunnerStateValues.Halt;
 	}
 
+	public isStateStop(): boolean {
+		return this._state === DelayedEventRunnerStateValues.Stop;
+	}
+
 	public setStateRun() {
 		this._state = DelayedEventRunnerStateValues.Run;
 	}
@@ -53,7 +58,13 @@ export class DelayedEventRunner {
 		this._state = DelayedEventRunnerStateValues.Halt;
 	}
 
+	public setStateStop() {
+		this._state = DelayedEventRunnerStateValues.Stop;
+	}
+
 	public addEvent(ev: IDomainEvent): void {
+		if (this.isStateHalt()) return;
+
 		// only add when ev doesn't already exist in event array
 		// console.log('DER addEvent', ev);
 		if (
@@ -73,24 +84,27 @@ export class DelayedEventRunner {
 	}
 
 	public async runEvents() {
-		// if called, assume it should run; in circuit breaker check for Halted before calling
+		// do not start if no events or not stopped (already running or halted)
+		if (this.eventCount <= 0 || !this.isStateStop()) return;
+
 		// console.log('DER run events', this.events);
 		this.setStateRun();
 
 		let ev: IDomainEvent | undefined;
-		// Array.prototype.shift() removes the first element from the array and returns it (or undefined if none)
-		while (typeof (ev = this._events.shift()) !== 'undefined') {
-			// console.log('DER publish', ev);
+		// Array.prototype.shift() removes the first element from the array and returns it or undefined if none
+		// order of this condition is important to ensure we don't shift events off the array if we're stopping
+		while (this.isStateRun() && typeof (ev = this._events.shift()) !== 'undefined') {
+			// console.log('DER publish', ev, this.events);
 			DomainEventBus.publishToSubscribers(ev);
 
 			if ((await delay(this._delayMs, this._abortSignal)) === 'AbortError') {
 				this.setStateHalt();
-				// console.log('runEvents halting', ev.getAggregateId());
+				// console.log('runEvents halting', ev.getId());
 				return;
 			}
-
-			// If Halted stop
-			if (this._state === DelayedEventRunnerStateValues.Halt) return;
 		}
+		// console.log('runEvents stopping');
+		// either finished or stopped by owner object
+		this.setStateStop();
 	}
 }

@@ -40,7 +40,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 	});
 
 	const testUrl = '/api/backup-requests';
-	const fakeAuthHeader = 'fakeTypeORM|permission1';
+	const fakeAuthHeader = 'fakeTypeORM|post-backup-request';
 
 	const basePayload = {
 		apiVersion: '2022-05-22',
