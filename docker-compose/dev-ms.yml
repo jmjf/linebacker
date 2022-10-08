@@ -21,3 +21,24 @@ services:
          - mssql
       ports:
          - 8070:8080
+
+   splunk:
+      hostname: splunk
+      image: splunk/splunk:latest
+      environment:
+         SPLUNK_START_ARGS: --accept-license
+         SPLUNK_ENABLE_LISTEN: 9997
+         SPLUNK_ADD: tcp 1514
+         SPLUNK_PASSWORD: splunkpw
+      volumes:
+         - opt-splunk-etc:/opt/splunk/etc
+         - opt-splunk-var:/opt/splunk/var
+      ports:
+         - '8060:8000'
+         - '9997:9997'
+         - '8068:8088'
+         - '1514:1514'
+
+volumes:
+   opt-splunk-etc:
+   opt-splunk-var:
