@@ -7,7 +7,7 @@ const pinoOptions = {
 	timestamp: pino.stdTimeFunctions.isoTime,
 	formatters: {
 		level(label: string, number: number) {
-			return { level: number, levelNumber: number, levelText: label };
+			return { level: number, levelNumber: number, levelName: label };
 		},
 	},
 };

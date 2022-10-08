@@ -1,7 +1,3 @@
-
-> linebacker@0.0.1 express:dev:typeorm
-> APP_ENV=dev ts-node src/expressServerTypeorm.ts
-
 {"level":30,"levelNumber":30,"levelText":"info","time":"2022-10-06T01:32:14.995Z","pid":28648,"hostname":"santou","name":"linebacker","location":"Express+TypeORM","function":"pre-start","msg":"getting environment"}
 {"level":30,"levelNumber":30,"levelText":"info","time":"2022-10-06T01:32:14.995Z","pid":28648,"hostname":"santou","name":"linebacker","location":"Express+TypeORM","function":"pre-start","msg":"APP_ENV dev"}
 {"level":30,"levelNumber":30,"levelText":"info","time":"2022-10-06T01:32:19.521Z","pid":28648,"hostname":"santou","name":"linebacker","location":"Express+TypeORM","function":"startServer","msg":"apiPort 3000"}
