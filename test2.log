@@ -1,0 +1,5 @@
+{"level":30,"levelNumber":30,"levelName":"info","time":"2022-10-06T01:32:14.995Z","pid":28648,"hostname":"santou","name":"linebacker","location":"Express+TypeORM","function":"pre-start","msg":"getting environment"}
+{"level":30,"levelNumber":30,"levelName":"info","time":"2022-10-06T01:32:14.995Z","pid":28648,"hostname":"santou","name":"linebacker","location":"Express+TypeORM","function":"pre-start","msg":"APP_ENV dev"}
+{"level":30,"levelNumber":30,"levelName":"info","time":"2022-10-06T01:32:19.521Z","pid":28648,"hostname":"santou","name":"linebacker","location":"Express+TypeORM","function":"startServer","msg":"apiPort 3000"}
+{"level":30,"levelNumber":30,"levelName":"info","time":"2022-10-06T01:32:19.521Z","pid":28648,"hostname":"santou","name":"linebacker","location":"Express+TypeORM","function":"startServer","msg":"initializing TypeORM data source"}
+{"level":30,"levelNumber":30,"levelName":"info","time":"2022-10-06T01:32:19.695Z","pid":28648,"hostname":"santou","name":"linebacker","location":"Express+TypeORM","function":"startServer","msg":"configuring circuit breakers"}

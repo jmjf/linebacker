@@ -1,7 +1,7 @@
-import abstractTransport from 'pino-abstract-transport';
-import pump from 'pump';
-import { Logger as SplunkLogger, Config as SplunkConfig, SendContext } from 'splunk-logging';
-import { Transform } from 'stream';
+import { once } from 'events';
+import build from 'pino-abstract-transport';
+import SonicBoom from 'sonic-boom';
+import { Logger as SplunkLogger, Config as SplunkConfig } from 'splunk-logging';
 
 export interface SplunkLoggerOptions {
 	token: string;
@@ -13,9 +13,9 @@ export interface SplunkLoggerOptions {
 }
 
 export interface PinoSplunkTransportOptions {
-	transportOptions?: string;
-	splunkOptions?: SplunkConfig;
+	splunkOptions: SplunkConfig;
 	splunkSourceType?: string;
+	transportOptions?: string;
 }
 
 // splunk config options
@@ -53,41 +53,40 @@ export interface PinoSplunkTransportOptions {
 
 export function logToSplunkFactory(opts: PinoSplunkTransportOptions) {
 	const splunkOptions = {
-		token:
-			typeof opts.splunkOptions?.token === 'string'
-				? opts.splunkOptions.token
-				: '3d295975-5fa2-4844-ac0a-dc41a130ab2e',
-		url: typeof opts.splunkOptions?.url === 'string' ? opts.splunkOptions.url : 'https://localhost:8068',
-		batchInterval: typeof opts.splunkOptions?.batchInterval === 'number' ? opts.splunkOptions.batchInterval : 2000,
-		maxBatchCount: typeof opts.splunkOptions?.maxBatchCount === 'number' ? opts.splunkOptions.maxBatchCount : 5,
-		maxBatchSize: typeof opts.splunkOptions?.maxBatchSize === 'number' ? opts.splunkOptions.maxBatchSize : 2048,
-		maxRetries: typeof opts.splunkOptions?.maxRetries === 'number' ? opts.splunkOptions.maxRetries : 5,
-		name: opts.splunkOptions?.name || 'pino-splunk-transport',
-		host: opts.splunkOptions?.host,
-		path: opts.splunkOptions?.path,
-		protocol: opts.splunkOptions?.protocol || 'http',
-		port: opts.splunkOptions?.port,
-		level: opts.splunkOptions?.level,
+		token: opts.splunkOptions.token,
+		url: opts.splunkOptions.url,
+		batchInterval: typeof opts.splunkOptions.batchInterval === 'number' ? opts.splunkOptions.batchInterval : 5000,
+		maxBatchCount: typeof opts.splunkOptions.maxBatchCount === 'number' ? opts.splunkOptions.maxBatchCount : 5,
+		maxBatchSize: typeof opts.splunkOptions.maxBatchSize === 'number' ? opts.splunkOptions.maxBatchSize : 2048,
+		maxRetries: typeof opts.splunkOptions.maxRetries === 'number' ? opts.splunkOptions.maxRetries : 5,
+		name: opts.splunkOptions.name || 'pino-splunk-transport',
+		host: opts.splunkOptions.host,
+		path: opts.splunkOptions.path,
+		protocol: opts.splunkOptions.protocol,
+		port: typeof opts.splunkOptions.port === 'number' ? opts.splunkOptions.port : 8088,
+		level: opts.splunkOptions.level,
 	};
-	const splunkSourceType = typeof opts.splunkOptions?.url === 'string' ? opts.splunkOptions.url : '_json';
+	const splunkSourceType = typeof opts.splunkOptions.url === 'string' ? opts.splunkOptions.url : '_json';
 
 	const splunkLogger = new SplunkLogger(splunkOptions);
-	splunkLogger.error = (err: Error, context: SendContext) => {
-		console.log('ERROR Logging to Splunk', err, context);
+
+	// format the event to be searchable in Splunk
+	splunkLogger.eventFormatter = (message: object, severity: string) => {
+		const event = { ...message, severity };
+		return event;
 	};
+	splunkLogger.requestOptions.json = true;
 
-	console.log('pinoSplunkTransport | initalized', splunkOptions);
-
-	function logToSplunk(obj: any) {
+	function logToSplunk(event: any) {
 		const logPayload = {
-			message: obj,
+			message: event,
 			metadata: {
-				source: obj.name || 'unknown',
+				source: event.name || 'unknown',
 				sourcetype: splunkSourceType,
-				host: obj.host || 'unknown',
-				time: new Date(obj.time).valueOf() / 1000,
+				host: event.host || 'unknown',
+				time: event.time ? new Date(event.time).valueOf() / 1000 : new Date(),
 			},
-			severity: obj.levelName,
+			severity: event.levelName,
 		};
 		splunkLogger.send(logPayload);
 	}
@@ -95,47 +94,26 @@ export function logToSplunkFactory(opts: PinoSplunkTransportOptions) {
 	return logToSplunk;
 }
 
-export function build(opts: PinoSplunkTransportOptions) {
+export default function buildTransport(opts: PinoSplunkTransportOptions) {
 	const logToSplunk = logToSplunkFactory(opts);
-	return abstractTransport(
-		function (source) {
-			console.log('pinoSplunkTransport | abstractTransport()');
-			const stream = new Transform({
-				autoDestroy: true, // pino-pretty says this is required
-				objectMode: true, // get data in object chunks, not byte chunks
-				transform(obj, enc, cb) {
-					console.log('pst | transform', obj);
-					logToSplunk(obj);
-					cb(null, obj);
-				},
-			});
+	const stdout = new SonicBoom({ dest: 1, sync: false });
 
-			source.on('unknown', (err) => {
-				console.log('pst unknown', err);
-			});
-
-			pump(source, stream, () => {
-				console.log('pump error');
-			});
-			return stream;
-			// for await (const obj of source) {
-			// 	console.log('pinoSplunkTransport received', typeof obj, obj);
-
-			// 	const logPayload = {
-			// 		message: obj,
-			// 		metadata: {
-			// 			source: obj.name,
-			// 			sourcetype: splunkSourceType,
-			// 			host: obj.host,
-			// 			time: new Date(obj.time).valueOf() / 1000,
-			// 		},
-			// 		severity: obj.levelName,
-			// 	};
-			// 	splunkLogger.send(logPayload);
-			// }
+	return build(
+		async function (source) {
+			for await (const obj of source) {
+				logToSplunk(obj);
+				const toDrain = !stdout.write(`${JSON.stringify(obj)}\n`);
+				if (toDrain) {
+					await once(stdout, 'drain');
+				}
+			}
 		},
-		{ parse: 'lines', enablePipelining: true }
+		{
+			async close(err) {
+				stdout.write(`pino-splunk-transport CLOSE: ${JSON.stringify(err)}\n`);
+				stdout.end();
+				await once(stdout, 'close');
+			},
+		}
 	);
 }
-
-export default build;
