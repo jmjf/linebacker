@@ -47,6 +47,8 @@ export class SplunkLogger {
 
 	private _stdout: SonicBoom;
 
+	private _httpErrorCount = 0;
+
 	constructor(stdout: SonicBoom, opts: SplunkLoggerOptions) {
 		this._stdout = stdout;
 		if (!opts || !opts.url || !opts.splunkToken) throw new Error('buildSplunkAdapter missing required options');
@@ -152,22 +154,25 @@ export class SplunkLogger {
 				body,
 			});
 			this._queue = [];
+			this._httpErrorCount = 0; // reset error count after successful send
 		} catch (e) {
 			const { message, ...error } = e as Error;
-			this._stdout.write(`ERROR: SplunkLogger ${message}/n ${JSON.stringify(error)}`);
+			this._stdout.write(`ERROR: SplunkLogger ${message}\n${JSON.stringify(error)}\n`);
 
-			// add a log entry for the error
-			const { event } = this._formatLog({
-				...error,
-				time: new Date(),
-				name: 'SplunkLogger',
-				host: os.hostname(),
-			});
-			event.event.severity = 'error';
-			this._queue.push(JSON.stringify(event));
-
-			// restart the delay, stopped it earlier so don't need to check
-			this._queueInterval = this._resetInterval();
+			// add a log entry for the error, but don't log more than 5 to avoid spamming Splunk
+			if (this._httpErrorCount < 5) {
+				const { event } = this._formatLog({
+					...error,
+					time: new Date(),
+					name: 'SplunkLogger',
+					host: os.hostname(),
+				});
+				event.event.severity = 'error';
+				this._queue.push(JSON.stringify(event));
+				this._httpErrorCount++;
+			}
+			// restart the delay
+			if (!this._queueInterval) this._queueInterval = this._resetInterval();
 		}
 
 		// always reset queueSize -- if an error, avoids immediate retry
