@@ -20,3 +20,10 @@ See notes in 8.3 about `DefaultAzureCredential` "AzureQueue env considerations" 
 
 -  Consider consequences and implications before doing this, but it should be okay in cases where we only need an id
 -  Consider making id events store id as a string
+
+## In subscribers, use Map to manage failed services instead of object/Dictionary type
+
+-  `failedServices = new Map()`
+-  `failedServices.size > 0`
+-  `for (serviceName of failedServices.keys())`
+-  `failedServices.has(serviceName)`
