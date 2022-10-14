@@ -47,18 +47,28 @@ function buildAuthnerizer(opts) {
 		try {
 			decodedToken = jwtDecoder(token);
 		} catch (e) {
-			return next(get401Error('Cannot decode token', { authType, token, error: e }));
+			return next(get401Error('Cannot decode token', { authType, error: e }));
 		}
 		const issuer = decodedToken.payload.iss;
 
-		if (!allowedIssuers.includes(issuer)) return next(get401Error('Issuer not allowed', { decodedToken }));
+		if (!allowedIssuers.includes(issuer))
+			return next(
+				get401Error('Issuer not allowed', {
+					decodedToken: { header: decodedToken.header, payload: decodedToken.payload },
+				})
+			);
 
 		let verifiedToken = {};
 		try {
 			const verifyToken = jwtVerifiers.get(issuer);
 			verifiedToken = await verifyToken(token);
 		} catch (e) {
-			return next(get401Error('Cannot verify token', { decodedToken, error: e }));
+			return next(
+				get401Error('Cannot verify token', {
+					decodedToken: { header: decodedToken.header, payload: decodedToken.payload },
+					error: e,
+				})
+			);
 		}
 
 		if (typeof verifiedToken !== 'object' || !verifiedToken.sub)
