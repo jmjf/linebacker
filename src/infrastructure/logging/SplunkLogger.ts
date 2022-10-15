@@ -1,6 +1,7 @@
 import got from 'got/dist/source';
 import SonicBoom from 'sonic-boom';
 import os from 'node:os';
+import { delay } from '../../common/utils/utils';
 
 export interface SplunkLoggerOptions {
 	url: string;
@@ -13,8 +14,9 @@ export interface SplunkLoggerOptions {
 	maxBatchBytes?: number;
 	maxBatchItems?: number;
 	maxBatchWaitMs?: number;
-	maxRetries?: number;
-	httpTimeoutMs?: number;
+	postTimeoutMs?: number;
+	maxPostRetries?: number;
+	maxPostItems?: number;
 	formatLog?: (event: object, logLevelKey?: string) => { logLevel: number | string; event: object };
 	// event is really a superset of { time: number, source: string, host: string, severity: string }
 	// but ts4.8 can't express that
@@ -37,8 +39,9 @@ export class SplunkLogger {
 	private _maxBatchBytes: number;
 	private _maxBatchItems: number;
 	private _maxBatchWaitMs: number;
-	private _maxRetries: number;
-	private _httpTimeoutMs: number;
+	private _maxPostRetries: number;
+	private _postTimeoutMs: number;
+	private _maxPostItems: number;
 	private _headers: Record<string, any> = {};
 
 	private _queueSize = 0;
@@ -48,6 +51,8 @@ export class SplunkLogger {
 	private _stdout: SonicBoom;
 
 	private _httpErrorCount = 0;
+	private _queueFlushing = false;
+	private MAX_HTTP_ERROR_COUNT = 5;
 
 	constructor(stdout: SonicBoom, opts: SplunkLoggerOptions) {
 		this._stdout = stdout;
@@ -72,12 +77,19 @@ export class SplunkLogger {
 						[10, 'trace'],
 				  ]);
 
-		this._maxBatchBytes = opts.maxBatchBytes || 0;
-		this._maxBatchItems = opts.maxBatchItems || 1;
-		this._maxBatchWaitMs = opts.maxBatchWaitMs || 0;
+		// these configuration parameters are related
+		// if any one is configured, default to a value that will be ignored (-1), else default to a safe default
+		this._maxBatchBytes =
+			opts.maxBatchBytes || opts.maxBatchItems || opts.maxBatchWaitMs ? opts.maxBatchBytes || -1 : 0;
+		this._maxBatchItems =
+			opts.maxBatchBytes || opts.maxBatchItems || opts.maxBatchWaitMs ? opts.maxBatchItems || -1 : 1;
+		this._maxBatchWaitMs =
+			opts.maxBatchBytes || opts.maxBatchItems || opts.maxBatchWaitMs ? opts.maxBatchWaitMs || -1 : 0;
 
-		this._maxRetries = opts.maxRetries || 5;
-		this._httpTimeoutMs = opts.httpTimeoutMs || Math.min(2000, this._maxBatchWaitMs - 100);
+		this._maxPostRetries = opts.maxPostRetries || 5;
+		// either the configured value or an alternate configuration value or a default
+		this._postTimeoutMs = opts.postTimeoutMs || this._maxBatchWaitMs > 0 ? this._maxBatchWaitMs : 2000;
+		this._maxPostItems = opts.maxPostItems || this._maxBatchItems > 1 ? this._maxBatchItems : 200;
 
 		this._headers['Content-Type'] = 'application/x-www-form-urlencoded';
 		this._headers['Authorization'] = `Splunk ${this._splunkToken}`;
@@ -128,55 +140,73 @@ export class SplunkLogger {
 	}
 
 	// http
-	private async _postEvent({ url, headers, body }: HttpPostOptions) {
+	private async _postToSplunk({ url, headers, body }: HttpPostOptions) {
 		return got(url, {
 			method: 'POST',
 			headers,
 			body,
-			retry: { methods: ['POST'], limit: this._maxRetries },
-			timeout: this._httpTimeoutMs,
+			retry: { methods: ['POST'], limit: this._maxPostRetries },
+			timeout: this._postTimeoutMs,
 		});
 	}
 
 	public async flushQueue() {
+		if (this._queueFlushing) return;
+
+		this._queueFlushing = true;
+		let postErrored = false;
+
 		// kill the timer because we're flushing the queue
 		if (this._queueInterval) {
 			clearInterval(this._queueInterval);
 			this._queueInterval = undefined as unknown as ReturnType<typeof this._resetInterval>;
 		}
 
-		const body = this._queue.join('');
-		// set up request
-		try {
-			await this._postEvent({
-				url: this._url,
-				headers: this._headers,
-				body,
-			});
-			this._queue = [];
-			this._httpErrorCount = 0; // reset error count after successful send
-		} catch (e) {
-			const { message, ...error } = e as Error;
-			this._stdout.write(`ERROR: SplunkLogger ${message}\n${JSON.stringify(error)}\n`);
+		while (this._queue.length > 0) {
+			// don't remove from this._queue without successful POST; if end > length, slice() returns up to length
+			const body = this._queue.slice(0, this._maxPostItems).join('');
 
-			// add a log entry for the error, but don't log more than 5 to avoid spamming Splunk
-			if (this._httpErrorCount < 5) {
-				const { event } = this._formatLog({
-					...error,
-					time: new Date(),
-					name: 'SplunkLogger',
-					host: os.hostname(),
+			// POST logs
+			try {
+				await this._postToSplunk({
+					url: this._url,
+					headers: this._headers,
+					body,
 				});
-				event.event.severity = 'error';
-				this._queue.push(JSON.stringify(event));
-				this._httpErrorCount++;
+
+				// on successful POST, remove elements from this._queue; if end > length, splice() removes up to length
+				this._queue.splice(0, this._maxPostItems);
+
+				// reset error count after all POSTed; check here to avoid unneeded delay; queue won't be empty on catch
+				if (this._queue.length === 0) this._httpErrorCount = 0;
+				if (this._httpErrorCount > 0) await delay(this._postTimeoutMs);
+			} catch (e) {
+				postErrored = true;
+				const { message, ...error } = e as Error;
+				this._stdout.write(`ERROR: SplunkLogger | ${message} | ${JSON.stringify(error)}\n`);
+
+				// add a log entry for the error, but don't log more than max to avoid spamming Splunk
+				if (this._httpErrorCount < this.MAX_HTTP_ERROR_COUNT) {
+					const { event } = this._formatLog({
+						...error,
+						time: new Date(),
+						name: 'SplunkLogger',
+						host: os.hostname(),
+					});
+					event.event.severity = 'error';
+					this._queue.push(JSON.stringify(event));
+					this._httpErrorCount++;
+				}
+				// restart the send interval so we'll retry soon
+				if (!this._queueInterval) this._queueInterval = this._resetInterval();
 			}
-			// restart the delay
-			if (!this._queueInterval) this._queueInterval = this._resetInterval();
+
+			if (postErrored) break;
 		}
 
-		// always reset queueSize -- if an error, avoids immediate retry
+		// always reset queueSize -- if POST error, avoids immediate retry
 		this._queueSize = 0;
+		this._queueFlushing = false;
 	}
 
 	public addEvent(ev: any) {
@@ -188,7 +218,11 @@ export class SplunkLogger {
 		this._queue.push(stringEvent);
 		this._queueSize += stringEvent.length;
 
-		if (this._queueSize >= this._maxBatchBytes || this._queue.length >= this._maxBatchItems) {
+		// TODO: separate add event queue from flushing queue to avoid immediate resend after POST error
+		if (
+			(this._maxBatchBytes > 0 ? this._queueSize >= this._maxBatchBytes : false) ||
+			(this._maxBatchItems > 0 ? this._queue.length >= this._maxBatchItems : false)
+		) {
 			this.flushQueue();
 		} else {
 			if (!this._queueInterval) this._queueInterval = this._resetInterval();
