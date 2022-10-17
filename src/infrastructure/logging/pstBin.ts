@@ -24,7 +24,7 @@ const opts = {
 		maxBatchWaitMs: 5000,
 		maxBatchItems: 5,
 		maxBatchBytes: 2048,
-		maxRetries: 5,
+		maxPostRetries: 5,
 	},
 };
 const pst = buildTransport(opts);

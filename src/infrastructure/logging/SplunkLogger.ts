@@ -1,6 +1,7 @@
 import got from 'got/dist/source';
 import SonicBoom from 'sonic-boom';
 import os from 'node:os';
+import { delay } from '../../common/utils/utils';
 
 export interface SplunkLoggerOptions {
 	url: string;
@@ -13,8 +14,10 @@ export interface SplunkLoggerOptions {
 	maxBatchBytes?: number;
 	maxBatchItems?: number;
 	maxBatchWaitMs?: number;
-	maxRetries?: number;
-	httpTimeoutMs?: number;
+	postTimeoutMs?: number;
+	maxPostRetries?: number;
+	maxPostItems?: number;
+	maxPostErrorsToSplunk?: number;
 	formatLog?: (event: object, logLevelKey?: string) => { logLevel: number | string; event: object };
 	// event is really a superset of { time: number, source: string, host: string, severity: string }
 	// but ts4.8 can't express that
@@ -24,6 +27,8 @@ interface HttpPostOptions {
 	url: string;
 	headers: Record<string, any>;
 	body: string;
+	maxPostRetries: number;
+	postTimeoutMs: number;
 }
 
 export class SplunkLogger {
@@ -37,17 +42,24 @@ export class SplunkLogger {
 	private _maxBatchBytes: number;
 	private _maxBatchItems: number;
 	private _maxBatchWaitMs: number;
-	private _maxRetries: number;
-	private _httpTimeoutMs: number;
+
+	private _postTimeoutMs: number;
+	private _maxPostRetries: number;
+	private _maxPostItems: number;
+	private _maxPostErrorsToSplunk: number;
+
 	private _headers: Record<string, any> = {};
 
-	private _queueSize = 0;
-	private _queue: string[] = [];
-	private _queueInterval: ReturnType<typeof this._resetInterval>;
+	private _inQueueSize = 0;
+	private _inQueue: string[] = [];
+	private _inQueueTimeout: ReturnType<typeof setTimeout>;
+
+	private _outQueue: string[] = [];
+	// outQueue isn't governed by size or timeout
+	private _postErrorCount = 0;
+	private _isQueueFlushing = false;
 
 	private _stdout: SonicBoom;
-
-	private _httpErrorCount = 0;
 
 	constructor(stdout: SonicBoom, opts: SplunkLoggerOptions) {
 		this._stdout = stdout;
@@ -72,20 +84,31 @@ export class SplunkLogger {
 						[10, 'trace'],
 				  ]);
 
-		this._maxBatchBytes = opts.maxBatchBytes || 0;
-		this._maxBatchItems = opts.maxBatchItems || 1;
-		this._maxBatchWaitMs = opts.maxBatchWaitMs || 0;
+		// these configuration parameters are related
+		// if any one is configured, default to -1 (ignore), else default to "always post"
+		this._maxBatchBytes =
+			opts.maxBatchBytes || opts.maxBatchItems || opts.maxBatchWaitMs ? opts.maxBatchBytes || -1 : 0;
+		this._maxBatchItems =
+			opts.maxBatchBytes || opts.maxBatchItems || opts.maxBatchWaitMs ? opts.maxBatchItems || -1 : 1;
+		this._maxBatchWaitMs =
+			opts.maxBatchBytes || opts.maxBatchItems || opts.maxBatchWaitMs ? opts.maxBatchWaitMs || -1 : 0;
 
-		this._maxRetries = opts.maxRetries || 5;
-		this._httpTimeoutMs = opts.httpTimeoutMs || Math.min(2000, this._maxBatchWaitMs - 100);
+		this._maxPostRetries = opts.maxPostRetries || 5;
+		this._postTimeoutMs = opts.postTimeoutMs || 2000;
+		this._maxPostItems = opts.maxPostItems || 200;
+		this._maxPostErrorsToSplunk = opts.maxPostErrorsToSplunk || 5;
 
 		this._headers['Content-Type'] = 'application/x-www-form-urlencoded';
 		this._headers['Authorization'] = `Splunk ${this._splunkToken}`;
 	}
 
-	private _resetInterval() {
-		return setInterval(() => {
-			if (this._queue.length > 0) this.flushQueue();
+	private _resetTimeoutIfNotRunning() {
+		// if the timeout is already running
+		if (this._inQueueTimeout) return;
+
+		this._inQueueTimeout = setTimeout(() => {
+			this._inQueueTimeout = undefined as unknown as ReturnType<typeof setTimeout>;
+			this.flushQueue();
 		}, this._maxBatchWaitMs);
 	}
 
@@ -128,55 +151,90 @@ export class SplunkLogger {
 	}
 
 	// http
-	private async _postEvent({ url, headers, body }: HttpPostOptions) {
+	private async _postToSplunk({ url, headers, body, maxPostRetries, postTimeoutMs }: HttpPostOptions) {
 		return got(url, {
 			method: 'POST',
 			headers,
 			body,
-			retry: { methods: ['POST'], limit: this._maxRetries },
-			timeout: this._httpTimeoutMs,
+			retry: { methods: ['POST'], limit: maxPostRetries },
+			timeout: postTimeoutMs,
 		});
 	}
 
 	public async flushQueue() {
-		// kill the timer because we're flushing the queue
-		if (this._queueInterval) {
-			clearInterval(this._queueInterval);
-			this._queueInterval = undefined as unknown as ReturnType<typeof this._resetInterval>;
+		if (this._isQueueFlushing || (this._inQueue.length === 0 && this._outQueue.length === 0)) return;
+
+		this._isQueueFlushing = true;
+
+		// kill the timeout because we're flushing the queue
+		if (this._inQueueTimeout) {
+			clearTimeout(this._inQueueTimeout);
+			this._inQueueTimeout = undefined as unknown as ReturnType<typeof setTimeout>;
 		}
 
-		const body = this._queue.join('');
-		// set up request
-		try {
-			await this._postEvent({
-				url: this._url,
-				headers: this._headers,
-				body,
-			});
-			this._queue = [];
-			this._httpErrorCount = 0; // reset error count after successful send
-		} catch (e) {
-			const { message, ...error } = e as Error;
-			this._stdout.write(`ERROR: SplunkLogger ${message}\n${JSON.stringify(error)}\n`);
+		let postErrored = false;
 
-			// add a log entry for the error, but don't log more than 5 to avoid spamming Splunk
-			if (this._httpErrorCount < 5) {
-				const { event } = this._formatLog({
-					...error,
-					time: new Date(),
-					name: 'SplunkLogger',
-					host: os.hostname(),
+		// no async calls in the next three lines, so nothing can add to inQueue between push and reset
+		this._outQueue.push(...this._inQueue);
+		this._inQueue = [];
+		this._inQueueSize = 0;
+
+		while (this._outQueue.length > 0) {
+			// slice -> don't remove from queue without successful POST; if end > length, slice() returns up to length
+			const body = this._outQueue.slice(0, this._maxPostItems).join('');
+
+			// POST logs
+			try {
+				await this._postToSplunk({
+					url: this._url,
+					headers: this._headers,
+					body,
+					maxPostRetries: this._maxPostRetries,
+					postTimeoutMs: this._postTimeoutMs,
 				});
-				event.event.severity = 'error';
-				this._queue.push(JSON.stringify(event));
-				this._httpErrorCount++;
+
+				// splice -> POST succeeded, remove elements from queue; if end > length, splice() removes up to length
+				// _maxPostItems is safe because _isQueueFlushing ensures we don't add anything to outQueue while POSTing
+				this._outQueue.splice(0, this._maxPostItems);
+
+				// reset error count after all POSTed
+				if (this._outQueue.length === 0) {
+					this._postErrorCount = 0;
+				} else {
+					await delay(this._postTimeoutMs);
+				}
+			} catch (e) {
+				postErrored = true;
+				const { message, ...error } = e as Error;
+				const errorData = {
+					...error,
+					msg: message,
+					postErrorCount: this._postErrorCount,
+					outQueueLength: this._outQueue.length,
+					inQueueLength: this._inQueue.length,
+				};
+				this._stdout.write(`ERROR: SplunkLogger | ${message} | ${JSON.stringify(errorData)}\n`);
+
+				// add a log entry for the error, but limit error logs to avoid spamming Splunk
+				// may accept more inQueue logs between calls, so can't assume last entry is a POST error
+				if (this._postErrorCount < this._maxPostErrorsToSplunk) {
+					this._postErrorCount++;
+					const { event } = this._formatLog({
+						...errorData,
+						time: new Date(),
+						name: 'SplunkLogger',
+						host: os.hostname(),
+					});
+					event.event.severity = 'error';
+					this._outQueue.push(JSON.stringify(event));
+				}
 			}
-			// restart the delay
-			if (!this._queueInterval) this._queueInterval = this._resetInterval();
+
+			if (postErrored) break;
 		}
 
-		// always reset queueSize -- if an error, avoids immediate retry
-		this._queueSize = 0;
+		if (this._inQueue.length > 0 || this._outQueue.length > 0) this._resetTimeoutIfNotRunning();
+		this._isQueueFlushing = false;
 	}
 
 	public addEvent(ev: any) {
@@ -185,17 +243,24 @@ export class SplunkLogger {
 		if (logLevel < this._logLevel) return; // don't log events that don't meet the level threshold
 
 		const stringEvent = JSON.stringify(event);
-		this._queue.push(stringEvent);
-		this._queueSize += stringEvent.length;
+		this._inQueue.push(stringEvent);
+		this._inQueueSize += stringEvent.length;
 
-		if (this._queueSize >= this._maxBatchBytes || this._queue.length >= this._maxBatchItems) {
+		if (
+			(this._maxBatchBytes > 0 ? this._inQueueSize >= this._maxBatchBytes : false) ||
+			(this._maxBatchItems > 0 ? this._inQueue.length >= this._maxBatchItems : false)
+		) {
 			this.flushQueue();
 		} else {
-			if (!this._queueInterval) this._queueInterval = this._resetInterval();
+			this._resetTimeoutIfNotRunning();
 		}
 	}
 
-	public getQueue() {
-		return [...this._queue];
+	public getInQueue() {
+		return [...this._inQueue];
+	}
+
+	public getOutQueue() {
+		return [...this._outQueue];
 	}
 }
