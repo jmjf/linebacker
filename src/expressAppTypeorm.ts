@@ -8,6 +8,7 @@ import {
 	buildAuthzerizer,
 } from './infrastructure/middleware/index';
 
+import { addZpagesRoutes } from './zpages/infrastructure/expressRoutes';
 import { addBackupRequestRoutes } from './backup-request/infrastructure/expressRoutesTypeorm';
 import { TypeormContext } from './infrastructure/typeorm/typeormContext';
 import { ICircuitBreakers } from './infrastructure/typeorm/buildCircuitBreakers.typeorm';
@@ -93,6 +94,7 @@ export function buildApp(
 	}
 
 	addBackupRequestRoutes(app, typeormCtx, circuitBreakers, abortSignal);
+	addZpagesRoutes(app);
 
 	return app;
 }
