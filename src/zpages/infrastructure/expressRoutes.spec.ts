@@ -14,12 +14,22 @@ import { CircuitBreakerWithRetry } from '../../infrastructure/resilience/Circuit
 import { delay } from '../../common/utils/utils';
 import { logger } from '../../infrastructure/logging/pinoLogger';
 
+import { ZpageDependencyCheck } from './expressRoutes';
+import { err, ok } from '../../common/core/Result';
+
 describe('Zpages - typeorm', () => {
 	let mockTypeormCtx: MockTypeormContext;
 	let typeormCtx: TypeormContext;
 	let dbCircuitBreaker: CircuitBreakerWithRetry;
 	let azureQueueCircuitBreaker: CircuitBreakerWithRetry;
 	let abortController: AbortController;
+
+	const okDependencies = [
+		{ depName: 'okDep1', depCheckFunction: async () => ok(true) },
+		{ depName: 'okDep2', depCheckFunction: async () => ok(true) },
+	];
+
+	const errDependency = { depName: 'errDep', depCheckFunction: async () => err(new Error()) };
 
 	beforeEach(() => {
 		mockTypeormCtx = createMockTypeormContext();
@@ -39,7 +49,14 @@ describe('Zpages - typeorm', () => {
 
 	test('when livez is called, it returns 200', async () => {
 		// Arrange
-		const app = buildApp(logger, typeormCtx, { dbCircuitBreaker, azureQueueCircuitBreaker }, abortController.signal);
+		const deps = { readyzDependencies: okDependencies };
+		const app = buildApp(
+			logger,
+			typeormCtx,
+			{ dbCircuitBreaker, azureQueueCircuitBreaker },
+			deps,
+			abortController.signal
+		);
 		const testUrl = '/api/zpages/livez';
 
 		// Act
@@ -49,9 +66,35 @@ describe('Zpages - typeorm', () => {
 		expect(response.statusCode).toBe(200);
 	});
 
-	test('when readyz is called, it returns 200', async () => {
+	test('when readyz is called and a dependency is not ok, it returns 500', async () => {
 		// Arrange
-		const app = buildApp(logger, typeormCtx, { dbCircuitBreaker, azureQueueCircuitBreaker }, abortController.signal);
+		const deps = { readyzDependencies: [...okDependencies, errDependency, ...okDependencies] };
+		const app = buildApp(
+			logger,
+			typeormCtx,
+			{ dbCircuitBreaker, azureQueueCircuitBreaker },
+			deps,
+			abortController.signal
+		);
+		const testUrl = '/api/zpages/readyz';
+
+		// Act
+		const response = await request(app).get(testUrl).set('TestAuth', fakeAuthHeader);
+
+		// Assert
+		expect(response.statusCode).toBe(500);
+	});
+
+	test('when readyz is called and all dependencies are ok, it returns 200', async () => {
+		// Arrange
+		const deps = { readyzDependencies: okDependencies };
+		const app = buildApp(
+			logger,
+			typeormCtx,
+			{ dbCircuitBreaker, azureQueueCircuitBreaker },
+			deps,
+			abortController.signal
+		);
 		const testUrl = '/api/zpages/readyz';
 
 		// Act
@@ -63,8 +106,15 @@ describe('Zpages - typeorm', () => {
 
 	test('when healthz is called, it returns 200 and has data', async () => {
 		// Arrange
+		const deps = { readyzDependencies: okDependencies };
 		const startTime = new Date();
-		const app = buildApp(logger, typeormCtx, { dbCircuitBreaker, azureQueueCircuitBreaker }, abortController.signal);
+		const app = buildApp(
+			logger,
+			typeormCtx,
+			{ dbCircuitBreaker, azureQueueCircuitBreaker },
+			deps,
+			abortController.signal
+		);
 		const testUrl = '/api/zpages/healthz';
 
 		// Act

@@ -8,7 +8,7 @@ import {
 	buildAuthzerizer,
 } from './infrastructure/middleware/index';
 
-import { addZpagesRoutes } from './zpages/infrastructure/expressRoutes';
+import { addZpagesRoutes, ZpageDependencies, ZpageDependencyCheck } from './zpages/infrastructure/expressRoutes';
 import { addBackupRequestRoutes } from './backup-request/infrastructure/expressRoutesTypeorm';
 import { TypeormContext } from './infrastructure/typeorm/typeormContext';
 import { ICircuitBreakers } from './infrastructure/typeorm/buildCircuitBreakers.typeorm';
@@ -21,6 +21,7 @@ export function buildApp(
 	logger: Logger,
 	typeormCtx: TypeormContext,
 	circuitBreakers: ICircuitBreakers,
+	zpageDependencies: ZpageDependencies,
 	abortSignal: AbortSignal
 ) {
 	const reqTraceIdKey = 'tracerizerTraceId';
@@ -94,7 +95,7 @@ export function buildApp(
 	}
 
 	addBackupRequestRoutes(app, typeormCtx, circuitBreakers, abortSignal);
-	addZpagesRoutes(app);
+	addZpagesRoutes(app, zpageDependencies);
 
 	return app;
 }

@@ -19,6 +19,7 @@ import { buildCircuitBreakers } from './infrastructure/typeorm/buildCircuitBreak
 import { buildApp } from './expressAppTypeorm';
 import { publishApplicationResilienceReady } from './infrastructure/resilience/publishApplicationResilienceReady';
 import { delay } from './common/utils/utils';
+import { isTypeormConnected } from './infrastructure/typeorm/isTypeormConnected';
 
 const startServer = async () => {
 	const startTimestamp = new Date();
@@ -39,7 +40,10 @@ const startServer = async () => {
 	const circuitBreakers = buildCircuitBreakers(appAbortController.signal);
 
 	logger.info(logContext, 'building server');
-	const server = buildApp(logger, typeormCtx, circuitBreakers, appAbortController.signal);
+	const zpageDependencies = {
+		readyzDependencies: [{ depName: 'database', depCheckFunction: isTypeormConnected }],
+	};
+	const server = buildApp(logger, typeormCtx, circuitBreakers, zpageDependencies, appAbortController.signal);
 
 	logger.info(logContext, 'publishing ApplicationResilienceReady');
 	publishApplicationResilienceReady(startTimestamp);
