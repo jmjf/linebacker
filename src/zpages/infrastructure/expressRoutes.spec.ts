@@ -60,4 +60,22 @@ describe('Zpages - typeorm', () => {
 		// Assert
 		expect(response.statusCode).toBe(200);
 	});
+
+	test('when healthz is called, it returns 200 and has data', async () => {
+		// Arrange
+		const startTime = new Date();
+		const app = buildApp(logger, typeormCtx, { dbCircuitBreaker, azureQueueCircuitBreaker }, abortController.signal);
+		const testUrl = '/api/zpages/healthz';
+
+		// Act
+		const response = await request(app).get(testUrl).set('TestAuth', fakeAuthHeader);
+		const endTime = new Date();
+
+		// Assert
+		expect(response.statusCode).toBe(200);
+		const payload = JSON.parse(response.text);
+		// console.log('healthz', payload);
+		expect(new Date(payload.startTime).valueOf()).toBeGreaterThanOrEqual(startTime.valueOf());
+		expect(new Date(payload.startTime).valueOf()).toBeLessThanOrEqual(endTime.valueOf());
+	});
 });
