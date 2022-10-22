@@ -41,7 +41,7 @@ const startServer = async () => {
 
 	logger.info(logContext, 'building server');
 	const zpageDependencies = {
-		readyzDependencies: [{ depName: 'database', depCheckFunction: isTypeormConnected }],
+		readyzDependencies: [{ depName: 'database', depCheckFunction: circuitBreakers.dbCircuitBreaker.isConnected }],
 	};
 	const server = buildApp(logger, typeormCtx, circuitBreakers, zpageDependencies, appAbortController.signal);
 

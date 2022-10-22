@@ -6,7 +6,7 @@ const moduleName = path.basename(module.filename);
 
 export interface ZpageDependencyCheck {
 	depName: string;
-	depCheckFunction: () => Promise<Result<boolean, Error>>;
+	depCheckFunction: () => boolean;
 }
 
 export interface ZpageDependencies {
@@ -22,12 +22,11 @@ export function addZpagesRoutes(app: Application, dependencies: ZpageDependencie
 		response.status(200).send();
 	});
 
-	app.get('/api/zpages/readyz', async (request: Request, response: Response) => {
+	app.get('/api/zpages/readyz', (request: Request, response: Response) => {
 		// eslint-disable-next-line prefer-const
 		let isReady = true;
 		for (const dep of readyzDependencies) {
-			const depResult = await dep.depCheckFunction();
-			if (depResult.isErr()) isReady = false;
+			if (!dep.depCheckFunction()) isReady = false;
 			if (!isReady) break;
 		}
 		response.status(isReady ? 200 : 500).send();

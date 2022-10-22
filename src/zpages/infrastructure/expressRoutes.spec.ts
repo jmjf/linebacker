@@ -25,11 +25,11 @@ describe('Zpages - typeorm', () => {
 	let abortController: AbortController;
 
 	const okDependencies = [
-		{ depName: 'okDep1', depCheckFunction: async () => ok(true) },
-		{ depName: 'okDep2', depCheckFunction: async () => ok(true) },
+		{ depName: 'okDep1', depCheckFunction: () => true },
+		{ depName: 'okDep2', depCheckFunction: () => true },
 	];
 
-	const errDependency = { depName: 'errDep', depCheckFunction: async () => err(new Error()) };
+	const errDependency = { depName: 'errDep', depCheckFunction: () => false };
 
 	beforeEach(() => {
 		mockTypeormCtx = createMockTypeormContext();
