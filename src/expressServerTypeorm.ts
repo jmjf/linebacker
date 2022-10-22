@@ -41,7 +41,15 @@ const startServer = async () => {
 
 	logger.info(logContext, 'building server');
 	const zpageDependencies = {
-		readyzDependencies: [{ depName: 'database', depCheckFunction: circuitBreakers.dbCircuitBreaker.isConnected }],
+		readyzDependencies: [
+			{
+				depName: circuitBreakers.dbCircuitBreaker.serviceName,
+				checkDep: circuitBreakers.dbCircuitBreaker.isConnected.bind(circuitBreakers.dbCircuitBreaker),
+			},
+		],
+		healthzDependencies: Object.values(circuitBreakers).map((cb) => {
+			return { depName: cb.serviceName, checkDep: cb.getStatusSync.bind(cb) };
+		}),
 	};
 	const server = buildApp(logger, typeormCtx, circuitBreakers, zpageDependencies, appAbortController.signal);
 

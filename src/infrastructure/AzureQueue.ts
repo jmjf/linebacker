@@ -314,7 +314,8 @@ export class AzureQueue {
 		const { queueClient } = initResult.value;
 
 		try {
-			await queueClient.exists();
+			const res = await queueClient.exists();
+			// console.log('AQ.isConnected', res);
 			return ok(true);
 		} catch (e) {
 			const { message, ...error } = e as RestError;

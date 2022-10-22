@@ -47,6 +47,10 @@ export class CircuitBreakerWithRetry {
 	private _isAlive: () => Promise<Result<boolean, BaseError>>;
 	private _serviceName: string;
 	private _delayedEventRunner: DelayedEventRunner;
+	private _lifetimeSuccessCount: number;
+	private _lifetimeFailureCount: number;
+	private _awaitIsAliveCount: number;
+	private _lifetimeAwaitIsAliveCount: number;
 
 	public halt() {
 		this._state = CircuitBreakerStateValues.Halted;
@@ -54,10 +58,8 @@ export class CircuitBreakerWithRetry {
 	}
 
 	constructor(opts: CircuitBreakerOpts) {
-		this._state = CircuitBreakerStateValues.Closed;
+		this._state = CircuitBreakerStateValues.HalfOpen;
 		this._abortSignal = opts.abortSignal;
-		this._successCount = 0;
-		this._failureCount = 0;
 		this._successToCloseCount = opts.successToCloseCount || 5;
 		this._failureToOpenCount = opts.failureToOpenCount || 5;
 		this._halfOpenRetryDelayMs = opts.halfOpenRetryDelayMs || 500;
@@ -66,6 +68,13 @@ export class CircuitBreakerWithRetry {
 		this._isAlive = opts.isAlive;
 		this._serviceName = opts.serviceName;
 		this._delayedEventRunner = new DelayedEventRunner(this._abortSignal, this._closedRetryDelayMs);
+		this._successCount = 0;
+		this._failureCount = this._failureToOpenCount; // expected value for initial HalfOpen
+		this.openIfNotAlive(); // async function that sets correct state
+		this._lifetimeSuccessCount = 0;
+		this._lifetimeFailureCount = 0;
+		this._awaitIsAliveCount = 0;
+		this._lifetimeAwaitIsAliveCount = 0;
 	}
 
 	public get state(): CircuitBreakerStateType {
@@ -84,11 +93,29 @@ export class CircuitBreakerWithRetry {
 		return this._delayedEventRunner.eventIds;
 	}
 
-	public async getStatus() {
+	public getStatusSync() {
 		return {
 			state: this._state,
 			successCount: this._successCount,
+			lifetimeSuccessCount: this._lifetimeSuccessCount,
 			failureCount: this._failureCount,
+			lifetimeFailureCount: this._lifetimeFailureCount,
+			awaitIsAliveCount: this._awaitIsAliveCount,
+			lifetimeAwaitIsAliveCount: this._lifetimeAwaitIsAliveCount,
+			isConnected: this.isConnected(),
+			retryEventCount: this.retryEventCount,
+		};
+	}
+
+	public async getStatusAsync() {
+		return {
+			state: this._state,
+			successCount: this._successCount,
+			lifetimeSuccessCount: this._lifetimeSuccessCount,
+			failureCount: this._failureCount,
+			lifetimeFailureCount: this._lifetimeFailureCount,
+			awaitIsAliveCount: this._awaitIsAliveCount,
+			lifetimeAwaitIsAliveCount: this._lifetimeAwaitIsAliveCount,
 			isAlive: (await this._isAlive()).isOk(),
 			retryEventCount: this.retryEventCount,
 			retryEvents: this._delayedEventRunner.events,
@@ -102,6 +129,8 @@ export class CircuitBreakerWithRetry {
 	public onSuccess() {
 		// do nothing if halted
 		if (this._state === CircuitBreakerStateValues.Halted) return;
+
+		this._lifetimeSuccessCount++;
 
 		// Callers that don't check for fast fail may call onSuccess and move to Half Open
 		// while awaitIsAlive is waiting. awaitIsAlive will end its loop after its delay ends.
@@ -133,6 +162,8 @@ export class CircuitBreakerWithRetry {
 		// do nothing if halted
 		if (this._state === CircuitBreakerStateValues.Halted) return;
 
+		this._lifetimeFailureCount++;
+
 		if (this._state === CircuitBreakerStateValues.Closed) this._failureCount++;
 
 		if (this._failureCount >= this._failureToOpenCount) {
@@ -150,22 +181,28 @@ export class CircuitBreakerWithRetry {
 		this._delayedEventRunner.addEvent(ev);
 	}
 
+	private async openIfNotAlive() {
+		// console.log('cbwr start, checkLiveness state', this._serviceName, this._state, this.isConnected());
+		const result = await this._isAlive();
+		if (result.isOk())
+			this._state = result.isOk() ? CircuitBreakerStateValues.HalfOpen : CircuitBreakerStateValues.Open;
+		// console.log('cbwr end, checkLiveness state', this._serviceName, this._state, this.isConnected());
+	}
+
 	private async awaitIsAlive() {
 		// do nothing if halted
 		if (this._state === CircuitBreakerStateValues.Halted) return;
 
 		while (this._state === CircuitBreakerStateValues.Open) {
-			const result = await this._isAlive();
-			if (result.isOk()) {
-				this._state = CircuitBreakerStateValues.HalfOpen; // ends loop
-			} else {
-				if ((await delay(this._openAliveCheckDelayMs, this._abortSignal)) === 'AbortError') {
-					this.halt();
-					return;
-				}
+			if ((await delay(this._openAliveCheckDelayMs, this._abortSignal)) === 'AbortError') {
+				this.halt();
+				return;
 			}
+			await this.openIfNotAlive();
+			this._awaitIsAliveCount++;
+			this._lifetimeAwaitIsAliveCount++;
 		}
-
+		this._awaitIsAliveCount = 0;
 		this._delayedEventRunner.runEvents();
 	}
 }
