@@ -1,4 +1,4 @@
-import { Request, Application, Response } from 'express';
+import { Request, Application, Response, Router } from 'express';
 
 import { TypeormContext } from '../../infrastructure/typeorm/typeormContext';
 import { BaseError } from '../../common/core/BaseError';
@@ -13,13 +13,12 @@ import path from 'node:path';
 
 const moduleName = path.basename(module.filename);
 
-export function addBackupRequestRoutes(
-	app: Application,
+export function getBackupRequestRouter(
 	typeormCtx: TypeormContext,
 	circuitBreakers: ICircuitBreakers,
 	abortSignal: AbortSignal
 ) {
-	const functionName = 'addBackupRequestRoutes';
+	const functionName = 'getBackupRequestRouter';
 	const { createBackupRequestController } = initBackupRequestModule(
 		typeormCtx,
 		circuitBreakers,
@@ -27,7 +26,9 @@ export function addBackupRequestRoutes(
 		abortSignal
 	);
 
-	app.post('/api/backup-requests', async (request: Request, response: Response) => {
+	const router = Router();
+
+	router.post('/', async (request: Request, response: Response) => {
 		const customReq = request as LinebackerRequest;
 		const clientScopes = customReq.clientScopes || [];
 		if (clientScopes.includes('post-backup-request')) {
@@ -68,4 +69,6 @@ export function addBackupRequestRoutes(
 			response.status(403).send('Forbidden');
 		}
 	});
+
+	return router;
 }

@@ -234,7 +234,7 @@ describe('CircuitBreakerWithRetry', () => {
 		const adapter = new TestAdapter(service, circuitBreaker);
 
 		// Act
-		expect(circuitBreaker.state).toBe(CircuitBreakerStateValues.Closed);
+		expect(circuitBreaker.state).toBe(CircuitBreakerStateValues.HalfOpen);
 		const result = await adapter.test();
 
 		// Assert
@@ -273,7 +273,7 @@ describe('CircuitBreakerWithRetry', () => {
 		const adapter = new TestAdapter(service, circuitBreaker);
 
 		// Act
-		expect(circuitBreaker.state).toBe(CircuitBreakerStateValues.Closed);
+		expect(circuitBreaker.state).toBe(CircuitBreakerStateValues.HalfOpen);
 		const result1 = await adapter.test();
 
 		const result = await adapter.test();
@@ -317,7 +317,7 @@ describe('CircuitBreakerWithRetry', () => {
 		const adapter = new TestAdapter(service, circuitBreaker);
 
 		// Act
-		expect(circuitBreaker.state).toBe(CircuitBreakerStateValues.Closed);
+		expect(circuitBreaker.state).toBe(CircuitBreakerStateValues.HalfOpen);
 		const result = await adapter.test();
 
 		// Assert
@@ -367,7 +367,7 @@ describe('CircuitBreakerWithRetry', () => {
 		const adapter = new TestAdapter(service, circuitBreaker);
 
 		// Act
-		expect(circuitBreaker.state).toBe(CircuitBreakerStateValues.Closed);
+		expect(circuitBreaker.state).toBe(CircuitBreakerStateValues.HalfOpen);
 		const result = await adapter.test();
 
 		// Assert
@@ -678,13 +678,13 @@ describe('CircuitBreakerWithRetry', () => {
 		expect(useCaseSpy).toHaveBeenCalledTimes(3); // 2 ok, 1 failure
 		expect(circuitBreaker.retryEventCount).toBe(2);
 		const retrySum = (
-			(await circuitBreaker.getStatus()).retryEvents as unknown as [
+			(await circuitBreaker.getStatusAsync()).retryEvents as unknown as [
 				{ id: string; retryCount: number; eventTimestamp: Date }
 			]
 		).reduce((prev, curr) => prev + curr.retryCount, 0);
 		expect(retrySum).toBeLessThanOrEqual(2); // proves retries stopped
 
-		if (VERBOSE_LOGS) console.log('Return to open stops retries', await circuitBreaker.getStatus());
+		if (VERBOSE_LOGS) console.log('Return to open stops retries', await circuitBreaker.getStatusAsync());
 
 		// Cleanup
 		DomainEventBus.clearHandlers();
@@ -712,7 +712,7 @@ describe('CircuitBreakerWithRetry', () => {
 			openAliveCheckDelayMs: 10,
 		});
 		// ensure circuit is Closed
-		expect(circuitBreaker.state).toBe(CircuitBreakerStateValues.Closed);
+		expect(circuitBreaker.state).toBe(CircuitBreakerStateValues.HalfOpen);
 
 		const adapter = new TestAdapter(service, circuitBreaker);
 
@@ -735,7 +735,7 @@ describe('CircuitBreakerWithRetry', () => {
 		circuitBreaker.onSuccess();
 		await delay(100);
 
-		expect(circuitBreaker.state).toBe(CircuitBreakerStateValues.Closed);
+		expect(circuitBreaker.state).toBe(CircuitBreakerStateValues.HalfOpen);
 		expect(useCaseSpy).toHaveBeenCalledTimes(3);
 		expect(subscriber.failedServiceNames.length).toBe(0);
 		expect(circuitBreaker.retryEventCount).toBe(0);
