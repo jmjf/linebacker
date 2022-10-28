@@ -51,7 +51,8 @@ const startServer = async () => {
 			return { depName: cb.serviceName, checkDep: cb.getStatusSync.bind(cb) };
 		}),
 	};
-	const server = buildApp(logger, typeormCtx, circuitBreakers, zpageDependencies, appAbortController.signal);
+	const app = buildApp(logger, typeormCtx, circuitBreakers, zpageDependencies, appAbortController.signal);
+	app.disable('x-powered-by');
 
 	logger.info(logContext, 'publishing ApplicationResilienceReady');
 	publishApplicationResilienceReady(startTimestamp);
@@ -59,11 +60,12 @@ const startServer = async () => {
 
 	logger.info(logContext, 'starting server');
 	try {
-		server.listen({ port: apiPort });
+		app.listen({ port: apiPort });
 		logger.info(logContext, `Server is running on port ${apiPort}`);
 	} catch (err) {
 		logger.error(logContext, `${err}`);
 		appAbortController.abort();
+		await delay(5000);
 		process.exit(1);
 	}
 };

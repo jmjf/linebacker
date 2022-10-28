@@ -8,14 +8,15 @@ import {
 	buildAuthzerizer,
 } from './infrastructure/middleware/index';
 
-import { addZpagesRoutes, ZpageDependencies, ZpageDependencyCheck } from './zpages/infrastructure/expressRoutes';
-import { addBackupRequestRoutes } from './backup-request/infrastructure/expressRoutesTypeorm';
+import { getZpagesRouter, ZpageDependencies } from './zpages/infrastructure/expressRoutes';
+import { getBackupRequestRouter } from './backup-request/infrastructure/expressRoutesTypeorm';
 import { TypeormContext } from './infrastructure/typeorm/typeormContext';
 import { ICircuitBreakers } from './infrastructure/typeorm/buildCircuitBreakers.typeorm';
 import { Logger } from 'pino';
 import { isTest } from './common/utils/utils';
 import { buildFakeAuthNZ } from './test-helpers/index';
 import { TypeormClientAuthorization } from './infrastructure/typeorm/entity/TypeormClientAuthorization';
+import { buildTrackRequestStats } from './zpages/infrastructure';
 
 export function buildApp(
 	logger: Logger,
@@ -37,6 +38,10 @@ export function buildApp(
 		reqTraceIdKey,
 	});
 	app.use(jsonBodyErrorHandler);
+
+	// request stats for zpages
+	const trackRequestStats = buildTrackRequestStats();
+	app.use(trackRequestStats);
 
 	// trace id (and start time)
 	const tracerizer = buildTracerizer({ reqTraceIdKey });
@@ -94,8 +99,8 @@ export function buildApp(
 		app.use(authzerizer);
 	}
 
-	addBackupRequestRoutes(app, typeormCtx, circuitBreakers, abortSignal);
-	addZpagesRoutes(app, zpageDependencies);
+	app.use('/api/backup-requests', getBackupRequestRouter(typeormCtx, circuitBreakers, abortSignal));
+	app.use('/api/zpages', getZpagesRouter(zpageDependencies));
 
 	return app;
 }
