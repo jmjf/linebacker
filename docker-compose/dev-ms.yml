@@ -31,14 +31,21 @@ services:
          SPLUNK_ADD: tcp 1514
          SPLUNK_PASSWORD: splunkpw
       volumes:
-         - opt-splunk-etc:/opt/splunk/etc
-         - opt-splunk-var:/opt/splunk/var
+         - ./splunk.db/etc:/opt/splunk/etc
+         - ./splunk.db/var:/opt/splunk/var
       ports:
-         - '8060:8000'
+         - '8072:8000'  # splunk UI
          - '9997:9997'
-         - '8068:8088'
+         - '8078:8088'  # HEC
          - '1514:1514'
 
-volumes:
-   opt-splunk-etc:
-   opt-splunk-var:
+   redis-stack:
+      container_name: redis-stack
+      image: redis/redis-stack:latest
+      ports:
+         -  6379:6379  # redis
+         -  8071:8001  # redis-insight
+      volumes:
+         -  ./redis.db:/data
+         #-  ../env/redis.conf:/etc/redis/redis.conf
+
