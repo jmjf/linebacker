@@ -2,18 +2,21 @@ import { err, ok, Result } from '../../../common/core/Result';
 
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 
-import { AzureQueue } from '../../../infrastructure/AzureQueue';
+import { AzureQueue } from '../../../infrastructure/azure-queue/AzureQueue';
 import {
 	CircuitBreakerWithRetry,
 	ConnectFailureErrorData,
 } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 
 import { BackupRequest } from '../../domain/BackupRequest';
-import { StoreDeleteResponse, StoreReceiveResponse, StoreSendResponse } from '../IBackupInterfaceStoreAdapter';
+import { IBackupInterfaceStoreAdapter, StoreSendResponse } from '../IBackupInterfaceStoreAdapter';
+import { AzureQueueDeleteResponse, AzureQueueReceiveResponse, IAzureQueueAdapter } from '../../../infrastructure/azure-queue/IAzureQueueAdapter';
+import path from 'path';
 
-const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
+const moduleName = path.basename(module.filename);
 
-export class AzureBackupInterfaceStoreAdapter {
+// Note ABISA implements two interfaces and includes methods for both
+export class AzureBackupInterfaceStoreAdapter implements IBackupInterfaceStoreAdapter, IAzureQueueAdapter {
 	private queueName: string;
 	private useBase64: boolean;
 	private circuitBreaker: CircuitBreakerWithRetry;
@@ -82,7 +85,7 @@ export class AzureBackupInterfaceStoreAdapter {
 
 	public async receive(
 		messageCount: number
-	): Promise<Result<StoreReceiveResponse, AdapterErrors.InterfaceAdapterError>> {
+	): Promise<Result<AzureQueueReceiveResponse, AdapterErrors.InterfaceAdapterError>> {
 		const functionName = 'receive';
 
 		if (!this.circuitBreaker.isConnected()) {
@@ -116,13 +119,13 @@ export class AzureBackupInterfaceStoreAdapter {
 
 		this.circuitBreaker.onSuccess();
 
-		return ok({ messages: result.value.receivedMessageItems, startTime, endTime } as StoreReceiveResponse);
+		return ok({ messages: result.value.receivedMessageItems, startTime, endTime } as AzureQueueReceiveResponse);
 	}
 
 	public async delete(
 		messageId: string,
 		popReceipt: string
-	): Promise<Result<StoreDeleteResponse, AdapterErrors.InterfaceAdapterError>> {
+	): Promise<Result<AzureQueueDeleteResponse, AdapterErrors.InterfaceAdapterError>> {
 		const functionName = 'delete';
 
 		if (!this.circuitBreaker.isConnected()) {

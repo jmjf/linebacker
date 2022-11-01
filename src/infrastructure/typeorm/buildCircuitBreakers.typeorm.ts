@@ -2,7 +2,7 @@ import { isTypeormConnected } from './isTypeormConnected';
 import { CircuitBreakerWithRetry } from '../resilience/CircuitBreakerWithRetry';
 
 import circuitBreakerConfig from '../resilience/circuitBreakerConfig.json';
-import { AzureQueue } from '../AzureQueue';
+import { AzureQueue } from '../azure-queue/AzureQueue';
 
 export interface ICircuitBreakers {
 	dbCircuitBreaker: CircuitBreakerWithRetry;

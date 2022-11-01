@@ -1,0 +1,94 @@
+import path from 'path';
+import { Logger } from 'pino';
+import { delay } from '../../common/utils/utils';
+import { IAzureQueueAdapter } from './IAzureQueueAdapter';
+import { IQueueMessageHandler } from './IQueueMessageHandler';
+
+export interface AzureQueueWatcherOptions {
+	messageHandler: IQueueMessageHandler;
+	queueAdapter: IAzureQueueAdapter;
+	minDelayMs: number;
+	maxDelayMs: number;
+	abortSignal: AbortSignal;
+	logger: Logger;
+	messageType: string;
+}
+
+const moduleName = path.basename(module.filename);
+
+export class AzureQueueWatcher {
+	private _runFlag: boolean;
+	private _messageHandler: IQueueMessageHandler;
+	private _queueAdapter: IAzureQueueAdapter;
+	private _minDelayMs: number;
+	private _maxDelayMs: number;
+	private _abortSignal: AbortSignal;
+	private _logger: Logger;
+	private _messageType: string;
+	private _delayMs: number;
+
+	public constructor(opts: AzureQueueWatcherOptions) {
+		this._runFlag = false;
+		this._messageHandler = opts.messageHandler;
+		this._queueAdapter = opts.queueAdapter;
+		this._minDelayMs = opts.minDelayMs;
+		this._maxDelayMs = opts.maxDelayMs;
+		this._abortSignal = opts.abortSignal;
+		this._logger = opts.logger;
+		this._messageType = opts.messageType;
+		this._delayMs = this._minDelayMs;
+	}
+
+	public isRunning() {
+		return this._runFlag;
+	}
+
+	public startWatcher() {
+		this._runFlag = true;
+		this._watchQueue();
+	}
+
+	public stopWatcher() {
+		this._runFlag = false;
+	}
+
+	private _getNextDelay() {
+		return this._delayMs;
+	}
+
+	private async _watchQueue() {
+		const functionName = 'watchQueue';
+
+		while (this._runFlag) {
+			const receiveResult = await this._queueAdapter.receive(1);
+
+			// don't await here because it could delay a message going to the message handler long enough to expire the popReceipt
+			if (receiveResult.isOk()) {
+				const { messages, startTime, endTime } = receiveResult.value;
+
+				messages.forEach((rcvMsg) => this._messageHandler.processMessage(rcvMsg));
+
+				this._logger.trace(
+					{
+						messageType: this._messageType,
+						messageCount: messages.length,
+						startTime,
+						endTime,
+						moduleName,
+						functionName,
+					},
+					'Received queue messages'
+				);
+			} else {
+				this._logger.error({ error: receiveResult.error, moduleName, functionName }, 'Queue receive error');
+			}
+
+			const delayResult = await delay(this._delayMs, this._abortSignal);
+			if (delayResult === 'AbortError') {
+				this.stopWatcher();
+			} else {
+				this._delayMs = this._getNextDelay();
+			}
+		}
+	}
+}
