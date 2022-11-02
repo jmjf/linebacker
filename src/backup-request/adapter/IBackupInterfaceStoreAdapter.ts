@@ -24,13 +24,13 @@ export interface IBackupInterfaceStoreAdapter {
 	send(backupRequest: BackupRequest): Promise<Result<StoreSendResponse, AdapterErrors.InterfaceAdapterError>>;
 
 	/** IAzureQueueAdapter requires implementing the following methods
-	 * 
+	 *
 	 * receive(messageCount: number): Promise<Result<AzureQueueReceiveResponse, AdapterErrors.InterfaceAdapterError>>;
-	 * 
+	 *
 	 * 	delete(
 	 * 		messageId: string,
 	 * 		popReceipt: string
 	 * 	): Promise<Result<AzureQueueDeleteResponse, AdapterErrors.InterfaceAdapterError>>;
-	 * 	
-	*/
+	 *
+	 */
 }

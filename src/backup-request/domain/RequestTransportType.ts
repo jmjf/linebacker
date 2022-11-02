@@ -1,6 +1,6 @@
 export const RequestTransportTypeValues = {
-   HTTP: 'HTTP',
-   Queue: 'Queue',
+	HTTP: 'HTTP',
+	Queue: 'Queue',
 } as const;
 // as const prevents changing or adding values;
 

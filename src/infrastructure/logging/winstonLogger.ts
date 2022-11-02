@@ -9,9 +9,7 @@ const logLevels = {
 	trace: 5,
 };
 
-const logLevel = ['dev', 'development'].includes(process.env.APP_ENV || 'none')
-	? 'debug'
-	: 'info';
+const logLevel = ['dev', 'development'].includes(process.env.APP_ENV || 'none') ? 'debug' : 'info';
 
 const logColors = {
 	error: 'red',

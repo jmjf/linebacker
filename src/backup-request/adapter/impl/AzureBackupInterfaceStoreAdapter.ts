@@ -10,7 +10,11 @@ import {
 
 import { BackupRequest } from '../../domain/BackupRequest';
 import { IBackupInterfaceStoreAdapter, StoreSendResponse } from '../IBackupInterfaceStoreAdapter';
-import { AzureQueueDeleteResponse, AzureQueueReceiveResponse, IAzureQueueAdapter } from '../../../infrastructure/azure-queue/IAzureQueueAdapter';
+import {
+	AzureQueueDeleteResponse,
+	AzureQueueReceiveResponse,
+	IAzureQueueAdapter,
+} from '../../../infrastructure/azure-queue/IAzureQueueAdapter';
 import path from 'path';
 
 const moduleName = path.basename(module.filename);
