@@ -19,7 +19,7 @@ export interface StoreIsReadyResponse {
 	messageText: string; // won't be this, but putting something here for now
 }
 
-export interface IBackupInterfaceStoreAdapter {
+export interface IBackupInterfaceStoreAdapter extends IAzureQueueAdapter {
 	// may be void if circuit breaker keeps a list of messages
 	send(backupRequest: BackupRequest): Promise<Result<StoreSendResponse, AdapterErrors.InterfaceAdapterError>>;
 

@@ -11,6 +11,7 @@ import { AzureQueueWatcherOptions, AzureQueueWatcher } from './AzureQueueWatcher
 import { QueueMessageHandlerResponse } from './IQueueMessageHandler';
 import { delay } from '../../common/utils/utils';
 import { logger } from '../logging/pinoLogger';
+import { ok } from '../../common/core/Result';
 
 // some tests simulate HTTP call failures with long timeouts
 jest.setTimeout(30 * 1000);
@@ -34,13 +35,13 @@ describe('AzureQueueWatcher', () => {
 		messageHandler: {
 			processMessage: async (message: any, opts?: any) => {
 				// console.log('process', message); // uncomment to see output
-				return Promise.resolve({ doesHandlerSucceed: true } as QueueMessageHandlerResponse);
+				return Promise.resolve(ok(true));
 			},
 		},
 		minDelayMs: 5,
 		maxDelayMs: 20,
 		logger,
-		messageType: 'test',
+		queueName: 'test',
 	};
 
 	const receiveResult = {

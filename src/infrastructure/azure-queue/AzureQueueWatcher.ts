@@ -11,7 +11,7 @@ export interface AzureQueueWatcherOptions {
 	maxDelayMs: number;
 	abortSignal: AbortSignal;
 	logger: Logger;
-	messageType: string;
+	queueName: string;
 }
 
 const moduleName = path.basename(module.filename);
@@ -24,7 +24,7 @@ export class AzureQueueWatcher {
 	private _maxDelayMs: number;
 	private _abortSignal: AbortSignal;
 	private _logger: Logger;
-	private _messageType: string;
+	private _queueName: string;
 	private _delayMs: number;
 
 	public constructor(opts: AzureQueueWatcherOptions) {
@@ -35,7 +35,7 @@ export class AzureQueueWatcher {
 		this._maxDelayMs = opts.maxDelayMs;
 		this._abortSignal = opts.abortSignal;
 		this._logger = opts.logger;
-		this._messageType = opts.messageType;
+		this._queueName = opts.queueName;
 		this._delayMs = this._minDelayMs;
 	}
 
@@ -53,7 +53,7 @@ export class AzureQueueWatcher {
 	}
 
 	private _getNextDelay() {
-		return this._delayMs;
+		return Math.min(this._delayMs + this._minDelayMs, this._maxDelayMs);
 	}
 
 	private async _watchQueue() {
@@ -68,17 +68,19 @@ export class AzureQueueWatcher {
 
 				messages.forEach((rcvMsg) => this._messageHandler.processMessage(rcvMsg));
 
-				this._logger.trace(
-					{
-						messageType: this._messageType,
-						messageCount: messages.length,
-						startTime,
-						endTime,
-						moduleName,
-						functionName,
-					},
-					'Received queue messages'
-				);
+				if (messages.length > 0) {
+					this._logger.trace(
+						{
+							queueName: this._queueName,
+							messageCount: messages.length,
+							startTime,
+							endTime,
+							moduleName,
+							functionName,
+						},
+						'Received queue messages'
+					);
+				}
 			} else {
 				this._logger.error({ error: receiveResult.error, moduleName, functionName }, 'Queue receive error');
 			}

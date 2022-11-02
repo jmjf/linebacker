@@ -114,6 +114,6 @@
 	"ts-node": {
 		"esm": true
 	},
-	"include": ["./src/*.ts", "./src/**/*.ts", "src/infrastructure/middleware/*.js", "src/test-helpers/fakeAuthNZ.js"],
+	"include": ["./src/*.ts", "./src/**/*.ts", "src/infrastructure/middleware/*.[js, ts]", "src/test-helpers/fakeAuthNZ.js"],
 	"exclude": ["./node_modules", "./node_modules/@types", "./dist", "./src/**/*.spec.ts"]
 }

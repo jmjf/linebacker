@@ -13,14 +13,13 @@ import { IBackupInterfaceStoreAdapter, StoreSendResponse } from '../IBackupInter
 import {
 	AzureQueueDeleteResponse,
 	AzureQueueReceiveResponse,
-	IAzureQueueAdapter,
 } from '../../../infrastructure/azure-queue/IAzureQueueAdapter';
 import path from 'path';
 
 const moduleName = path.basename(module.filename);
 
-// Note ABISA implements two interfaces and includes methods for both
-export class AzureBackupInterfaceStoreAdapter implements IBackupInterfaceStoreAdapter, IAzureQueueAdapter {
+// Note IBISA extends IAzureQueueAdapter and implements its methods, so can be used as an IAQA too
+export class AzureBackupInterfaceStoreAdapter implements IBackupInterfaceStoreAdapter {
 	private queueName: string;
 	private useBase64: boolean;
 	private circuitBreaker: CircuitBreakerWithRetry;
