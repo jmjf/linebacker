@@ -693,7 +693,7 @@ describe('CircuitBreakerWithRetry', () => {
 		await delay(100);
 	});
 
-	test('when events are awaiting retry and the circuit is Closed and onSuccess() is called, it runs the events', async () => {
+	test('when events are awaiting retry and the circuit is Open and onSuccess() is called, it runs the events', async () => {
 		// Arrange
 		const abortController = new AbortController();
 
@@ -711,8 +711,6 @@ describe('CircuitBreakerWithRetry', () => {
 			closedRetryDelayMs: 10,
 			openAliveCheckDelayMs: 10,
 		});
-		// ensure circuit is Closed
-		expect(circuitBreaker.state).toBe(CircuitBreakerStateValues.HalfOpen);
 
 		const adapter = new TestAdapter(service, circuitBreaker);
 
@@ -722,6 +720,8 @@ describe('CircuitBreakerWithRetry', () => {
 		const subscriber = new TestSubscriber(useCase);
 
 		// Act
+		circuitBreaker.onFailure(); // force CB to Open
+		expect(circuitBreaker.state).toBe(CircuitBreakerStateValues.Open);
 
 		// add 3 events that will run the test subscriber
 		circuitBreaker.addRetryEvent(getEvent('onSuccess() runs events-Event-1'));
