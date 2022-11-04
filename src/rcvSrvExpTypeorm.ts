@@ -16,18 +16,18 @@ import { typeormDataSource } from './infrastructure/typeorm/typeormDataSource';
 import { typeormCtx } from './infrastructure/typeorm/typeormContext';
 import { buildCircuitBreakers } from './infrastructure/typeorm/buildCircuitBreakers.typeorm';
 
-import { buildApp } from './expressRcvAppTypeorm';
+import { buildApp } from './rcvAppExpTypeorm';
 import { delay } from './common/utils/utils';
 
 const startServer = async () => {
 	const logContext = { location: 'Express+TypeORM Receive', function: 'startServer' };
 
-	if (!process.env.API_PORT || process.env.API_PORT.length === 0) {
-		logger.error(logContext, 'API_PORT is falsey or empty');
+	if (!process.env.BRQW_ZPAGES_PORT || process.env.BRQW_ZPAGES_PORT.length === 0) {
+		logger.error(logContext, 'BRQW_ZPAGES_PORT is falsey or empty');
 		process.exit(1);
 	}
-	const apiPort = parseInt(process.env.API_PORT) + 1;
-	logger.info(logContext, `apiPort ${apiPort}`);
+	const zpagesPort = parseInt(process.env.BRQW_ZPAGES_PORT);
+	logger.info(logContext, `zpagesPort ${zpagesPort}`);
 
 	logger.info(logContext, 'initializing TypeORM data source');
 	await typeormDataSource.initialize();
@@ -53,8 +53,8 @@ const startServer = async () => {
 
 	logger.info(logContext, 'starting server');
 	try {
-		app.listen({ port: apiPort });
-		logger.info(logContext, `Server is running on port ${apiPort}`);
+		app.listen({ port: zpagesPort });
+		logger.info(logContext, `Server is running on port ${zpagesPort}`);
 	} catch (err) {
 		logger.error(logContext, `${err}`);
 		appAbortController.abort();

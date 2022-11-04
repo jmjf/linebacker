@@ -9,6 +9,7 @@ export interface AzureQueueWatcherOptions {
 	queueAdapter: IAzureQueueAdapter;
 	minDelayMs: number;
 	maxDelayMs: number;
+	delayIncrementMs: number;
 	abortSignal: AbortSignal;
 	logger: Logger;
 	queueName: string;
@@ -26,6 +27,7 @@ export class AzureQueueWatcher {
 	private _logger: Logger;
 	private _queueName: string;
 	private _delayMs: number;
+	private _delayIncrementMs: number;
 
 	public constructor(opts: AzureQueueWatcherOptions) {
 		this._runFlag = false;
@@ -37,6 +39,7 @@ export class AzureQueueWatcher {
 		this._logger = opts.logger;
 		this._queueName = opts.queueName;
 		this._delayMs = this._minDelayMs;
+		this._delayIncrementMs = opts.delayIncrementMs;
 	}
 
 	public isRunning() {
@@ -46,20 +49,29 @@ export class AzureQueueWatcher {
 	public startWatcher() {
 		this._runFlag = true;
 		this._watchQueue();
+		this._logger.info(
+			{ moduleName, functionName: 'startWatcher', queueName: this._queueAdapter.queueName },
+			'Started queue watcher'
+		);
 	}
 
 	public stopWatcher() {
 		this._runFlag = false;
+		this._logger.info(
+			{ moduleName, functionName: 'startWatcher', queueName: this._queueAdapter.queueName },
+			'Stopped queue watcher'
+		);
 	}
 
 	private _getNextDelay() {
-		return Math.min(this._delayMs + this._minDelayMs, this._maxDelayMs);
+		return Math.min(this._delayMs + this._delayIncrementMs, this._maxDelayMs);
 	}
 
 	private async _watchQueue() {
 		const functionName = 'watchQueue';
 
 		while (this._runFlag) {
+			console.log('loop');
 			const receiveResult = await this._queueAdapter.receive(1);
 
 			// don't await here because it could delay a message going to the message handler long enough to expire the popReceipt

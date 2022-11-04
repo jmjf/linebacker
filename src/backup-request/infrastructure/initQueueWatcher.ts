@@ -48,15 +48,18 @@ export function initQueueWatcher(
 		queueAdapter,
 		minDelayMs: 1000,
 		maxDelayMs: 5000,
+		delayIncrementMs: 1000,
 		abortSignal,
 		logger,
 		queueName,
 	});
 
-	setTimeout(() => {
-		logger.info({ moduleName, functionName, queueName }, 'Starting queue watcher');
-		queueWatcher.startWatcher();
-	}, 5000);
+	setTimeout(
+		() => {
+			queueWatcher.startWatcher();
+		},
+		process.env.BRQW_START_DELAY_MS ? parseInt(process.env.BRQW_START_DELAY_MS) : 5000
+	);
 
 	return queueWatcher;
 }

@@ -25,6 +25,8 @@ export interface IBackupInterfaceStoreAdapter extends IAzureQueueAdapter {
 
 	/** IAzureQueueAdapter requires implementing the following methods
 	 *
+	 * get queueName(): string;
+	 *
 	 * receive(messageCount: number): Promise<Result<AzureQueueReceiveResponse, AdapterErrors.InterfaceAdapterError>>;
 	 *
 	 * 	delete(

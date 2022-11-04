@@ -16,7 +16,7 @@ import { typeormDataSource } from './infrastructure/typeorm/typeormDataSource';
 import { typeormCtx } from './infrastructure/typeorm/typeormContext';
 import { buildCircuitBreakers } from './infrastructure/typeorm/buildCircuitBreakers.typeorm';
 
-import { buildApp } from './expressAppTypeorm';
+import { buildApp } from './apiAppExpTypeorm';
 import { publishApplicationResilienceReady } from './infrastructure/resilience/publishApplicationResilienceReady';
 import { delay } from './common/utils/utils';
 import { isTypeormConnected } from './infrastructure/typeorm/isTypeormConnected';
@@ -25,11 +25,11 @@ const startServer = async () => {
 	const startTimestamp = new Date();
 	const logContext = { location: 'Express+TypeORM', function: 'startServer' };
 
-	if (!process.env.API_PORT || process.env.API_PORT.length === 0) {
-		logger.error(logContext, 'API_PORT is falsey or empty');
+	if (!process.env.LINEBACKER_API_PORT || process.env.LINEBACKER_API_PORT.length === 0) {
+		logger.error(logContext, 'LINEBACKER_API_PORT is falsey or empty');
 		process.exit(1);
 	}
-	const apiPort = parseInt(process.env.API_PORT);
+	const apiPort = parseInt(process.env.LINEBACKER_API_PORT);
 	logger.info(logContext, `apiPort ${apiPort}`);
 
 	logger.info(logContext, 'initializing TypeORM data source');

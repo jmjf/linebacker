@@ -20,13 +20,13 @@ const moduleName = path.basename(module.filename);
 
 // Note IBISA extends IAzureQueueAdapter and implements its methods, so can be used as an IAQA too
 export class AzureBackupInterfaceStoreAdapter implements IBackupInterfaceStoreAdapter {
-	private queueName: string;
+	private _queueName: string;
 	private useBase64: boolean;
 	private circuitBreaker: CircuitBreakerWithRetry;
 	private connectFailureErrorData: ConnectFailureErrorData;
 
 	constructor(queueName: string, circuitBreaker: CircuitBreakerWithRetry, useBase64 = false) {
-		this.queueName = queueName;
+		this._queueName = queueName;
 		this.useBase64 = useBase64;
 		this.circuitBreaker = circuitBreaker;
 		this.connectFailureErrorData = {
@@ -35,6 +35,10 @@ export class AzureBackupInterfaceStoreAdapter implements IBackupInterfaceStoreAd
 			addRetryEvent: this.circuitBreaker.addRetryEvent.bind(this.circuitBreaker),
 			serviceName: this.circuitBreaker.serviceName,
 		};
+	}
+
+	get queueName(): string {
+		return this._queueName;
 	}
 
 	public async send(
@@ -56,7 +60,7 @@ export class AzureBackupInterfaceStoreAdapter implements IBackupInterfaceStoreAd
 
 		const startTime = new Date();
 		const result = await AzureQueue.sendMessage({
-			queueName: this.queueName,
+			queueName: this._queueName,
 			messageText,
 			useBase64: this.useBase64,
 		});
@@ -106,7 +110,7 @@ export class AzureBackupInterfaceStoreAdapter implements IBackupInterfaceStoreAd
 
 		const startTime = new Date();
 		const result = await AzureQueue.receiveMessages({
-			queueName: this.queueName,
+			queueName: this._queueName,
 			useBase64: this.useBase64,
 			messageCount,
 		});
@@ -142,7 +146,7 @@ export class AzureBackupInterfaceStoreAdapter implements IBackupInterfaceStoreAd
 		}
 
 		const startTime = new Date();
-		const result = await AzureQueue.deleteMessage({ queueName: this.queueName, messageId, popReceipt });
+		const result = await AzureQueue.deleteMessage({ queueName: this._queueName, messageId, popReceipt });
 		const endTime = new Date();
 
 		if (result.isErr()) {

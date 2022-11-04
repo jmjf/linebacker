@@ -1,13 +1,7 @@
 import express, { Response, Router } from 'express';
 import * as dotenv from 'dotenv';
 import { logger } from '../infrastructure/logging/pinoLogger';
-import {
-	QueueClient,
-	QueueItem,
-	QueueServiceClient,
-	ReceivedMessageItem,
-	StorageSharedKeyCredential,
-} from '@azure/storage-queue';
+import { QueueClient, QueueServiceClient, ReceivedMessageItem, StorageSharedKeyCredential } from '@azure/storage-queue';
 
 const logContext = { location: 'Queue helper', function: 'pre-start' };
 
@@ -20,11 +14,11 @@ if (!process.env.APP_ENV) {
 logger.info(logContext, `APP_ENV ${process.env.APP_ENV}`);
 dotenv.config({ path: `./env/${process.env.APP_ENV}.env` });
 
-if (!process.env.API_PORT || process.env.API_PORT.length === 0) {
-	logger.error(logContext, 'API_PORT is falsey or empty');
+if (!process.env.LINEBACKER_API_PORT || process.env.LINEBACKER_API_PORT.length === 0) {
+	logger.error(logContext, 'LINEBACKER_API_PORT is falsey or empty');
 	process.exit(1);
 }
-const apiPort = parseInt(process.env.API_PORT) + 5;
+const apiPort = parseInt(process.env.LINEBACKER_API_PORT) + 55;
 logger.info(logContext, `apiPort ${apiPort}`);
 
 async function getQueueServiceClient(): Promise<QueueServiceClient> {

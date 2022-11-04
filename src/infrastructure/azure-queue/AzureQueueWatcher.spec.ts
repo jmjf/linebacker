@@ -40,6 +40,7 @@ describe('AzureQueueWatcher', () => {
 		},
 		minDelayMs: 5,
 		maxDelayMs: 20,
+		delayIncrementMs: 5,
 		logger,
 		queueName: 'test',
 	};

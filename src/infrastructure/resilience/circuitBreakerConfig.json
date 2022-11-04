@@ -20,7 +20,7 @@
 	"azureQueue": {
 		"serviceName": "AzureQueue",
 		"successToCloseCount": 10,
-		"failureToOpenCount": 1,
+		"failureToOpenCount": 10,
 		"halfOpenRetryDelayMs": 500,
 		"closedRetryDelayMs": 250,
 		"openAliveCheckDelayMs": 30000

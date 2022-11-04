@@ -15,6 +15,8 @@ export interface AzureQueueDeleteResponse {
 }
 
 export interface IAzureQueueAdapter {
+	get queueName(): string;
+
 	receive(messageCount: number): Promise<Result<AzureQueueReceiveResponse, AdapterErrors.InterfaceAdapterError>>;
 
 	delete(
