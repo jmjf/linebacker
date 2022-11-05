@@ -26,6 +26,10 @@ export class MockBackupInterfaceStoreAdapter implements IBackupInterfaceStoreAda
 		this.sendMessageError = opts.sendMessageError;
 	}
 
+	get queueName(): string {
+		return 'mock';
+	}
+
 	async send(backupRequest: BackupRequest): Promise<Result<StoreSendResponse, AdapterErrors.InterfaceAdapterError>> {
 		const startTime = new Date();
 		//awaitendTime10000);

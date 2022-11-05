@@ -1,5 +1,11 @@
 import dotenv from 'dotenv';
 import { logger } from './infrastructure/logging/pinoLogger';
+logger.setBindings({
+	service: 'queue-watcher',
+	feature: 'store',
+	pm2ProcessId: process.env.pm_id,
+	pm2InstanceId: process.env.PM2_INSTANCE_ID,
+});
 
 const logContext = { location: 'Express+TypeORM Receive', function: 'pre-start' };
 

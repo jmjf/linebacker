@@ -46,7 +46,7 @@
 		// "noResolve": true,                                /* Disallow `import`s, `require`s or `<reference>`s from expanding the number of files TypeScript should add to a project. */
 
 		/* JavaScript Support */
-		// "allowJs": true,                                  /* Allow JavaScript files to be a part of your program. Use the `checkJS` option to get errors from these files. */
+		"allowJs": true /* Allow JavaScript files to be a part of your program. Use the `checkJS` option to get errors from these files. */,
 		// "checkJs": true,                                  /* Enable error reporting in type-checked JavaScript files. */
 		// "maxNodeModuleJsDepth": 1,                        /* Specify the maximum folder depth used for checking JavaScript files from `node_modules`. Only applicable with `allowJs`. */
 
@@ -114,6 +114,6 @@
 	"ts-node": {
 		"esm": true
 	},
-	"include": ["./src/*.ts", "./src/**/*.ts", "src/infrastructure/middleware/*.[js, ts]", "src/test-helpers/fakeAuthNZ.js"],
+	"include": ["./src/*.ts", "./src/**/*.ts", "./src/**/*.js"],
 	"exclude": ["./node_modules", "./node_modules/@types", "./dist", "./src/**/*.spec.ts"]
 }
