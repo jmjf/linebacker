@@ -24,9 +24,20 @@ function promisifyPm2(f: Function, theThis: unknown) {
 
 const pm2Connect = promisifyPm2(pm2.connect, pm2);
 const pm2List = promisifyPm2(pm2.list, pm2);
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/ban-types
+const pm2GetVersion = promisifyPm2(pm2.getVersion, pm2);
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/ban-types
+const pm2Get = promisifyPm2(pm2.get, pm2);
 
 async function main() {
 	await pm2Connect();
+
+	const version = await pm2GetVersion();
+	const allKeys = await pm2Get('all');
 
 	const list = await pm2List();
 

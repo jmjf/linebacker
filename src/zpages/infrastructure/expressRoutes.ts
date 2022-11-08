@@ -1,5 +1,6 @@
 import path from 'path';
 import pm2 from 'pm2';
+import tx2 from 'tx2';
 import { Request, Response, Router } from 'express';
 import { getRequestStats } from '.';
 
@@ -30,6 +31,39 @@ function promisifyPm2(f: Function) {
 const pm2Connect = promisifyPm2(pm2.connect);
 const pm2List = promisifyPm2(pm2.list);
 
+interface Pm2TriggerResult {
+	process: {
+		pm_id: number;
+		name: string;
+		namespace: string;
+		rev?: string;
+		versioning?: {
+			revision: string;
+		};
+	};
+	at: number;
+	data: any;
+}
+
+const pm2Trigger = (
+	pm_id: string | number,
+	action_name: string,
+	params: unknown = null
+): Promise<Pm2TriggerResult[]> => {
+	return new Promise((resolve, reject) => {
+		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+		// @ts-ignore
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/ban-types
+		pm2.trigger(pm_id, action_name, params, (err, result) => {
+			if (err) {
+				reject(err);
+			} else {
+				resolve(result);
+			}
+		});
+	});
+};
+
 export interface ZpageDependencyCheck {
 	depName: string;
 	checkDep: () => unknown;
@@ -47,6 +81,21 @@ export function getZpagesRouter(dependencies: ZpageDependencies) {
 
 	const router = Router();
 
+	function getHealthZ() {
+		const mappedDeps = healthzDependencies.map((item) => [item.depName, item.checkDep()]);
+		return {
+			startTime,
+			upTime: process.uptime(),
+			resourceUse: process.resourceUsage(),
+			calledServices: Object.fromEntries(mappedDeps),
+			requestStats: getRequestStats(),
+		};
+	}
+
+	tx2.action('get-healthz', (cb) => {
+		cb({ getHealthZ: getHealthZ(), version: process.env.version });
+	});
+
 	router.get('/livez', (request: Request, response: Response) => {
 		response.status(200).send();
 	});
@@ -62,15 +111,40 @@ export function getZpagesRouter(dependencies: ZpageDependencies) {
 	});
 
 	router.get('/healthz', (request: Request, response: Response) => {
-		const mappedDeps = healthzDependencies.map((item) => [item.depName, item.checkDep()]);
 		const body = {
-			startTime,
-			upTime: process.uptime(),
-			resourceUse: process.resourceUsage(),
-			calledServices: Object.fromEntries(mappedDeps),
-			requestStats: getRequestStats(),
+			process: {
+				pm2Id: process.env.pm_id,
+				name: process.env.name,
+				version: process.env.version,
+			},
+			...getHealthZ(),
 		};
 		response.status(200).send(body);
+	});
+
+	router.get('/all-healthz', async (request: Request, response: Response) => {
+		try {
+			const healthzData = await pm2Trigger('all', 'get-healthz');
+			response.status(200).send(
+				healthzData
+					.map((item) => {
+						return {
+							atTime: new Date(item.at).toISOString(),
+							process: {
+								namespace: item.process.namespace,
+								name: item.process.name,
+								pm2Id: item.process.pm_id,
+								version: item.data.return.version,
+							},
+							...item.data.return.getHealthZ,
+						};
+					})
+					.sort((itemA, itemB) => itemA.process.pm_id - itemB.process.pm_id)
+			);
+		} catch (e) {
+			console.log('all-healthz err', e);
+			response.status(500).send(e);
+		}
 	});
 
 	router.get('/pm2healthz', async (request: Request, response: Response) => {
@@ -101,7 +175,7 @@ export function getZpagesRouter(dependencies: ZpageDependencies) {
 					const valueOrNa = (value: unknown) => value || 'not available';
 					return {
 						name,
-						pm2ProcessId: pm_id,
+						pm2Id: pm_id,
 						pid,
 						memory: valueOrNa(monit?.memory),
 						cpu: valueOrNa(monit?.cpu),
@@ -112,8 +186,8 @@ export function getZpagesRouter(dependencies: ZpageDependencies) {
 						uptime: valueOrNa(pm_uptime),
 						restartCount: valueOrNa(restart_time),
 						version: valueOrNa(version),
-						node_version: valueOrNa(node_version),
-						axm_monitor: valueOrNa(axm_monitor),
+						nodeVersion: valueOrNa(node_version),
+						axmMonitor: valueOrNa(axm_monitor),
 					};
 				})
 			);
