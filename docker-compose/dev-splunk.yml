@@ -1,0 +1,18 @@
+version: '3.2'
+services:
+   splunk:
+      hostname: splunk
+      image: splunk/splunk:latest
+      environment:
+         SPLUNK_START_ARGS: --accept-license
+         SPLUNK_ENABLE_LISTEN: 9997
+         SPLUNK_ADD: tcp 1514
+         SPLUNK_PASSWORD: splunkpw
+      volumes:
+         - ./splunk.db/etc:/opt/splunk/etc
+         - ./splunk.db/var:/opt/splunk/var
+      ports:
+         - '8072:8000' # splunk UI
+         - '9997:9997'
+         - '8078:8088' # HEC
+         - '1514:1514'

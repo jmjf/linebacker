@@ -5,6 +5,8 @@ import { BaseError } from '../../common/core/BaseError';
 import { DatabaseError } from '../../common/adapter/AdapterErrors';
 
 import { ExpressCreateBackupRequestController } from '../adapter/impl/ExpressCreateBackupRequestController';
+import { ExpressEnqueueBackupRequestController } from '../adapter/impl/ExpressEnqueueBackupRequestController';
+
 import { initBackupRequestModule } from './initBackupRequestModuleTypeorm';
 import { ICircuitBreakers } from '../../infrastructure/typeorm/buildCircuitBreakers.typeorm';
 import { LinebackerRequest } from '../../common/adapter/ExpressController';
@@ -19,7 +21,7 @@ export function getBackupRequestRouter(
 	abortSignal: AbortSignal
 ) {
 	const functionName = 'getBackupRequestRouter';
-	const { createBackupRequestController } = initBackupRequestModule(
+	const { createBackupRequestController, enqueueBackupRequestController } = initBackupRequestModule(
 		typeormCtx,
 		circuitBreakers,
 		'Express',
@@ -32,7 +34,16 @@ export function getBackupRequestRouter(
 		const customReq = request as LinebackerRequest;
 		const clientScopes = customReq.clientScopes || [];
 		if (clientScopes.includes('post-backup-request')) {
-			let result = await (createBackupRequestController as ExpressCreateBackupRequestController).execute(
+			// choose either
+			// create controller -> direct to db
+			// OR enqueue controller -> to queue
+
+			// let result = await (createBackupRequestController as ExpressCreateBackupRequestController).execute(
+			// 	customReq,
+			// 	response
+			// );
+
+			let result = await (enqueueBackupRequestController as ExpressEnqueueBackupRequestController).execute(
 				customReq,
 				response
 			);

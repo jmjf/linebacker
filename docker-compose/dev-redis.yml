@@ -1,0 +1,11 @@
+version: '3.2'
+services:
+   redis-stack:
+      container_name: redis-stack
+      image: redis/redis-stack:latest
+      ports:
+         - 6379:6379 # redis
+         - 8071:8001 # redis-insight
+      volumes:
+         - ./redis.db:/data
+         #-  ../env/redis.conf:/etc/redis/redis.conf
