@@ -1,3 +1,7 @@
+// mock bullmq (event bus)
+jest.mock('bullmq');
+import * as mockBullMq from 'bullmq';
+
 import request from 'supertest';
 
 import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
@@ -17,6 +21,7 @@ import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
 import { TypeORMError } from 'typeorm';
 import { delay } from '../../../common/utils/utils';
 import { logger } from '../../../infrastructure/logging/pinoLogger';
+import { EventBusError } from '../../../common/adapter/AdapterErrors';
 
 describe('ExpressEnqueueBackupRequestController - typeorm', () => {
 	let mockTypeormCtx: MockTypeormContext;
@@ -79,7 +84,7 @@ describe('ExpressEnqueueBackupRequestController - typeorm', () => {
 	test('when the use case gets a database error, the controller returns 500 and a low-leak error', async () => {
 		// Arrange
 		// simulate a database error
-		mockTypeormCtx.manager.save.mockRejectedValue(new TypeORMError('Key is already defined'));
+		mockBullMq.Queue.prototype.add = jest.fn().mockRejectedValueOnce(new EventBusError('simulated event bus error'));
 		const app = buildApp(
 			logger,
 			typeormCtx,
@@ -100,7 +105,7 @@ describe('ExpressEnqueueBackupRequestController - typeorm', () => {
 		expect(response.statusCode).toBe(500);
 		// convert payload to an object we can use -- may throw an error if JSON.parse fails
 		const payload = JSON.parse(response.text);
-		expect(payload.code).toBe('Database');
+		expect(payload.code).toBe('EventBus');
 		// TODO: understand how message will return to ensure message is clean for TypeORM
 	});
 
@@ -133,6 +138,7 @@ describe('ExpressEnqueueBackupRequestController - typeorm', () => {
 
 	test('when request data is good, the controller returns Accepted and a result payload', async () => {
 		// Arrange
+		mockBullMq.Queue.prototype.add = jest.fn().mockResolvedValueOnce({});
 		const app = buildApp(
 			logger,
 			typeormCtx,
