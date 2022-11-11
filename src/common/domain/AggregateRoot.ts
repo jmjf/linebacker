@@ -34,7 +34,7 @@ export abstract class AggregateRoot<T> extends Entity<T> {
 		const domainEventClass = Reflect.getPrototypeOf(domainEvent);
 		const domainEventName = domainEventClass ? domainEventClass.constructor.name : 'unknown event';
 
-		logger.debug({
+		logger.trace({
 			eventName: domainEventName,
 			aggregateName: `${aggregateName}`,
 			aggregateId: domainEvent.getId().value,

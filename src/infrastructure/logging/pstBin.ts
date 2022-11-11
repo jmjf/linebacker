@@ -11,7 +11,7 @@ const opts = {
 	splunkOptions: {
 		// This token is for a local Splunk running in Docker
 		splunkToken: process.env.SPLUNK_HEC_TOKEN,
-		url: 'http://localhost:8068/services/collector/event/1.0',
+		url: `http://${process.env.SPLUNK_HOST}:${process.env.SPLUNK_HEC_PORT}/services/collector/event/1.0`,
 		logLevel: 20, // 40 = warning, 30 = info, 20 = debug
 		levelMap: new Map([
 			[60, 'fatal'],

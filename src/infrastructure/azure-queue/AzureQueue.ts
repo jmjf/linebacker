@@ -7,10 +7,10 @@ import {
 	RestError,
 	StorageSharedKeyCredential,
 } from '@azure/storage-queue';
-import { fromBase64, toBase64 } from '../common/utils/utils';
-import { BaseError } from '../common/core/BaseError';
-import { err, ok, Result } from '../common/core/Result';
-import * as InfrastructureErrors from '../common/infrastructure/InfrastructureErrors';
+import { fromBase64, toBase64 } from '../../common/utils/utils';
+import { BaseError } from '../../common/core/BaseError';
+import { err, ok, Result } from '../../common/core/Result';
+import * as InfrastructureErrors from '../../common/infrastructure/InfrastructureErrors';
 
 export type CredentialType = 'ADCC' | 'SASK';
 // ADCC -> AD Client Credentials
@@ -103,7 +103,8 @@ export class AzureQueue {
 				new StorageSharedKeyCredential(<string>process.env.SASK_ACCOUNT_NAME, <string>process.env.SASK_ACCOUNT_KEY)
 			);
 		} catch (e) {
-			const { message, ...error } = e as BaseError;
+			const { message, ...error } = e as RestError;
+			if (error.request) error.request.operationSpec = undefined;
 			return err(new InfrastructureErrors.SDKError(message, { error, moduleName, functionName }));
 		}
 	}
@@ -142,7 +143,8 @@ export class AzureQueue {
 			const queueClient = new QueueClient(queueUri, credentialResult.value, queueClientOptions);
 			return ok(queueClient);
 		} catch (e) {
-			const { message, ...error } = e as BaseError;
+			const { message, ...error } = e as RestError;
+			if (error.request) error.request.operationSpec = undefined;
 			return err(new InfrastructureErrors.SDKError(message, { error, moduleName, functionName }));
 		}
 	}
@@ -214,6 +216,8 @@ export class AzureQueue {
 			});
 		} catch (e) {
 			const { message, ...error } = e as RestError;
+			// operationSpec is massive and useless, so get rid of it
+			if (error.request) error.request.operationSpec = undefined;
 			return err(new InfrastructureErrors.SDKError(message, { error, moduleName, functionName }));
 		}
 	}
@@ -249,6 +253,7 @@ export class AzureQueue {
 			});
 		} catch (e) {
 			const { message, ...error } = e as RestError;
+			if (error.request) error.request.operationSpec = undefined;
 			return err(new InfrastructureErrors.SDKError(message, { error, moduleName, functionName }));
 		}
 	}
@@ -276,6 +281,7 @@ export class AzureQueue {
 			});
 		} catch (e) {
 			const { message, ...error } = e as RestError;
+			if (error.request) error.request.operationSpec = undefined;
 			return err(new InfrastructureErrors.SDKError(message, { error, moduleName, functionName }));
 		}
 	}
@@ -319,6 +325,7 @@ export class AzureQueue {
 			return ok(true);
 		} catch (e) {
 			const { message, ...error } = e as RestError;
+			if (error.request) error.request.operationSpec = undefined;
 			// console.log('AQ.isConnected', e);
 			return err(new InfrastructureErrors.SDKError(message, { error, moduleName, functionName }));
 		}

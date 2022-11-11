@@ -2,25 +2,31 @@ import { err, ok, Result } from '../../../common/core/Result';
 
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 
-import { AzureQueue } from '../../../infrastructure/AzureQueue';
+import { AzureQueue } from '../../../infrastructure/azure-queue/AzureQueue';
 import {
 	CircuitBreakerWithRetry,
 	ConnectFailureErrorData,
 } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 
 import { BackupRequest } from '../../domain/BackupRequest';
-import { StoreDeleteResponse, StoreReceiveResponse, StoreSendResponse } from '../IBackupInterfaceStoreAdapter';
+import { IBackupInterfaceStoreAdapter, StoreSendResponse } from '../IBackupInterfaceStoreAdapter';
+import {
+	AzureQueueDeleteResponse,
+	AzureQueueReceiveResponse,
+} from '../../../infrastructure/azure-queue/IAzureQueueAdapter';
+import path from 'path';
 
-const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
+const moduleName = path.basename(module.filename);
 
-export class AzureBackupInterfaceStoreAdapter {
-	private queueName: string;
+// Note IBISA extends IAzureQueueAdapter and implements its methods, so can be used as an IAQA too
+export class AzureBackupInterfaceStoreAdapter implements IBackupInterfaceStoreAdapter {
+	private _queueName: string;
 	private useBase64: boolean;
 	private circuitBreaker: CircuitBreakerWithRetry;
 	private connectFailureErrorData: ConnectFailureErrorData;
 
 	constructor(queueName: string, circuitBreaker: CircuitBreakerWithRetry, useBase64 = false) {
-		this.queueName = queueName;
+		this._queueName = queueName;
 		this.useBase64 = useBase64;
 		this.circuitBreaker = circuitBreaker;
 		this.connectFailureErrorData = {
@@ -29,6 +35,10 @@ export class AzureBackupInterfaceStoreAdapter {
 			addRetryEvent: this.circuitBreaker.addRetryEvent.bind(this.circuitBreaker),
 			serviceName: this.circuitBreaker.serviceName,
 		};
+	}
+
+	get queueName(): string {
+		return this._queueName;
 	}
 
 	public async send(
@@ -50,7 +60,7 @@ export class AzureBackupInterfaceStoreAdapter {
 
 		const startTime = new Date();
 		const result = await AzureQueue.sendMessage({
-			queueName: this.queueName,
+			queueName: this._queueName,
 			messageText,
 			useBase64: this.useBase64,
 		});
@@ -82,7 +92,7 @@ export class AzureBackupInterfaceStoreAdapter {
 
 	public async receive(
 		messageCount: number
-	): Promise<Result<StoreReceiveResponse, AdapterErrors.InterfaceAdapterError>> {
+	): Promise<Result<AzureQueueReceiveResponse, AdapterErrors.InterfaceAdapterError>> {
 		const functionName = 'receive';
 
 		if (!this.circuitBreaker.isConnected()) {
@@ -100,7 +110,7 @@ export class AzureBackupInterfaceStoreAdapter {
 
 		const startTime = new Date();
 		const result = await AzureQueue.receiveMessages({
-			queueName: this.queueName,
+			queueName: this._queueName,
 			useBase64: this.useBase64,
 			messageCount,
 		});
@@ -116,13 +126,13 @@ export class AzureBackupInterfaceStoreAdapter {
 
 		this.circuitBreaker.onSuccess();
 
-		return ok({ messages: result.value.receivedMessageItems, startTime, endTime } as StoreReceiveResponse);
+		return ok({ messages: result.value.receivedMessageItems, startTime, endTime } as AzureQueueReceiveResponse);
 	}
 
 	public async delete(
 		messageId: string,
 		popReceipt: string
-	): Promise<Result<StoreDeleteResponse, AdapterErrors.InterfaceAdapterError>> {
+	): Promise<Result<AzureQueueDeleteResponse, AdapterErrors.InterfaceAdapterError>> {
 		const functionName = 'delete';
 
 		if (!this.circuitBreaker.isConnected()) {
@@ -136,7 +146,7 @@ export class AzureBackupInterfaceStoreAdapter {
 		}
 
 		const startTime = new Date();
-		const result = await AzureQueue.deleteMessage({ queueName: this.queueName, messageId, popReceipt });
+		const result = await AzureQueue.deleteMessage({ queueName: this._queueName, messageId, popReceipt });
 		const endTime = new Date();
 
 		if (result.isErr()) {

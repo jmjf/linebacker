@@ -6,12 +6,11 @@ import { BackupRequest } from '../../domain/BackupRequest';
 
 //import { delay } from '../../../common/utils/utils';
 
+import { IBackupInterfaceStoreAdapter, StoreSendResponse } from '../IBackupInterfaceStoreAdapter';
 import {
-	IBackupInterfaceStoreAdapter,
-	StoreDeleteResponse,
-	StoreReceiveResponse,
-	StoreSendResponse,
-} from '../IBackupInterfaceStoreAdapter';
+	AzureQueueReceiveResponse,
+	AzureQueueDeleteResponse,
+} from '../../../infrastructure/azure-queue/IAzureQueueAdapter';
 
 export interface IMockBRSQAdapterOptions {
 	sendMessageResult?: boolean;
@@ -25,6 +24,10 @@ export class MockBackupInterfaceStoreAdapter implements IBackupInterfaceStoreAda
 	constructor(opts: IMockBRSQAdapterOptions) {
 		this.sendMessageResult = opts.sendMessageResult;
 		this.sendMessageError = opts.sendMessageError;
+	}
+
+	get queueName(): string {
+		return 'mock';
 	}
 
 	async send(backupRequest: BackupRequest): Promise<Result<StoreSendResponse, AdapterErrors.InterfaceAdapterError>> {
@@ -49,15 +52,17 @@ export class MockBackupInterfaceStoreAdapter implements IBackupInterfaceStoreAda
 		return err(new AdapterErrors.InterfaceAdapterError(JSON.stringify({ msg: 'no error provided' })));
 	}
 
-	async receive(messageCount: number): Promise<Result<StoreReceiveResponse, AdapterErrors.InterfaceAdapterError>> {
-		return ok({} as StoreReceiveResponse);
+	async receive(
+		messageCount: number
+	): Promise<Result<AzureQueueReceiveResponse, AdapterErrors.InterfaceAdapterError>> {
+		return ok({} as AzureQueueReceiveResponse);
 	}
 
 	async delete(
 		messageId: string,
 		popReceipt: string
-	): Promise<Result<StoreDeleteResponse, AdapterErrors.InterfaceAdapterError>> {
-		return ok({} as StoreDeleteResponse);
+	): Promise<Result<AzureQueueDeleteResponse, AdapterErrors.InterfaceAdapterError>> {
+		return ok({} as AzureQueueDeleteResponse);
 	}
 
 	async isReady(): Promise<Result<boolean, AdapterErrors.InterfaceAdapterError>> {

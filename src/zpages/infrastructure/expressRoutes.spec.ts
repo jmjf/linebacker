@@ -2,7 +2,7 @@ import request from 'supertest';
 
 import { getLenientCircuitBreaker } from '../../test-helpers/circuitBreakerHelpers';
 
-import { buildApp } from '../../expressAppTypeorm';
+import { buildApp } from '../../apiAppExpTypeorm';
 
 import {
 	MockTypeormContext,

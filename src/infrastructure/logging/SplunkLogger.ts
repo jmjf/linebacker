@@ -106,7 +106,7 @@ export class SplunkLogger {
 		// if the timeout is already running
 		if (this._inQueueTimeout) return;
 
-		this._inQueueTimeout = setTimeout(this.flushQueue, this._maxBatchWaitMs);
+		this._inQueueTimeout = setTimeout(this.flushQueue.bind(this), this._maxBatchWaitMs);
 	}
 
 	private _getLogLevelName(level: string | number) {

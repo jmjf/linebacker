@@ -13,7 +13,7 @@ async function getQueueClient(): Promise<QueueClient | undefined> {
 	}
 
 	const cred = new StorageSharedKeyCredential(accountName, accountKey);
-	return new QueueClient(`${process.env.AZURE_QUEUE_ACCOUNT_URI}/allowed-backup-requests`, cred);
+	return new QueueClient(`${process.env.AZURE_QUEUE_ACCOUNT_URI}/store-statuses`, cred);
 }
 
 async function readQueue(queueClient: QueueClient) {
@@ -31,10 +31,6 @@ async function readQueue(queueClient: QueueClient) {
 
 async function main() {
 	const action = process.argv[2];
-	if (!(typeof action === 'string') || !['read', 'clear'].includes(action.toLowerCase())) {
-		console.log('Unknown action', action);
-		return;
-	}
 
 	const queueClient = await getQueueClient();
 	if (queueClient === undefined) {
@@ -47,8 +43,29 @@ async function main() {
 			await readQueue(queueClient);
 			break;
 		case 'clear':
-			await queueClient.clearMessages();
+			console.log(await queueClient.clearMessages());
 			break;
+		case 'get-properties':
+			console.log(await queueClient.getProperties());
+			break;
+		case 'send':
+			console.log(
+				await queueClient.sendMessage(
+					JSON.stringify({
+						backupRequestId: 'c5n_BDMMdE3xZPumw36MS',
+						storagePathName: '/path/to/backup/storage',
+						resultTypeCode: 'Succeeded',
+						backupByteCount: 1000000,
+						copyStartTimestamp: '2022-05-06T00:20:03.111Z',
+						copyEndTimestamp: '2022-05-06T00:32:23.888Z',
+						messageText: 'should be copied to the request (will expect)',
+
+						verifyStartTimestamp: '2022-05-06T00:32:25.234Z',
+						verifyEndTimestamp: '2022-05-06T00:45:22.784Z',
+						verifiedHash: 'verify hash',
+					})
+				)
+			);
 	}
 }
 

@@ -1,10 +1,10 @@
 export const RequestStatusTypeValues = {
-   Received: 'Received',
-   Allowed: 'Allowed',
-   NotAllowed: 'NotAllowed',
-   Sent: 'Sent',
-   Succeeded: 'Succeeded',
-   Failed: 'Failed'
+	Received: 'Received',
+	Allowed: 'Allowed',
+	NotAllowed: 'NotAllowed',
+	Sent: 'Sent',
+	Succeeded: 'Succeeded',
+	Failed: 'Failed',
 } as const;
 // as const prevents changing or adding values;
 

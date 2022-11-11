@@ -1,8 +1,8 @@
 export const BackupProviderTypeValues = {
-   None: '',
-   Local: 'Local',
-   CloudA: 'CloudA',
-   CloudB: 'CloudB'
+	None: '',
+	Local: 'Local',
+	CloudA: 'CloudA',
+	CloudB: 'CloudB',
 } as const;
 // as const prevents changing or adding values;
 

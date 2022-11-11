@@ -17,6 +17,10 @@ import { SendRequestToInterfaceUseCase } from '../use-cases/send-request-to-inte
 import { ICircuitBreakers } from '../../infrastructure/prisma/buildCircuitBreakers.prisma';
 import { RestartStalledRequestsUseCase } from '../use-cases/restart-stalled-requests/RestartStalledRequestsUseCase';
 import { ApplicationResilienceReadySubscriber } from '../use-cases/restart-stalled-requests/ApplicationResilienceReadySubscriber';
+import * as bullMq from 'bullmq';
+import { BmqBackupRequestEventBus } from '../adapter/impl/BmqBackupRequestEventBus';
+import { EnqueueBackupRequestUseCase } from '../use-cases/enqueue-backup-request/EnqueueBackupRequestUseCase';
+import { ExpressEnqueueBackupRequestController } from '../adapter/impl/ExpressEnqueueBackupRequestController';
 
 export const initBackupRequestModule = (
 	typeormCtx: TypeormContext,
@@ -24,6 +28,10 @@ export const initBackupRequestModule = (
 	controllerType: 'Fastify' | 'Express',
 	abortSignal: AbortSignal
 ) => {
+	const bmqBackupRequestEventBus = new BmqBackupRequestEventBus(bullMq);
+	const enqueueBackupRequestUseCase = new EnqueueBackupRequestUseCase(bmqBackupRequestEventBus);
+	const enqueueBackupRequestController = new ExpressEnqueueBackupRequestController(enqueueBackupRequestUseCase);
+
 	const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreakers.dbCircuitBreaker);
 
 	const createBackupRequestUseCase = new CreateBackupRequestUseCase(backupRequestRepo);
@@ -62,5 +70,7 @@ export const initBackupRequestModule = (
 		sendRequestToInterfaceUseCase,
 		createBackupRequestController,
 		restartStalledRequestsUseCase,
+		enqueueBackupRequestController,
+		enqueueBackupRequestUseCase,
 	};
 };
