@@ -12,6 +12,8 @@ import { EventBusError } from '../../../common/adapter/AdapterErrors';
 import { ok } from '../../../common/core/Result';
 import { BackupRequest } from '../../domain/BackupRequest';
 
+import { bullMqConnection } from '../../../infrastructure/bullmq/bullMqInfra';
+
 describe('EnqueueBackupRequestUseCase - bullmq', () => {
 	beforeEach(() => {
 		//
@@ -33,7 +35,7 @@ describe('EnqueueBackupRequestUseCase - bullmq', () => {
 	test('when executed with an invalid transport type, it returns the expected error', async () => {
 		// Arrange
 		// this test fails before it calls the event bus, so no need to mock add
-		const eventBus = new BmqBackupRequestEventBus(mockBullMq);
+		const eventBus = new BmqBackupRequestEventBus(mockBullMq, bullMqConnection);
 		const addSpy = jest.spyOn(eventBus, 'add');
 
 		const useCase = new EnqueueBackupRequestUseCase(eventBus);
@@ -61,7 +63,7 @@ describe('EnqueueBackupRequestUseCase - bullmq', () => {
 	])('when executed with $propName undefined, it returns the expected error', async ({ propName, errPropName }) => {
 		// Arrange
 		// this test fails before it calls the event bus, so no need to mock add
-		const eventBus = new BmqBackupRequestEventBus(mockBullMq);
+		const eventBus = new BmqBackupRequestEventBus(mockBullMq, bullMqConnection);
 		const addSpy = jest.spyOn(eventBus, 'add');
 
 		const useCase = new EnqueueBackupRequestUseCase(eventBus);
@@ -86,7 +88,7 @@ describe('EnqueueBackupRequestUseCase - bullmq', () => {
 	test('when executed with an invalid dataDate, it returns the expected error', async () => {
 		// Arrange
 		// this test fails before it calls the event bus, so no need to mock add
-		const eventBus = new BmqBackupRequestEventBus(mockBullMq);
+		const eventBus = new BmqBackupRequestEventBus(mockBullMq, bullMqConnection);
 		const addSpy = jest.spyOn(eventBus, 'add');
 
 		const useCase = new EnqueueBackupRequestUseCase(eventBus);
@@ -108,7 +110,7 @@ describe('EnqueueBackupRequestUseCase - bullmq', () => {
 	test('when executed with good data and the add fails, it returns an EventBusError', async () => {
 		// Arrange
 		mockBullMq.Queue.prototype.add = jest.fn().mockRejectedValueOnce(new EventBusError('simulated event bus error'));
-		const eventBus = new BmqBackupRequestEventBus(mockBullMq);
+		const eventBus = new BmqBackupRequestEventBus(mockBullMq, bullMqConnection);
 		const addSpy = jest.spyOn(eventBus, 'add');
 
 		const useCase = new EnqueueBackupRequestUseCase(eventBus);
@@ -128,7 +130,7 @@ describe('EnqueueBackupRequestUseCase - bullmq', () => {
 	test('when executed with good data, it adds to the queue and returns the backupRequest', async () => {
 		// Arrange
 		mockBullMq.Queue.prototype.add = jest.fn().mockResolvedValueOnce({} as BackupRequest);
-		const eventBus = new BmqBackupRequestEventBus(mockBullMq);
+		const eventBus = new BmqBackupRequestEventBus(mockBullMq, bullMqConnection);
 		const addSpy = jest.spyOn(eventBus, 'add');
 
 		const useCase = new EnqueueBackupRequestUseCase(eventBus);
