@@ -1,0 +1,34 @@
+version: '3.2'
+
+services:
+   zoo0:
+      container_name: zoo0
+      image: zookeeper
+      hostname: zoo0
+      ports:
+         - 12181:2181
+      environment:
+         ALLOW_ANONYMOUS_LOGIN: yes
+      volumes:
+         - ./zookeeper/zoo0/data:/data
+         - ./zookeeper/zoo0/datalog:/datalog
+
+   kafka0:
+      container_name: kafka0
+      image: docker.io/bitnami/kafka:latest
+      hostname: kafka0
+      ports:
+         - 19092:9092
+         - 19093:9093
+      environment:
+         - KAFKA_BROKER_ID=1
+         - KAFKA_CFG_ZOOKEEPER_CONNECT=zoo0:2181
+         - ALLOW_PLAINTEXT_LISTENER=yes
+         - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
+         - KAFKA_CFG_LISTENERS=CLIENT://:9092,EXTERNAL://0.0.0.0:9093
+         - KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT://kafka1:9092,EXTERNAL://192.168.0.101:19093
+         - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=CLIENT
+      volumes:
+         - ./kafka/kafka0:/bitnami/kafka
+      depends_on:
+         - zoo0
