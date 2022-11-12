@@ -1,37 +1,33 @@
 import { Kafka } from 'kafkajs';
-import { delay } from '../common/utils/utils';
+import { delay } from '../../common/utils/utils';
 
 const kafka = new Kafka({
 	clientId: 'my-app',
 	brokers: ['localhost:19093', 'localhost:29093', 'localhost:39093'],
 });
 
-const produce = async (producerId: number) => {
+const produce = async (producerId: number, delayMs: number) => {
 	const producer = kafka.producer();
 	console.log(`>>>>>>>>>> CONNECT PRODUCER ${producerId} <<<<<<<<<<<<`);
-	// Producing
 	await producer.connect();
 
-	for (let i = 0; i < 30; i++) {
-		console.log('>>>>>>>>>> SEND MESSAGE <<<<<<<<<<<<');
+	for (let i = 0; i < 5; i++) {
+		console.log(`>>>>>>>>>> SEND MESSAGE ${i} <<<<<<<<<<<<`);
 		await producer.send({
-			topic: 'test-topic',
+			topic: 'test-topic2',
 			messages: [
 				{
 					key: i.toString(),
-					value: `Hello KafkaJS user ${i} from producer ${producerId}! ${new Date().toISOString()}`,
+					value: JSON.stringify({ key: i, data: `Message ${i} -- ${new Date().toISOString()}` }),
 				},
 			],
 		});
-		await delay(100);
+		await delay(delayMs);
 	}
 };
 
 const run = async () => {
-	for (let i = 0; i < 10; i++) {
-		produce(i);
-		await delay(100);
-	}
+	produce(1, 1000);
 };
 
 run().catch(console.error);

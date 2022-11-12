@@ -1,23 +1,29 @@
 import { Kafka } from 'kafkajs';
-import { delay } from '../common/utils/utils';
+import { resolve } from 'path';
+import { delay } from '../../common/utils/utils';
 
 const kafka = new Kafka({
 	clientId: 'my-app',
 	brokers: ['localhost:19093'],
 });
 
-const consume = async (consumerId: number) => {
+const consume = async (consumerId: number, isRunAwaited: boolean, delayMs: number) => {
+	const runType = isRunAwaited ? 'run awaited' : 'run not awaited';
+
 	const consumer = kafka.consumer({ groupId: 'test-group' });
 	// Consuming
-	console.log(`>>>>>>>>>> CONNECT CONSUMER ${consumerId} <<<<<<<<<<<<`);
 	await consumer.connect();
-	console.log(`>>>>>>>>>> SUBSCRIBE CONSUMER ${consumerId} <<<<<<<<<<<<`);
-	await consumer.subscribe({ topic: 'test-topic', fromBeginning: true });
-	console.log(`>>>>>>>>>> RUN CONSUMER ${consumerId} <<<<<<<<<<<<`);
+	await consumer.subscribe({ topic: 'test-topic2', fromBeginning: true });
 	await consumer.run({
+		autoCommit: false,
 		eachMessage: async ({ topic, partition, message }) => {
-			console.log(`consumer: ${consumerId} partition ${partition}, offset ${message.offset}`);
-			console.log((message.value as unknown as string).toString());
+			const value = JSON.parse((message.value as unknown as string).toString());
+			const action = value.key === 2 ? 'reject' : 'consume';
+			console.log(`${action} ${runType} ${message.offset} ${(message.value as unknown as string).toString()}`);
+			await delay(delayMs);
+			if (action === 'consume') {
+				consumer.commitOffsets([{ topic, partition, offset: message.offset }]);
+			}
 		},
 	});
 };
@@ -37,9 +43,7 @@ const run = async () => {
 		topics: [{ topic: 'test-topic', numPartitions: 3 }],
 	});
 
-	for (let i = 0; i < 3; i++) {
-		consume(i);
-	}
+	consume(1, true, 1500);
 };
 
 run().catch(console.error);
