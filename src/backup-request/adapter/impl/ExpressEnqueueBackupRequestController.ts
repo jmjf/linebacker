@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { InvalidApiVersionError } from '../../../common/adapter/AdapterErrors';
 import { ExpressController, LinebackerRequest } from '../../../common/adapter/ExpressController';
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
-import { EnqueueBackupRequestUseCase } from '../../use-cases/enqueue-backup-request/EnqueueBackupRequestUseCase';
+import { EnqueueBackupRequestUseCase } from '../../use-cases/accept-backup-request/AcceptBackupRequestUseCase';
 
 export interface IEnqueueBackupRequestBody {
 	apiVersion: string;

@@ -19,7 +19,7 @@ import { RestartStalledRequestsUseCase } from '../use-cases/restart-stalled-requ
 import { ApplicationResilienceReadySubscriber } from '../use-cases/restart-stalled-requests/ApplicationResilienceReadySubscriber';
 import * as bullMq from 'bullmq';
 import { BmqBackupRequestEventBus } from '../adapter/impl/BmqBackupRequestEventBus';
-import { EnqueueBackupRequestUseCase } from '../use-cases/enqueue-backup-request/EnqueueBackupRequestUseCase';
+import { EnqueueBackupRequestUseCase } from '../use-cases/accept-backup-request/AcceptBackupRequestUseCase';
 import { ExpressEnqueueBackupRequestController } from '../adapter/impl/ExpressEnqueueBackupRequestController';
 
 export const initBackupRequestModule = (

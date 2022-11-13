@@ -1,4 +1,5 @@
 export const RequestStatusTypeValues = {
+	Accepted: 'Accepted',
 	Received: 'Received',
 	Allowed: 'Allowed',
 	NotAllowed: 'NotAllowed',
