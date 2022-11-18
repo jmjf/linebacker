@@ -7,3 +7,5 @@ dist
 docker-compose/*.db
 docker-compose/kafka
 docker-compose/zookeeper
+
+src/test-helpers/tiny-kafka
