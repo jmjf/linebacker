@@ -6,7 +6,7 @@ import { AcceptBackupRequestUseCase } from './AcceptBackupRequestUseCase';
 import { AcceptBackupRequestDTO } from './AcceptBackupRequestDTO';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 
-import { BmqBackupRequestEventBus } from '../../adapter/impl/BmqBackupRequestEventBus';
+import { BmqBackupRequestEventBus } from '../../adapter/BullMqImpl/BmqBackupRequestEventBus';
 
 import { EventBusError } from '../../../common/adapter/AdapterErrors';
 import { ok } from '../../../common/core/Result';
@@ -14,7 +14,7 @@ import { BackupRequest } from '../../domain/BackupRequest';
 
 import { bullMqConnection } from '../../../infrastructure/bullmq/bullMqInfra';
 
-describe('EnqueueBackupRequestUseCase - bullmq', () => {
+describe('AcceptBackupRequestUseCase - bullmq', () => {
 	beforeEach(() => {
 		//
 	});

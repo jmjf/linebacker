@@ -42,9 +42,9 @@ describe('ExpressAcceptBackupRequestController - typeorm', () => {
 		azureQueueCircuitBreaker = getLenientCircuitBreaker('AzureQueue', abortController.signal);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
 		abortController.abort();
-		delay(250);
+		await delay(250);
 	});
 
 	const testUrl = '/api/backup-requests';

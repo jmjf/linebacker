@@ -22,10 +22,25 @@ export class BmqBackupRequestEventBus implements IBackupRequestEventBus {
 	): Promise<Result<BackupRequest, AdapterErrors.EventBusError>> {
 		try {
 			const queue = new this.bullMq.Queue(topicName, { connection: this.connection });
-			const res = await queue.add(backupRequest.idValue, backupRequest);
+			const res = await queue.add(backupRequest.idValue, this.mapToQueue(backupRequest));
 			return ok(backupRequest);
 		} catch (e) {
 			return err(e as AdapterErrors.EventBusError);
 		}
+	}
+
+	private mapToQueue(backupRequest: BackupRequest) {
+		const { backupRequestId, backupJobId } = backupRequest;
+		return {
+			backupRequestId: backupRequestId.value,
+			backupJobId: backupJobId.value,
+			dataDate: backupRequest.dataDate,
+			preparedDataPathName: backupRequest.preparedDataPathName,
+			getOnStartFlag: backupRequest.getOnStartFlag,
+			transportTypeCode: backupRequest.transportTypeCode,
+			statusTypeCode: backupRequest.statusTypeCode,
+			receivedTimestamp: backupRequest.receivedTimestamp,
+			requesterId: backupRequest.requesterId,
+		};
 	}
 }

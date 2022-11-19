@@ -17,7 +17,7 @@ import { SendRequestToInterfaceUseCase } from '../use-cases/send-request-to-inte
 import { ICircuitBreakers } from '../../infrastructure/prisma/buildCircuitBreakers.prisma';
 import { RestartStalledRequestsUseCase } from '../use-cases/restart-stalled-requests/RestartStalledRequestsUseCase';
 import { ApplicationResilienceReadySubscriber } from '../use-cases/restart-stalled-requests/ApplicationResilienceReadySubscriber';
-import { BmqBackupRequestEventBus } from '../adapter/impl/BmqBackupRequestEventBus';
+import { BmqBackupRequestEventBus } from '../adapter/BullMqImpl/BmqBackupRequestEventBus';
 import { AcceptBackupRequestUseCase } from '../use-cases/accept-backup-request/AcceptBackupRequestUseCase';
 import { ExpressAcceptBackupRequestController } from '../adapter/impl/ExpressAcceptBackupRequestController';
 import { BullMq } from '../../infrastructure/bullmq/bullMqInfra';
