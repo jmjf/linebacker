@@ -5,24 +5,27 @@ import { BaseError } from '../../common/core/BaseError';
 import { DatabaseError } from '../../common/adapter/AdapterErrors';
 
 import { ExpressCreateBackupRequestController } from '../adapter/impl/ExpressCreateBackupRequestController';
-import { ExpressEnqueueBackupRequestController } from '../adapter/impl/ExpressEnqueueBackupRequestController';
+import { ExpressAcceptBackupRequestController } from '../adapter/impl/ExpressAcceptBackupRequestController';
 
 import { initBackupRequestModule } from './initBackupRequestModuleTypeorm';
 import { ICircuitBreakers } from '../../infrastructure/typeorm/buildCircuitBreakers.typeorm';
 import { LinebackerRequest } from '../../common/adapter/ExpressController';
 import { logger } from '../../infrastructure/logging/pinoLogger';
 import path from 'node:path';
+import { BullMq } from '../../infrastructure/bullmq/bullMqInfra';
 
 const moduleName = path.basename(module.filename);
 
 export function getBackupRequestRouter(
 	typeormCtx: TypeormContext,
+	bullMq: BullMq,
 	circuitBreakers: ICircuitBreakers,
 	abortSignal: AbortSignal
 ) {
 	const functionName = 'getBackupRequestRouter';
-	const { createBackupRequestController, enqueueBackupRequestController } = initBackupRequestModule(
+	const { createBackupRequestController, acceptBackupRequestController } = initBackupRequestModule(
 		typeormCtx,
+		bullMq,
 		circuitBreakers,
 		'Express',
 		abortSignal
@@ -33,6 +36,7 @@ export function getBackupRequestRouter(
 	router.post('/', async (request: Request, response: Response) => {
 		const customReq = request as LinebackerRequest;
 		const clientScopes = customReq.clientScopes || [];
+
 		if (clientScopes.includes('post-backup-request')) {
 			// choose either
 			// create controller -> direct to db
@@ -43,7 +47,7 @@ export function getBackupRequestRouter(
 			// 	response
 			// );
 
-			let result = await (enqueueBackupRequestController as ExpressEnqueueBackupRequestController).execute(
+			let result = await (acceptBackupRequestController as ExpressAcceptBackupRequestController).execute(
 				customReq,
 				response
 			);

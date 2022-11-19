@@ -4,7 +4,7 @@ import * as DomainErrors from '../../../common/domain/DomainErrors';
 import { UseCase } from '../../../common/application/UseCase';
 import * as ApplicationErrors from '../../../common/application/ApplicationErrors';
 
-import { EnqueueBackupRequestDTO } from './EnqueueBackupRequestDTO';
+import { AcceptBackupRequestDTO } from './AcceptBackupRequestDTO';
 import { IBackupRequestEventBus } from '../../adapter/IBackupRequestEventBus';
 import { BackupRequest, IBackupRequestProps } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
@@ -16,14 +16,14 @@ const moduleName = path.basename(module.filename);
 // add errors when you define them
 type Response = Result<BackupRequest, DomainErrors.PropsError | ApplicationErrors.UnexpectedError | BaseError>;
 
-export class EnqueueBackupRequestUseCase implements UseCase<EnqueueBackupRequestDTO, Promise<Response>> {
+export class AcceptBackupRequestUseCase implements UseCase<AcceptBackupRequestDTO, Promise<Response>> {
 	private eventBus: IBackupRequestEventBus;
 
 	constructor(backupRequestEventBus: IBackupRequestEventBus) {
 		this.eventBus = backupRequestEventBus;
 	}
 
-	async execute(request: EnqueueBackupRequestDTO): Promise<Response> {
+	async execute(request: AcceptBackupRequestDTO): Promise<Response> {
 		// initialize props
 		const requestProps: IBackupRequestProps = {
 			backupJobId: request.backupJobId,
@@ -43,6 +43,6 @@ export class EnqueueBackupRequestUseCase implements UseCase<EnqueueBackupRequest
 		}
 
 		// type guarded by isErr() above
-		return await this.eventBus.add(backupRequestResult.value);
+		return await this.eventBus.add('accepted-backup-requests', backupRequestResult.value);
 	}
 }

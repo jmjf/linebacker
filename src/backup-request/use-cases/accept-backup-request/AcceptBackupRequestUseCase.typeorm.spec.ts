@@ -2,8 +2,8 @@
 jest.mock('bullmq');
 import * as mockBullMq from 'bullmq';
 
-import { EnqueueBackupRequestUseCase } from './EnqueueBackupRequestUseCase';
-import { EnqueueBackupRequestDTO } from './EnqueueBackupRequestDTO';
+import { AcceptBackupRequestUseCase } from './AcceptBackupRequestUseCase';
+import { AcceptBackupRequestDTO } from './AcceptBackupRequestDTO';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 
 import { BmqBackupRequestEventBus } from '../../adapter/impl/BmqBackupRequestEventBus';
@@ -30,7 +30,7 @@ describe('EnqueueBackupRequestUseCase - bullmq', () => {
 		backupDataLocation: '/path/to/data',
 		transportType: RequestTransportTypeValues.HTTP,
 		getOnStartFlag: true,
-	} as EnqueueBackupRequestDTO;
+	} as AcceptBackupRequestDTO;
 
 	test('when executed with an invalid transport type, it returns the expected error', async () => {
 		// Arrange
@@ -38,7 +38,7 @@ describe('EnqueueBackupRequestUseCase - bullmq', () => {
 		const eventBus = new BmqBackupRequestEventBus(mockBullMq, bullMqConnection);
 		const addSpy = jest.spyOn(eventBus, 'add');
 
-		const useCase = new EnqueueBackupRequestUseCase(eventBus);
+		const useCase = new AcceptBackupRequestUseCase(eventBus);
 		const dto = { ...baseDto, transportType: 'BadTransport' };
 
 		// Act
@@ -66,7 +66,7 @@ describe('EnqueueBackupRequestUseCase - bullmq', () => {
 		const eventBus = new BmqBackupRequestEventBus(mockBullMq, bullMqConnection);
 		const addSpy = jest.spyOn(eventBus, 'add');
 
-		const useCase = new EnqueueBackupRequestUseCase(eventBus);
+		const useCase = new AcceptBackupRequestUseCase(eventBus);
 
 		const dto = { ...baseDto };
 		(dto as Record<string, unknown>)[propName] = undefined;
@@ -91,7 +91,7 @@ describe('EnqueueBackupRequestUseCase - bullmq', () => {
 		const eventBus = new BmqBackupRequestEventBus(mockBullMq, bullMqConnection);
 		const addSpy = jest.spyOn(eventBus, 'add');
 
-		const useCase = new EnqueueBackupRequestUseCase(eventBus);
+		const useCase = new AcceptBackupRequestUseCase(eventBus);
 		const dto = { ...baseDto, dataDate: 'invalid date' };
 
 		// Act
@@ -113,7 +113,7 @@ describe('EnqueueBackupRequestUseCase - bullmq', () => {
 		const eventBus = new BmqBackupRequestEventBus(mockBullMq, bullMqConnection);
 		const addSpy = jest.spyOn(eventBus, 'add');
 
-		const useCase = new EnqueueBackupRequestUseCase(eventBus);
+		const useCase = new AcceptBackupRequestUseCase(eventBus);
 		const dto = { ...baseDto };
 
 		// Act
@@ -133,7 +133,7 @@ describe('EnqueueBackupRequestUseCase - bullmq', () => {
 		const eventBus = new BmqBackupRequestEventBus(mockBullMq, bullMqConnection);
 		const addSpy = jest.spyOn(eventBus, 'add');
 
-		const useCase = new EnqueueBackupRequestUseCase(eventBus);
+		const useCase = new AcceptBackupRequestUseCase(eventBus);
 		const dto = { ...baseDto };
 
 		// Act

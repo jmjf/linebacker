@@ -17,10 +17,12 @@ import { isTest } from './common/utils/utils';
 import { buildFakeAuthNZ } from './test-helpers/index';
 import { TypeormClientAuthorization } from './infrastructure/typeorm/entity/TypeormClientAuthorization';
 import { buildTrackRequestStats } from './zpages/infrastructure';
+import { BullMq } from './infrastructure/bullmq/bullMqInfra';
 
 export function buildApp(
 	logger: Logger,
 	typeormCtx: TypeormContext,
+	bullMq: BullMq,
 	circuitBreakers: ICircuitBreakers,
 	zpageDependencies: ZpageDependencies,
 	abortSignal: AbortSignal
@@ -99,7 +101,7 @@ export function buildApp(
 		app.use(authzerizer);
 	}
 
-	app.use('/api/backup-requests', getBackupRequestRouter(typeormCtx, circuitBreakers, abortSignal));
+	app.use('/api/backup-requests', getBackupRequestRouter(typeormCtx, bullMq, circuitBreakers, abortSignal));
 	app.use('/api/zpages', getZpagesRouter(zpageDependencies));
 
 	return app;

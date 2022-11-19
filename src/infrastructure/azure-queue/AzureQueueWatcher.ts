@@ -71,7 +71,6 @@ export class AzureQueueWatcher {
 		const functionName = 'watchQueue';
 
 		while (this._runFlag) {
-			console.log('loop');
 			const receiveResult = await this._queueAdapter.receive(1);
 
 			// don't await here because it could delay a message going to the message handler long enough to expire the popReceipt

@@ -1,3 +1,7 @@
+jest.mock('bullmq');
+import * as bullMq from 'bullmq';
+const mockBullMq = jest.mocked(bullMq);
+
 import request from 'supertest';
 
 import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
@@ -55,6 +59,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 		const app = buildApp(
 			logger,
 			typeormCtx,
+			bullMq,
 			{ dbCircuitBreaker, azureQueueCircuitBreaker },
 			zpageDependencies,
 			abortController.signal
@@ -83,6 +88,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 		const app = buildApp(
 			logger,
 			typeormCtx,
+			bullMq,
 			{ dbCircuitBreaker, azureQueueCircuitBreaker },
 			zpageDependencies,
 			abortController.signal
@@ -109,6 +115,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 		const app = buildApp(
 			logger,
 			typeormCtx,
+			bullMq,
 			{ dbCircuitBreaker, azureQueueCircuitBreaker },
 			zpageDependencies,
 			abortController.signal
@@ -136,6 +143,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 		const app = buildApp(
 			logger,
 			typeormCtx,
+			bullMq,
 			{ dbCircuitBreaker, azureQueueCircuitBreaker },
 			zpageDependencies,
 			abortController.signal

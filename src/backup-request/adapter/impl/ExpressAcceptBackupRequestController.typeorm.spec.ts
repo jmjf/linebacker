@@ -1,6 +1,6 @@
-// mock bullmq (event bus)
 jest.mock('bullmq');
-import * as mockBullMq from 'bullmq';
+import * as bullMq from 'bullmq';
+const mockBullMq = jest.mocked(bullMq);
 
 import request from 'supertest';
 
@@ -18,14 +18,14 @@ import {
 import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
-import { TypeORMError } from 'typeorm';
 import { delay } from '../../../common/utils/utils';
 import { logger } from '../../../infrastructure/logging/pinoLogger';
 import { EventBusError } from '../../../common/adapter/AdapterErrors';
 
-describe('ExpressEnqueueBackupRequestController - typeorm', () => {
+describe('ExpressAcceptBackupRequestController - typeorm', () => {
 	let mockTypeormCtx: MockTypeormContext;
 	let typeormCtx: TypeormContext;
+
 	let dbCircuitBreaker: CircuitBreakerWithRetry;
 	let azureQueueCircuitBreaker: CircuitBreakerWithRetry;
 	let abortController: AbortController;
@@ -34,6 +34,8 @@ describe('ExpressEnqueueBackupRequestController - typeorm', () => {
 	beforeEach(() => {
 		mockTypeormCtx = createMockTypeormContext();
 		typeormCtx = mockTypeormCtx as unknown as TypeormContext;
+
+		mockBullMq.Queue.mockClear();
 
 		abortController = new AbortController();
 		dbCircuitBreaker = getLenientCircuitBreaker('TypeORM', abortController.signal);
@@ -60,6 +62,7 @@ describe('ExpressEnqueueBackupRequestController - typeorm', () => {
 		const app = buildApp(
 			logger,
 			typeormCtx,
+			mockBullMq,
 			{ dbCircuitBreaker, azureQueueCircuitBreaker },
 			zpageDependencies,
 			abortController.signal
@@ -88,6 +91,7 @@ describe('ExpressEnqueueBackupRequestController - typeorm', () => {
 		const app = buildApp(
 			logger,
 			typeormCtx,
+			mockBullMq,
 			{ dbCircuitBreaker, azureQueueCircuitBreaker },
 			zpageDependencies,
 			abortController.signal
@@ -114,6 +118,7 @@ describe('ExpressEnqueueBackupRequestController - typeorm', () => {
 		const app = buildApp(
 			logger,
 			typeormCtx,
+			mockBullMq,
 			{ dbCircuitBreaker, azureQueueCircuitBreaker },
 			zpageDependencies,
 			abortController.signal
@@ -138,10 +143,13 @@ describe('ExpressEnqueueBackupRequestController - typeorm', () => {
 
 	test('when request data is good, the controller returns Accepted and a result payload', async () => {
 		// Arrange
-		mockBullMq.Queue.prototype.add = jest.fn().mockResolvedValueOnce({});
+		mockBullMq.Queue.prototype.add = jest.fn().mockResolvedValue({} as unknown as bullMq.Job);
+		const bmqAddSpy = mockBullMq.Queue.prototype.add;
+
 		const app = buildApp(
 			logger,
 			typeormCtx,
+			bullMq,
 			{ dbCircuitBreaker, azureQueueCircuitBreaker },
 			zpageDependencies,
 			abortController.signal
@@ -159,6 +167,7 @@ describe('ExpressEnqueueBackupRequestController - typeorm', () => {
 
 		// Assert
 		expect(response.statusCode).toBe(202);
+		expect(bmqAddSpy).toHaveBeenCalledTimes(1);
 		// convert text to an object we can use -- may throw an error if not JSON
 		const payload = JSON.parse(response.text);
 		const receivedTimestamp = new Date(payload.receivedTimestamp);

@@ -1,4 +1,4 @@
-export interface EnqueueBackupRequestDTO {
+export interface AcceptBackupRequestDTO {
 	backupJobId: string; // UUIDv4
 	dataDate: string; // yyyy-mm-dd
 	backupDataLocation: string;

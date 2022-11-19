@@ -290,7 +290,7 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		if (result.isOk()) {
 			// type guard makes the rest easier
 			expect(result.value.statusTypeCode).toBe(RequestStatusTypeValues.Sent);
-			expect(result.value.sentToInterfaceTimestamp.valueOf()).toBeGreaterThan(startTimestamp.valueOf());
+			expect(result.value.sentToInterfaceTimestamp.valueOf()).toBeGreaterThanOrEqual(startTimestamp.valueOf());
 			// The use case doesn't check Base64 because it's tested in the adapter and the use case doesn't return bodyAsText to check
 		}
 	});

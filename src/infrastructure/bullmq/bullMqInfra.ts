@@ -1,4 +1,6 @@
-import * as bullMq from 'bullmq';
+import * as bmq from 'bullmq';
+
+export const bullMq = bmq;
 
 export type BullMq = typeof bullMq;
 
