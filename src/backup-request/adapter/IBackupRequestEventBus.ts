@@ -4,5 +4,8 @@ import * as AdapterErrors from '../../common/adapter/AdapterErrors';
 
 export interface IBackupRequestEventBus {
 	// exists(requestId: string): Promise<Result<boolean, AdapterErrors.EventBusError>>;
-	add(topicName: string, backupRequest: BackupRequest): Promise<Result<BackupRequest, AdapterErrors.EventBusError>>;
+	publish(
+		topicName: string,
+		backupRequest: BackupRequest
+	): Promise<Result<BackupRequest, AdapterErrors.EventBusError>>;
 }

@@ -225,10 +225,6 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 			);
 		}
 
-		// ensure backupJobIdentifier is a UniqueIdentifier
-		props.backupJobId =
-			typeof props.backupJobId === 'string' ? new UniqueIdentifier(props.backupJobId) : props.backupJobId;
-
 		// ensure transport type is valid
 		const transportGuardResult = Guard.isOneOf(props.transportTypeCode, validRequestTransportTypes, 'transportType');
 		if (transportGuardResult.isErr()) {
@@ -256,7 +252,11 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 				})
 			);
 		}
+
 		const dataDateAsDate = new Date(props.dataDate);
+		// ensure backupJobIdentifier is a UniqueIdentifier
+		props.backupJobId =
+			typeof props.backupJobId === 'string' ? new UniqueIdentifier(props.backupJobId) : props.backupJobId;
 
 		// initialize props data
 		const defaultValues: IBackupRequestProps = {

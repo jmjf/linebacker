@@ -5,7 +5,9 @@ import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 
 import { ConnectionOptions } from 'bullmq';
 import { BullMq } from '../../../infrastructure/bullmq/bullMqInfra';
+import path from 'node:path';
 
+const moduleName = path.basename(module.filename);
 export class BmqBackupRequestEventBus implements IBackupRequestEventBus {
 	private bullMq: BullMq;
 	private connection: ConnectionOptions;
@@ -16,16 +18,27 @@ export class BmqBackupRequestEventBus implements IBackupRequestEventBus {
 	}
 
 	// exists(requestId: string): Promise<Result<boolean, AdapterErrors.EventBusError>>;
-	public async add(
+	public async publish(
 		topicName: string,
 		backupRequest: BackupRequest
 	): Promise<Result<BackupRequest, AdapterErrors.EventBusError>> {
+		const functionName = 'publish';
+
+		const event = this.mapToQueue(backupRequest);
 		try {
 			const queue = new this.bullMq.Queue(topicName, { connection: this.connection });
-			const res = await queue.add(backupRequest.idValue, this.mapToQueue(backupRequest));
+			const res = await queue.add(backupRequest.idValue, event);
 			return ok(backupRequest);
 		} catch (e) {
-			return err(e as AdapterErrors.EventBusError);
+			const error = e as Error;
+			return err(
+				new AdapterErrors.EventBusError('event bus publish error', {
+					error,
+					event,
+					moduleName,
+					functionName,
+				})
+			);
 		}
 	}
 
