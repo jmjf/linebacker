@@ -14,7 +14,7 @@ import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupReques
 import { ReceiveBackupRequestDTO, ReceiveBackupRequestUseCase } from './ReceiveBackupRequestUseCase';
 import { RequestTransportType } from '../../domain/RequestTransportType';
 import { TypeormBackupRequest } from '../../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
-import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
 import { BmqBackupRequestEventBus } from '../../adapter/BullMqImpl/BmqBackupRequestEventBus';
 import { bullMqConnection } from '../../../infrastructure/bullmq/bullMqInfra';
 
@@ -163,7 +163,7 @@ describe('ReceiveBackupRequestUseCase', () => {
 			expect(bmqAddSpy).toHaveBeenCalledTimes(1);
 			if (result.isOk()) {
 				expect(result.value.backupRequestId.value).toEqual(baseDto.backupRequestId);
-				expect(result.value.statusTypeCode).toEqual(RequestStatusTypeValues.Received);
+				expect(result.value.statusTypeCode).toEqual(BackupRequestStatusTypeValues.Received);
 			}
 		});
 	});
@@ -190,14 +190,14 @@ describe('ReceiveBackupRequestUseCase', () => {
 			if (result.isErr()) {
 				expect(result.error.name).toEqual('PropsError');
 				expect((result.error.errorData as any).statusTypeCode).toBe('INVALID');
-				expect((result.error.errorData as any).expectedStatusTypeCode).toBe(RequestStatusTypeValues.Received);
+				expect((result.error.errorData as any).expectedStatusTypeCode).toBe(BackupRequestStatusTypeValues.Received);
 			}
 		});
 
 		test(`when the request exists and publish fails, it does not save but returns a EventBusError`, async () => {
 			mockTypeormCtx.manager.findOne.mockResolvedValue({
 				...baseDto,
-				statusTypeCode: RequestStatusTypeValues.Received,
+				statusTypeCode: BackupRequestStatusTypeValues.Received,
 			} as TypeormBackupRequest);
 			mockTypeormCtx.manager.save.mockResolvedValue({});
 			const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
@@ -223,7 +223,7 @@ describe('ReceiveBackupRequestUseCase', () => {
 		test(`when the request exists and publish succeeds, it doesn't save, publishes and returns ok`, async () => {
 			mockTypeormCtx.manager.findOne.mockResolvedValue({
 				...baseDto,
-				statusTypeCode: RequestStatusTypeValues.Received,
+				statusTypeCode: BackupRequestStatusTypeValues.Received,
 			} as TypeormBackupRequest);
 			mockTypeormCtx.manager.save.mockResolvedValue({});
 			const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
@@ -242,7 +242,7 @@ describe('ReceiveBackupRequestUseCase', () => {
 			expect(bmqAddSpy).toHaveBeenCalledTimes(1);
 			if (result.isOk()) {
 				expect(result.value.backupRequestId.value).toEqual(baseDto.backupRequestId);
-				expect(result.value.statusTypeCode).toEqual(RequestStatusTypeValues.Received);
+				expect(result.value.statusTypeCode).toEqual(BackupRequestStatusTypeValues.Received);
 			}
 		});
 	});

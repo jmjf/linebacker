@@ -36,7 +36,7 @@ describe('AcceptBackupRequestUseCase - bullmq', () => {
 		// Arrange
 		// this test fails before it calls the event bus, so no need to mock add
 		const eventBus = new BmqBackupRequestEventBus(mockBullMq, bullMqConnection);
-		const addSpy = jest.spyOn(eventBus, 'add');
+		const publishSpy = jest.spyOn(eventBus, 'publish');
 
 		const useCase = new AcceptBackupRequestUseCase(eventBus);
 		const dto = { ...baseDto, transportType: 'BadTransport' };
@@ -46,7 +46,7 @@ describe('AcceptBackupRequestUseCase - bullmq', () => {
 
 		// Assert
 		expect(result.isErr()).toBe(true);
-		expect(addSpy).not.toHaveBeenCalled();
+		expect(publishSpy).not.toHaveBeenCalled();
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.message).toContain('is not one of');
@@ -64,7 +64,7 @@ describe('AcceptBackupRequestUseCase - bullmq', () => {
 		// Arrange
 		// this test fails before it calls the event bus, so no need to mock add
 		const eventBus = new BmqBackupRequestEventBus(mockBullMq, bullMqConnection);
-		const addSpy = jest.spyOn(eventBus, 'add');
+		const publishSpy = jest.spyOn(eventBus, 'publish');
 
 		const useCase = new AcceptBackupRequestUseCase(eventBus);
 
@@ -76,7 +76,7 @@ describe('AcceptBackupRequestUseCase - bullmq', () => {
 
 		// Assert
 		expect(result.isErr()).toBe(true);
-		expect(addSpy).not.toHaveBeenCalled();
+		expect(publishSpy).not.toHaveBeenCalled();
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('PropsError');
@@ -89,7 +89,7 @@ describe('AcceptBackupRequestUseCase - bullmq', () => {
 		// Arrange
 		// this test fails before it calls the event bus, so no need to mock add
 		const eventBus = new BmqBackupRequestEventBus(mockBullMq, bullMqConnection);
-		const addSpy = jest.spyOn(eventBus, 'add');
+		const publishSpy = jest.spyOn(eventBus, 'publish');
 
 		const useCase = new AcceptBackupRequestUseCase(eventBus);
 		const dto = { ...baseDto, dataDate: 'invalid date' };
@@ -99,7 +99,7 @@ describe('AcceptBackupRequestUseCase - bullmq', () => {
 
 		// Assert
 		expect(result.isErr()).toBe(true);
-		expect(addSpy).not.toHaveBeenCalled();
+		expect(publishSpy).not.toHaveBeenCalled();
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.message).toContain('not a valid date');
@@ -107,11 +107,11 @@ describe('AcceptBackupRequestUseCase - bullmq', () => {
 		}
 	});
 
-	test('when executed with good data and the add fails, it returns an EventBusError', async () => {
+	test('when executed with good data and publish fails, it returns an EventBusError', async () => {
 		// Arrange
 		mockBullMq.Queue.prototype.add = jest.fn().mockRejectedValueOnce(new EventBusError('simulated event bus error'));
 		const eventBus = new BmqBackupRequestEventBus(mockBullMq, bullMqConnection);
-		const addSpy = jest.spyOn(eventBus, 'add');
+		const publishSpy = jest.spyOn(eventBus, 'publish');
 
 		const useCase = new AcceptBackupRequestUseCase(eventBus);
 		const dto = { ...baseDto };
@@ -121,17 +121,17 @@ describe('AcceptBackupRequestUseCase - bullmq', () => {
 
 		// Assert
 		expect(result.isErr()).toBe(true);
-		expect(addSpy).toHaveBeenCalledTimes(1);
+		expect(publishSpy).toHaveBeenCalledTimes(1);
 		if (result.isErr()) {
 			expect(result.error.name).toBe('EventBusError');
 		}
 	});
 
-	test('when executed with good data, it adds to the queue and returns the backupRequest', async () => {
+	test('when executed with good data, it publishes and returns the backupRequest', async () => {
 		// Arrange
 		mockBullMq.Queue.prototype.add = jest.fn().mockResolvedValueOnce({} as BackupRequest);
 		const eventBus = new BmqBackupRequestEventBus(mockBullMq, bullMqConnection);
-		const addSpy = jest.spyOn(eventBus, 'add');
+		const publishSpy = jest.spyOn(eventBus, 'publish');
 
 		const useCase = new AcceptBackupRequestUseCase(eventBus);
 		const dto = { ...baseDto };
@@ -141,7 +141,7 @@ describe('AcceptBackupRequestUseCase - bullmq', () => {
 
 		// Assert
 		expect(result.isOk()).toBe(true);
-		expect(addSpy).toHaveBeenCalledTimes(1);
+		expect(publishSpy).toHaveBeenCalledTimes(1);
 		if (result.isOk()) {
 			// type guard so TS knows value is valid
 			expect(result.value.backupJobId.value).toMatch(baseDto.backupJobId);

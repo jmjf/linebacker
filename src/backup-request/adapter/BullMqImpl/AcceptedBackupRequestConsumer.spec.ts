@@ -13,7 +13,7 @@ import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/Circ
 import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
 import { delay } from '../../../common/utils/utils';
 import { ReceiveBackupRequestUseCase } from '../../use-cases/receive-backup-request/ReceiveBackupRequestUseCase';
-import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
 import { BmqBackupRequestEventBus } from './BmqBackupRequestEventBus';
 import { bullMqConnection } from '../../../infrastructure/bullmq/bullMqInfra';
 
@@ -65,7 +65,8 @@ describe('AcceptedBackupRequestConsumer - BullMq', () => {
 		const job = {
 			data: {
 				connectFailureCount: 0,
-				event: { ...queueRequest },
+				retryCount: 0,
+				domainEvent: { ...queueRequest },
 			},
 			attemptsMade: 0,
 			update: async () => {
@@ -81,7 +82,7 @@ describe('AcceptedBackupRequestConsumer - BullMq', () => {
 		} catch (e) {
 			const err = e as any;
 			expect(err.name).toEqual('EventBusError');
-			expect(err.message).toContain('connect');
+			expect(err.message.toLowerCase()).toContain('connect');
 		}
 	});
 
@@ -98,7 +99,8 @@ describe('AcceptedBackupRequestConsumer - BullMq', () => {
 		const job = {
 			data: {
 				connectFailureCount: 0,
-				event: {
+				retryCount: 0,
+				domainEvent: {
 					...queueRequest,
 					transportTypeCode: 'INVALID', // cause use case to fail
 				},
@@ -130,7 +132,8 @@ describe('AcceptedBackupRequestConsumer - BullMq', () => {
 		const job = {
 			data: {
 				connectFailureCount: 0,
-				event: { ...queueRequest },
+				retryCount: 0,
+				domainEvent: { ...queueRequest },
 			},
 			attemptsMade: 0,
 			update: async () => {
@@ -146,7 +149,7 @@ describe('AcceptedBackupRequestConsumer - BullMq', () => {
 		} catch (e) {
 			const err = e as any;
 			expect(err.name).toEqual('EventBusError');
-			expect(err.message).toContain('other');
+			expect(err.message.toLowerCase()).toContain('other');
 		}
 	});
 
@@ -163,7 +166,8 @@ describe('AcceptedBackupRequestConsumer - BullMq', () => {
 		const job = {
 			data: {
 				connectFailureCount: 0,
-				event: { ...queueRequest },
+				retryCount: 0,
+				domainEvent: { ...queueRequest },
 			},
 			attemptsMade: 0,
 			update: async () => {
@@ -174,7 +178,8 @@ describe('AcceptedBackupRequestConsumer - BullMq', () => {
 		const consumer = new AcceptedBackupRequestConsumer(useCase, 5);
 
 		const result = await consumer.consume(job);
+
 		expect(result.backupRequestId.value).toEqual(queueRequest.backupRequestId);
-		expect(result.statusTypeCode).toEqual(RequestStatusTypeValues.Received);
+		expect(result.statusTypeCode).toEqual(BackupRequestStatusTypeValues.Received);
 	});
 });

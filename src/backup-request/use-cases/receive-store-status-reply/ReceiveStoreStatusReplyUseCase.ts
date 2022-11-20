@@ -14,7 +14,7 @@ import { IBackupRequestRepo } from '../../adapter/IBackupRequestRepo';
 import { BackupRequest } from '../../domain/BackupRequest';
 import { StoreResultTypeValues, validStoreResultTypes } from '../../domain/StoreResultType';
 import { StoreStatusReplyDTO } from './StoreStatusReplyDTO';
-import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 
@@ -135,16 +135,16 @@ export class ReceiveStoreStatusReplyUseCase implements UseCase<StoreStatusReplyD
 
 		if (backupFound && !backupRequest.isSucceeded()) {
 			// if we have a Backup and it isn't Succeeded, it should be no matter what the store status, so make it so
-			backupRequest.setStatusReplied(RequestStatusTypeValues.Succeeded, reply.messageText);
+			backupRequest.setStatusReplied(BackupRequestStatusTypeValues.Succeeded, reply.messageText);
 			shouldSaveBackupRequest = true;
 		}
 		if (!backupFound && resultTypeCode === StoreResultTypeValues.Succeeded) {
 			// backup was saved, request is Succeeded -- period, end of discussion
-			backupRequest.setStatusReplied(RequestStatusTypeValues.Succeeded, reply.messageText);
+			backupRequest.setStatusReplied(BackupRequestStatusTypeValues.Succeeded, reply.messageText);
 			shouldSaveBackupRequest = true;
 		}
 		if (!backupFound && resultTypeCode === StoreResultTypeValues.Failed && !backupRequest.isFailed()) {
-			backupRequest.setStatusReplied(RequestStatusTypeValues.Failed, reply.messageText);
+			backupRequest.setStatusReplied(BackupRequestStatusTypeValues.Failed, reply.messageText);
 			shouldSaveBackupRequest = true;
 		}
 

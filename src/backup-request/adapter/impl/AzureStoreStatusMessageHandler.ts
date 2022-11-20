@@ -33,7 +33,7 @@ export class AzureStoreStatusMessageHandler implements IStoreStatusMessageHandle
 			});
 			if (message.dequeueCount >= 4) {
 				// TODO: store it and delete it
-				console.log('store message, delete message from queue');
+				console.log('TODO store message, delete message from queue');
 			}
 			return err(
 				new AdapterErrors.StatusJsonError('Unparseable messageText JSON in queue message', {

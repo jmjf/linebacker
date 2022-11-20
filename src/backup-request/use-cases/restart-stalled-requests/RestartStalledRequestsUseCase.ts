@@ -6,7 +6,7 @@ import { IBackupRequestRepo } from '../../adapter/IBackupRequestRepo';
 
 import { RestartStalledRequestsDTO } from './RestartStalledRequestsDTO';
 import { IDomainEvent } from '../../../common/domain/DomainEventBus';
-import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
 import { BackupRequestAllowed } from '../../domain/BackupRequestAllowed';
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 import { BackupRequest } from '../../domain/BackupRequest';
@@ -38,7 +38,7 @@ export class RestartStalledRequestsUseCase implements UseCase<RestartStalledRequ
 		let receivedEvents: IDomainEvent[] = [];
 
 		const allowedQueryResult = await this.backupRequestRepo.getRequestIdsByStatusBeforeTimestamp(
-			RequestStatusTypeValues.Allowed,
+			BackupRequestStatusTypeValues.Allowed,
 			dto.beforeTimestamp
 		);
 		if (allowedQueryResult.isOk()) {
@@ -48,7 +48,7 @@ export class RestartStalledRequestsUseCase implements UseCase<RestartStalledRequ
 		// console.log('RSRUC allowedEvents', allowedEvents);
 
 		const receivedQueryResult = await this.backupRequestRepo.getRequestIdsByStatusBeforeTimestamp(
-			RequestStatusTypeValues.Received,
+			BackupRequestStatusTypeValues.Received,
 			dto.beforeTimestamp
 		);
 		if (receivedQueryResult.isOk()) {

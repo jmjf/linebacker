@@ -1,25 +1,25 @@
-import { Result } from '../../../common/core/Result';
-import { BaseError } from '../../../common/core/BaseError';
+import { err, ok, Result } from '../../../common/core/Result';
+import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 import * as DomainErrors from '../../../common/domain/DomainErrors';
 import { UseCase } from '../../../common/application/UseCase';
-import * as ApplicationErrors from '../../../common/application/ApplicationErrors';
 
 import { AcceptBackupRequestDTO } from './AcceptBackupRequestDTO';
-import { IBackupRequestEventBus } from '../../adapter/IBackupRequestEventBus';
+import { IEventBus } from '../../adapter/IEventBus';
 import { BackupRequest, IBackupRequestProps } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
-import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
+import { BackupRequestAccepted } from '../../domain/BackupRequestAccepted.event';
 import path from 'node:path';
 
 const moduleName = path.basename(module.filename);
 
 // add errors when you define them
-type Response = Result<BackupRequest, DomainErrors.PropsError | ApplicationErrors.UnexpectedError | BaseError>;
+type Response = Result<BackupRequest, DomainErrors.PropsError | AdapterErrors.EventBusError>;
 
 export class AcceptBackupRequestUseCase implements UseCase<AcceptBackupRequestDTO, Promise<Response>> {
-	private eventBus: IBackupRequestEventBus;
+	private eventBus: IEventBus;
 
-	constructor(backupRequestEventBus: IBackupRequestEventBus) {
+	constructor(backupRequestEventBus: IEventBus) {
 		this.eventBus = backupRequestEventBus;
 	}
 
@@ -31,7 +31,7 @@ export class AcceptBackupRequestUseCase implements UseCase<AcceptBackupRequestDT
 			preparedDataPathName: request.backupDataLocation,
 			getOnStartFlag: request.getOnStartFlag,
 			transportTypeCode: request.transportType as RequestTransportType,
-			statusTypeCode: RequestStatusTypeValues.Received,
+			statusTypeCode: BackupRequestStatusTypeValues.Accepted,
 			receivedTimestamp: new Date(),
 			requesterId: request.requesterId,
 		};
@@ -42,7 +42,12 @@ export class AcceptBackupRequestUseCase implements UseCase<AcceptBackupRequestDT
 			return backupRequestResult; // already an Err, so don't need err() wrapper
 		}
 
-		// type guarded by isErr() above
-		return await this.eventBus.publish('accepted-backup-requests', backupRequestResult.value);
+		const acceptedEvent = new BackupRequestAccepted(backupRequestResult.value);
+		const publishResult = await this.eventBus.publish(acceptedEvent);
+		if (publishResult.isErr()) {
+			return err(publishResult.error);
+		}
+
+		return ok(backupRequestResult.value);
 	}
 }

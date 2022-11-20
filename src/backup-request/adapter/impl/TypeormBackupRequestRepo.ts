@@ -18,7 +18,7 @@ import { BackupRequest } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
 import { IBackupRequestRepo } from '../IBackupRequestRepo';
 
-import { RequestStatusType, RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { BackupRequestStatusType, BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
 import { isDate } from 'util/types';
 import { LessThan } from 'typeorm';
 
@@ -131,7 +131,7 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 	}
 
 	public async getRequestIdsByStatusBeforeTimestamp(
-		status: RequestStatusType,
+		status: BackupRequestStatusType,
 		beforeTimestamp: Date
 	): Promise<Result<string[], AdapterErrors.DatabaseError | AdapterErrors.NotFoundError>> {
 		const functionName = 'getRequestIdsByStatus';
@@ -148,24 +148,24 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 
 		let whereDateTerm = {};
 		switch (status) {
-			case RequestStatusTypeValues.Received:
+			case BackupRequestStatusTypeValues.Received:
 				whereDateTerm = {
 					receivedTimestamp: LessThan(beforeTimestamp),
 				};
 				break;
-			case RequestStatusTypeValues.Allowed:
-			case RequestStatusTypeValues.NotAllowed:
+			case BackupRequestStatusTypeValues.Allowed:
+			case BackupRequestStatusTypeValues.NotAllowed:
 				whereDateTerm = {
 					checkedTimestamp: LessThan(beforeTimestamp),
 				};
 				break;
-			case RequestStatusTypeValues.Sent:
+			case BackupRequestStatusTypeValues.Sent:
 				whereDateTerm = {
 					sentToInterfaceTimestamp: LessThan(beforeTimestamp),
 				};
 				break;
-			case RequestStatusTypeValues.Succeeded:
-			case RequestStatusTypeValues.Failed:
+			case BackupRequestStatusTypeValues.Succeeded:
+			case BackupRequestStatusTypeValues.Failed:
 				whereDateTerm = {
 					replyTimestamp: LessThan(beforeTimestamp),
 				};
@@ -263,7 +263,7 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 				transportTypeCode: raw.transportTypeCode as RequestTransportType,
 				backupProviderCode: raw.backupProviderCode as BackupProviderType,
 				storagePathName: raw.storagePathName === null ? undefined : raw.storagePathName,
-				statusTypeCode: raw.statusTypeCode as RequestStatusType,
+				statusTypeCode: raw.statusTypeCode as BackupRequestStatusType,
 				receivedTimestamp: raw.receivedTimestamp,
 				checkedTimestamp: raw.checkedTimestamp === null ? undefined : raw.checkedTimestamp,
 				sentToInterfaceTimestamp: raw.sentToInterfaceTimestamp === null ? undefined : raw.sentToInterfaceTimestamp,

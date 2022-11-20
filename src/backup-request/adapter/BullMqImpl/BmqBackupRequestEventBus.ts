@@ -1,14 +1,17 @@
 import { Result, ok, err } from '../../../common/core/Result';
-import { BackupRequest } from '../../domain/BackupRequest';
-import { IBackupRequestEventBus } from '../IBackupRequestEventBus';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 
-import { ConnectionOptions } from 'bullmq';
+import { IEventBusEvent } from '../../../infrastructure/event-bus/IEventBus';
 import { BullMq } from '../../../infrastructure/bullmq/bullMqInfra';
+
+import { BackupRequest } from '../../domain/BackupRequest';
+import { IEventBus } from '../IEventBus';
+
+import { ConnectionOptions } from 'bullmq';
 import path from 'node:path';
 
 const moduleName = path.basename(module.filename);
-export class BmqBackupRequestEventBus implements IBackupRequestEventBus {
+export class BmqBackupRequestEventBus implements IEventBus {
 	private bullMq: BullMq;
 	private connection: ConnectionOptions;
 
@@ -18,31 +21,22 @@ export class BmqBackupRequestEventBus implements IBackupRequestEventBus {
 	}
 
 	// exists(requestId: string): Promise<Result<boolean, AdapterErrors.EventBusError>>;
-	public async publish(
-		topicName: string,
-		backupRequest: BackupRequest
-	): Promise<Result<BackupRequest, AdapterErrors.EventBusError>> {
+	public async publish(event: IEventBusEvent): Promise<Result<IEventBusEvent, AdapterErrors.EventBusError>> {
 		const functionName = 'publish';
 
-		const event = this.mapToQueue(backupRequest);
-		console.log('publish', event);
 		try {
-			const queue = new this.bullMq.Queue(topicName, { connection: this.connection });
-			const res = await queue.add(
-				event.backupRequestId,
-				{ event },
-				{
-					attempts: 3,
-					backoff: {
-						type: 'exponential',
-						delay: 1000,
-					},
-					removeOnComplete: 100,
-					removeOnFail: 100,
-				}
-			);
+			const queue = new this.bullMq.Queue(event.topicName, { connection: this.connection });
+			const res = await queue.add(event.eventKey, event.eventData, {
+				attempts: 2,
+				backoff: {
+					type: 'exponential',
+					delay: 1000,
+				},
+				removeOnComplete: 20,
+				removeOnFail: 20,
+			});
 
-			return ok(backupRequest);
+			return ok(event);
 		} catch (e) {
 			const error = e as Error;
 			return err(

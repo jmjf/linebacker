@@ -11,7 +11,7 @@ import {
 import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
 
 import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
-import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 
 import { RestartStalledRequestsUseCase } from './RestartStalledRequestsUseCase';
@@ -45,7 +45,7 @@ describe('RestartStalledRequestsUseCase - typeorm', () => {
 			preparedDataPathName: 'path',
 			getOnStartFlag: true,
 			transportTypeCode: RequestTransportTypeValues.HTTP,
-			statusTypeCode: RequestStatusTypeValues.Allowed,
+			statusTypeCode: BackupRequestStatusTypeValues.Allowed,
 			receivedTimestamp: new Date(),
 			requesterId: 'dbRequesterId',
 			backupProviderCode: 'CloudA',
@@ -62,7 +62,7 @@ describe('RestartStalledRequestsUseCase - typeorm', () => {
 			preparedDataPathName: 'path',
 			getOnStartFlag: true,
 			transportTypeCode: RequestTransportTypeValues.HTTP,
-			statusTypeCode: RequestStatusTypeValues.Allowed,
+			statusTypeCode: BackupRequestStatusTypeValues.Allowed,
 			receivedTimestamp: new Date(),
 			requesterId: 'dbRequesterId',
 			backupProviderCode: 'CloudA',
@@ -82,7 +82,7 @@ describe('RestartStalledRequestsUseCase - typeorm', () => {
 			preparedDataPathName: 'path',
 			getOnStartFlag: true,
 			transportTypeCode: RequestTransportTypeValues.HTTP,
-			statusTypeCode: RequestStatusTypeValues.Received,
+			statusTypeCode: BackupRequestStatusTypeValues.Received,
 			receivedTimestamp: new Date(),
 			requesterId: 'dbRequesterId',
 			backupProviderCode: 'CloudA',
@@ -99,7 +99,7 @@ describe('RestartStalledRequestsUseCase - typeorm', () => {
 			preparedDataPathName: 'path',
 			getOnStartFlag: true,
 			transportTypeCode: RequestTransportTypeValues.HTTP,
-			statusTypeCode: RequestStatusTypeValues.Received,
+			statusTypeCode: BackupRequestStatusTypeValues.Received,
 			receivedTimestamp: new Date(),
 			requesterId: 'dbRequesterId',
 			backupProviderCode: 'CloudA',

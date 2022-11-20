@@ -12,7 +12,7 @@ import { BackupProviderType } from '../../backup-job/domain/BackupProviderType';
 import { BackupRequestAllowed } from './BackupRequestAllowed';
 import { BackupRequestCreated } from './BackupRequestCreated';
 import { StoreResultType } from './StoreResultType';
-import { RequestStatusType, RequestStatusTypeValues } from './RequestStatusType';
+import { BackupRequestStatusType, BackupRequestStatusTypeValues } from './BackupRequestStatusType';
 import { RequestTransportType, validRequestTransportTypes } from './RequestTransportType';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
@@ -26,7 +26,7 @@ export interface IBackupRequestProps {
 	transportTypeCode: RequestTransportType;
 	backupProviderCode?: BackupProviderType;
 	storagePathName?: string;
-	statusTypeCode: RequestStatusType;
+	statusTypeCode: BackupRequestStatusType;
 	receivedTimestamp: string | Date;
 	checkedTimestamp?: string | Date;
 	sentToInterfaceTimestamp?: string | Date;
@@ -74,7 +74,7 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 		this.props.storagePathName = path;
 	}
 
-	public get statusTypeCode(): RequestStatusType {
+	public get statusTypeCode(): BackupRequestStatusType {
 		return this.props.statusTypeCode;
 	}
 
@@ -113,8 +113,8 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 	public isChecked(): boolean {
 		return (
 			this.statusTypeCode &&
-			(this.statusTypeCode === RequestStatusTypeValues.Allowed ||
-				this.statusTypeCode === RequestStatusTypeValues.NotAllowed) &&
+			(this.statusTypeCode === BackupRequestStatusTypeValues.Allowed ||
+				this.statusTypeCode === BackupRequestStatusTypeValues.NotAllowed) &&
 			isDate(this.checkedTimestamp)
 		);
 	}
@@ -130,7 +130,7 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 	public isSentToInterface(): boolean {
 		return (
 			this.statusTypeCode &&
-			this.statusTypeCode === RequestStatusTypeValues.Sent &&
+			this.statusTypeCode === BackupRequestStatusTypeValues.Sent &&
 			isDate(this.sentToInterfaceTimestamp)
 		);
 	}
@@ -149,7 +149,9 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 	 */
 	public isFailed(): boolean {
 		return (
-			this.statusTypeCode && this.statusTypeCode === RequestStatusTypeValues.Failed && isDate(this.replyTimestamp)
+			this.statusTypeCode &&
+			this.statusTypeCode === BackupRequestStatusTypeValues.Failed &&
+			isDate(this.replyTimestamp)
 		);
 	}
 
@@ -159,17 +161,21 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 	 */
 	public isSucceeded(): boolean {
 		return (
-			this.statusTypeCode && this.statusTypeCode === RequestStatusTypeValues.Succeeded && isDate(this.replyTimestamp)
+			this.statusTypeCode &&
+			this.statusTypeCode === BackupRequestStatusTypeValues.Succeeded &&
+			isDate(this.replyTimestamp)
 		);
 	}
 
 	public setStatusSent(): void {
-		this.props.statusTypeCode = RequestStatusTypeValues.Sent;
+		this.props.statusTypeCode = BackupRequestStatusTypeValues.Sent;
 		this.props.sentToInterfaceTimestamp = new Date();
 	}
 
 	public setStatusChecked(isAllowed: boolean): void {
-		this.props.statusTypeCode = isAllowed ? RequestStatusTypeValues.Allowed : RequestStatusTypeValues.NotAllowed;
+		this.props.statusTypeCode = isAllowed
+			? BackupRequestStatusTypeValues.Allowed
+			: BackupRequestStatusTypeValues.NotAllowed;
 		this.props.checkedTimestamp = new Date();
 		if (isAllowed) {
 			this.addDomainEvent(new BackupRequestAllowed(this.backupRequestId));

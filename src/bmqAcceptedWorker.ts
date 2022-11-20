@@ -38,7 +38,7 @@ const buildWorker = (circuitBreakers: ICircuitBreakers) => {
 	const rcvUseCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
 	const acceptedConsumer = new AcceptedBackupRequestConsumer(rcvUseCase, 5);
 
-	return new bullMq.Worker('accepted-backup-requests', acceptedConsumer.consume.bind(acceptedConsumer), {
+	return new bullMq.Worker('backup-request-accepted', acceptedConsumer.consume.bind(acceptedConsumer), {
 		autorun: false,
 		connection: bullMqConnection,
 		lockDuration: 30000,

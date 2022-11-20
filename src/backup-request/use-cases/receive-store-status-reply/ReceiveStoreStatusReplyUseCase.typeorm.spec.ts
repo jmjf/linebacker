@@ -9,7 +9,7 @@ import {
 import { BackupProviderTypeValues } from '../../../backup-job/domain/BackupProviderType';
 
 import { StoreResultTypeValues } from '../../domain/StoreResultType';
-import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 
 import { StoreStatusReplyDTO } from './StoreStatusReplyDTO';
@@ -82,7 +82,7 @@ describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 		preparedDataPathName: 'prepared/data/path',
 		getOnStartFlag: true,
 		transportTypeCode: RequestTransportTypeValues.HTTP,
-		statusTypeCode: RequestStatusTypeValues.Sent,
+		statusTypeCode: BackupRequestStatusTypeValues.Sent,
 		receivedTimestamp: new Date(),
 		requesterId: 'dbRequesterId',
 		backupProviderCode: 'CloudA',
@@ -556,37 +556,37 @@ describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 			test.each([
 				{
 					storeResult: StoreResultTypeValues.Failed,
-					backupRequestStatus: RequestStatusTypeValues.Sent,
+					backupRequestStatus: BackupRequestStatusTypeValues.Sent,
 					backupRequestReplyTimestamp: undefined,
 					expectedBackupSaveCalls: 0,
 					expectedRequestSaveCalls: 1,
-					expectedRequestStatus: RequestStatusTypeValues.Failed,
+					expectedRequestStatus: BackupRequestStatusTypeValues.Failed,
 				},
 				{
 					storeResult: StoreResultTypeValues.Failed,
-					backupRequestStatus: RequestStatusTypeValues.Failed,
+					backupRequestStatus: BackupRequestStatusTypeValues.Failed,
 					backupRequestReplyTimestamp: new Date(),
 					expectedBackupSaveCalls: 0,
 					expectedRequestSaveCalls: 0,
-					expectedRequestStatus: RequestStatusTypeValues.Failed,
+					expectedRequestStatus: BackupRequestStatusTypeValues.Failed,
 				},
 				// Next 2 cases mean someone meddled with data -- Request status inconsistent with other data
 				{
 					storeResult: StoreResultTypeValues.Failed,
-					backupRequestStatus: RequestStatusTypeValues.Succeeded,
+					backupRequestStatus: BackupRequestStatusTypeValues.Succeeded,
 					backupRequestReplyTimestamp: new Date(),
 					expectedBackupSaveCalls: 0,
 					expectedRequestSaveCalls: 1,
-					expectedRequestStatus: RequestStatusTypeValues.Failed,
+					expectedRequestStatus: BackupRequestStatusTypeValues.Failed,
 				},
 				{
 					// test an out of order status; store result means it was sent
 					storeResult: StoreResultTypeValues.Failed,
-					backupRequestStatus: RequestStatusTypeValues.Allowed,
+					backupRequestStatus: BackupRequestStatusTypeValues.Allowed,
 					backupRequestReplyTimestamp: undefined,
 					expectedBackupSaveCalls: 0,
 					expectedRequestSaveCalls: 1,
-					expectedRequestStatus: RequestStatusTypeValues.Failed,
+					expectedRequestStatus: BackupRequestStatusTypeValues.Failed,
 				},
 			])(
 				`when store result is $storeResult, BackupRequest is $backupRequestStatus, it sets BackupRequest status $expectedRequestStatus, saves $expectedRequestSaveCalls`,
@@ -662,37 +662,37 @@ describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 			test.each([
 				{
 					storeResult: StoreResultTypeValues.Succeeded,
-					backupRequestStatus: RequestStatusTypeValues.Sent,
+					backupRequestStatus: BackupRequestStatusTypeValues.Sent,
 					backupRequestReplyTimestamp: undefined,
 					expectedBackupSaveCalls: 1,
 					expectedRequestSaveCalls: 1,
-					expectedRequestStatus: RequestStatusTypeValues.Succeeded,
+					expectedRequestStatus: BackupRequestStatusTypeValues.Succeeded,
 				},
 				{
 					storeResult: StoreResultTypeValues.Succeeded,
-					backupRequestStatus: RequestStatusTypeValues.Failed,
+					backupRequestStatus: BackupRequestStatusTypeValues.Failed,
 					backupRequestReplyTimestamp: new Date(),
 					expectedBackupSaveCalls: 1,
 					expectedRequestSaveCalls: 1,
-					expectedRequestStatus: RequestStatusTypeValues.Succeeded,
+					expectedRequestStatus: BackupRequestStatusTypeValues.Succeeded,
 				},
 				// These 2 cases mean someone meddled with data -- Request status inconsistent with other data
 				{
 					storeResult: StoreResultTypeValues.Succeeded,
-					backupRequestStatus: RequestStatusTypeValues.Succeeded,
+					backupRequestStatus: BackupRequestStatusTypeValues.Succeeded,
 					backupRequestReplyTimestamp: new Date(),
 					expectedBackupSaveCalls: 1,
 					expectedRequestSaveCalls: 1,
-					expectedRequestStatus: RequestStatusTypeValues.Succeeded,
+					expectedRequestStatus: BackupRequestStatusTypeValues.Succeeded,
 				},
 				{
 					// test an out of order status; store result means it got sent somehow
 					storeResult: StoreResultTypeValues.Succeeded,
-					backupRequestStatus: RequestStatusTypeValues.Allowed,
+					backupRequestStatus: BackupRequestStatusTypeValues.Allowed,
 					backupRequestReplyTimestamp: undefined,
 					expectedBackupSaveCalls: 1,
 					expectedRequestSaveCalls: 1,
-					expectedRequestStatus: RequestStatusTypeValues.Succeeded,
+					expectedRequestStatus: BackupRequestStatusTypeValues.Succeeded,
 				},
 			])(
 				`when store result is $storeResult, BackupRequest is $backupRequestStatus, it sets BackupRequest status $expectedRequestStatus, saves Backup and BackupRequest`,
@@ -780,7 +780,7 @@ describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 					// BackupRequest read will succeed, Backup read will return found Backup
 					mockTypeormCtx.manager.findOne.mockResolvedValueOnce({
 						...dbBackupRequest,
-						statusTypeCode: RequestStatusTypeValues.Succeeded,
+						statusTypeCode: BackupRequestStatusTypeValues.Succeeded,
 						replyTimestamp: new Date(),
 					} as TypeormBackupRequest);
 					mockTypeormCtx.manager.findOne.mockResolvedValueOnce(dbBackup);
@@ -820,7 +820,7 @@ describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 					expect(backupRepoSaveSpy).toBeCalledTimes(0);
 					expect(backupRequestSaveSpy).toBeCalledTimes(0);
 					if (result.isOk()) {
-						expect(result.value.statusTypeCode).toBe(RequestStatusTypeValues.Succeeded);
+						expect(result.value.statusTypeCode).toBe(BackupRequestStatusTypeValues.Succeeded);
 						// Request save not called, so can't expect
 					}
 				}
@@ -833,24 +833,24 @@ describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 				// expectedBackupSaveCalls always 0, expectedRequestSaveCalls always 1
 				{
 					storeResult: StoreResultTypeValues.Failed,
-					backupRequestStatus: RequestStatusTypeValues.Sent,
-					expectedRequestStatus: RequestStatusTypeValues.Succeeded,
+					backupRequestStatus: BackupRequestStatusTypeValues.Sent,
+					expectedRequestStatus: BackupRequestStatusTypeValues.Succeeded,
 				},
 				{
 					storeResult: StoreResultTypeValues.Failed,
-					backupRequestStatus: RequestStatusTypeValues.Failed,
-					expectedRequestStatus: RequestStatusTypeValues.Succeeded,
+					backupRequestStatus: BackupRequestStatusTypeValues.Failed,
+					expectedRequestStatus: BackupRequestStatusTypeValues.Succeeded,
 				},
 				{
 					// test an out of order status here; Backup found always wins
 					storeResult: StoreResultTypeValues.Succeeded,
-					backupRequestStatus: RequestStatusTypeValues.Allowed,
-					expectedRequestStatus: RequestStatusTypeValues.Succeeded,
+					backupRequestStatus: BackupRequestStatusTypeValues.Allowed,
+					expectedRequestStatus: BackupRequestStatusTypeValues.Succeeded,
 				},
 				{
 					storeResult: StoreResultTypeValues.Succeeded,
-					backupRequestStatus: RequestStatusTypeValues.Failed,
-					expectedRequestStatus: RequestStatusTypeValues.Succeeded,
+					backupRequestStatus: BackupRequestStatusTypeValues.Failed,
+					expectedRequestStatus: BackupRequestStatusTypeValues.Succeeded,
 				},
 			])(
 				`when store result is $storeResult, BackupRequest is $backupRequestStatus, it saves the BackupRequest with status $expectedRequestStatus`,

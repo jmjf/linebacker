@@ -8,7 +8,7 @@ import { CreateBackupRequestDTO } from './CreateBackupRequestDTO';
 import { IBackupRequestRepo } from '../../adapter/IBackupRequestRepo';
 import { BackupRequest, IBackupRequestProps } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
-import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
 import path from 'node:path';
 
 const moduleName = path.basename(module.filename);
@@ -34,7 +34,7 @@ export class CreateBackupRequestUseCase implements UseCase<CreateBackupRequestDT
 			preparedDataPathName: request.backupDataLocation,
 			getOnStartFlag: request.getOnStartFlag,
 			transportTypeCode: request.transportType as RequestTransportType,
-			statusTypeCode: RequestStatusTypeValues.Received,
+			statusTypeCode: BackupRequestStatusTypeValues.Received,
 			receivedTimestamp: new Date(),
 			requesterId: request.requesterId,
 		};

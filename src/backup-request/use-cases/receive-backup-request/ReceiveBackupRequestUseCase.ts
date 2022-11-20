@@ -5,11 +5,12 @@ import { UseCase } from '../../../common/application/UseCase';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 
 import { IBackupRequestRepo } from '../../adapter/IBackupRequestRepo';
-import { IBackupRequestEventBus } from '../../adapter/IBackupRequestEventBus';
+import { IEventBus } from '../../adapter/IEventBus';
 import { BackupRequest } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
-import { RequestStatusType, RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { BackupRequestStatusType, BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
 import path from 'node:path';
+import { BackupRequestReceived } from '../../domain/BackupRequestReceived.event';
 
 const moduleName = path.basename(module.filename);
 
@@ -20,7 +21,7 @@ export interface ReceiveBackupRequestDTO {
 	preparedDataPathName: string;
 	getOnStartFlag: boolean;
 	transportTypeCode: RequestTransportType;
-	statusTypeCode: RequestStatusType;
+	statusTypeCode: BackupRequestStatusType;
 	receivedTimestamp: Date;
 	requesterId: string;
 }
@@ -36,9 +37,9 @@ type Response = Result<
  */
 export class ReceiveBackupRequestUseCase implements UseCase<ReceiveBackupRequestDTO, Promise<Response>> {
 	private backupRequestRepo: IBackupRequestRepo;
-	private eventBus: IBackupRequestEventBus;
+	private eventBus: IEventBus;
 
-	constructor(backupRequestRepo: IBackupRequestRepo, eventBus: IBackupRequestEventBus) {
+	constructor(backupRequestRepo: IBackupRequestRepo, eventBus: IEventBus) {
 		this.backupRequestRepo = backupRequestRepo;
 		this.eventBus = eventBus;
 	}
@@ -57,10 +58,10 @@ export class ReceiveBackupRequestUseCase implements UseCase<ReceiveBackupRequest
 			backupRequest = getRequestResult.value;
 
 			// existing request must be in Received status
-			if (backupRequest.statusTypeCode !== RequestStatusTypeValues.Received) {
+			if (backupRequest.statusTypeCode !== BackupRequestStatusTypeValues.Received) {
 				return err(
 					new DomainErrors.PropsError('invalid request status', {
-						expectedStatusTypeCode: RequestStatusTypeValues.Received,
+						expectedStatusTypeCode: BackupRequestStatusTypeValues.Received,
 						statusTypeCode: backupRequest.statusTypeCode,
 						backupRequestId: backupRequest.backupRequestId.value,
 						moduleName,
@@ -72,7 +73,11 @@ export class ReceiveBackupRequestUseCase implements UseCase<ReceiveBackupRequest
 			// not found -> create and save
 			const { backupRequestId, ...props } = acceptedEvent;
 			const createResult = BackupRequest.create(
-				{ ...props, statusTypeCode: RequestStatusTypeValues.Received },
+				{
+					...props,
+					backupJobId: new UniqueIdentifier(props.backupJobId),
+					statusTypeCode: BackupRequestStatusTypeValues.Received,
+				},
 				new UniqueIdentifier(backupRequestId)
 			);
 			if (createResult.isErr()) {
@@ -86,9 +91,9 @@ export class ReceiveBackupRequestUseCase implements UseCase<ReceiveBackupRequest
 			}
 		}
 
-		const publishResult = await this.eventBus.publish('received-backup-requests', backupRequest);
+		const publishResult = await this.eventBus.publish(new BackupRequestReceived(backupRequest));
 		if (publishResult.isErr()) {
-			return publishResult;
+			return err(publishResult.error);
 		}
 
 		return ok(backupRequest as unknown as BackupRequest);
