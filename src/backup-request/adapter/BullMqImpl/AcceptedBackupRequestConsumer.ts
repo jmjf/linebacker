@@ -1,30 +1,46 @@
 import { Job, UnrecoverableError } from 'bullmq';
+
+import { logger } from '../../../infrastructure/logging/pinoLogger';
+import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
+
 import { ReceiveBackupRequestUseCase } from '../../use-cases/receive-backup-request/ReceiveBackupRequestUseCase';
-import { IQueueConsumer } from '../IQueueConsumer';
+import { IEventBusConsumer } from '../IEventBusConsumer';
+import path from 'node:path';
 
-export class AcceptedBackupRequestConsumer implements IQueueConsumer {
+const moduleName = path.basename(module.filename);
+export class AcceptedBackupRequestConsumer implements IEventBusConsumer {
 	private useCase: ReceiveBackupRequestUseCase;
+	private maxTrueFailures: number;
 
-	constructor(receiveBackupRequestUseCase: ReceiveBackupRequestUseCase) {
+	constructor(receiveBackupRequestUseCase: ReceiveBackupRequestUseCase, maxTrueFailures: number) {
 		this.useCase = receiveBackupRequestUseCase;
+		this.maxTrueFailures = maxTrueFailures;
 	}
 
 	async consume(job: Job) {
+		const functionName = 'consume';
 		const { attemptsMade, data } = job;
 
-		const { connectFailureCount, ...request } = data;
+		const { connectFailureCount, event } = data;
 
-		// const result = await this.useCase.execute(request);
-		const result = await this.useCase.execute(request);
-		console.log('consume result', result);
+		const result = await this.useCase.execute(event);
 		if (result.isErr()) {
-			// log error
-			// if unrecoverable throw unrecoverable
-			// else retry
-			throw new Error('default error');
-		}
+			logger.error(
+				{ error: result.error, jobData: job.data, moduleName, functionName },
+				'event bus consumer failure'
+			);
 
-		if (attemptsMade - connectFailureCount > 5) throw new UnrecoverableError('too many attempts');
+			if (result.error.errorData && (result.error.errorData as any).isConnectFailure) {
+				job.update({ ...job.data, connectFailureCount: connectFailureCount + 1 });
+				throw new AdapterErrors.EventBusError('retry connect error', result.error);
+			}
+
+			if (attemptsMade - connectFailureCount > this.maxTrueFailures) {
+				throw new UnrecoverableError('do not retry');
+			}
+
+			throw new AdapterErrors.EventBusError('retry other error', result.error);
+		}
 
 		return result.value;
 	}

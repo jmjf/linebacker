@@ -1,5 +1,4 @@
 import { Result, ok, err } from '../../../common/core/Result';
-import { BaseError } from '../../../common/core/BaseError';
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 import * as DomainErrors from '../../../common/domain/DomainErrors';
 import { UseCase } from '../../../common/application/UseCase';
@@ -44,10 +43,12 @@ export class ReceiveBackupRequestUseCase implements UseCase<ReceiveBackupRequest
 		this.eventBus = eventBus;
 	}
 
-	async execute(request: ReceiveBackupRequestDTO): Promise<Response> {
+	async execute(acceptedEvent: ReceiveBackupRequestDTO): Promise<Response> {
+		const functionName = 'execute';
+
 		let backupRequest: BackupRequest;
 
-		const getRequestResult = await this.backupRequestRepo.getById(request.backupRequestId);
+		const getRequestResult = await this.backupRequestRepo.getById(acceptedEvent.backupRequestId);
 		if (getRequestResult.isErr() && getRequestResult.error.name !== 'NotFoundError') {
 			return getRequestResult;
 		}
@@ -62,12 +63,14 @@ export class ReceiveBackupRequestUseCase implements UseCase<ReceiveBackupRequest
 						expectedStatusTypeCode: RequestStatusTypeValues.Received,
 						statusTypeCode: backupRequest.statusTypeCode,
 						backupRequestId: backupRequest.backupRequestId.value,
+						moduleName,
+						functionName,
 					})
 				);
 			}
 		} else {
 			// not found -> create and save
-			const { backupRequestId, ...props } = request;
+			const { backupRequestId, ...props } = acceptedEvent;
 			const createResult = BackupRequest.create(
 				{ ...props, statusTypeCode: RequestStatusTypeValues.Received },
 				new UniqueIdentifier(backupRequestId)

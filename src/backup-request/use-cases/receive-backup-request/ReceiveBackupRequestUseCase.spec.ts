@@ -220,7 +220,7 @@ describe('ReceiveBackupRequestUseCase', () => {
 			}
 		});
 
-		test(`when the exists and publish succeeds, it doesn't save, publishes and returns ok`, async () => {
+		test(`when the request exists and publish succeeds, it doesn't save, publishes and returns ok`, async () => {
 			mockTypeormCtx.manager.findOne.mockResolvedValue({
 				...baseDto,
 				statusTypeCode: RequestStatusTypeValues.Received,

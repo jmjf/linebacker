@@ -14,6 +14,8 @@ import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHe
 import { delay } from '../../../common/utils/utils';
 import { ReceiveBackupRequestUseCase } from '../../use-cases/receive-backup-request/ReceiveBackupRequestUseCase';
 import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { BmqBackupRequestEventBus } from './BmqBackupRequestEventBus';
+import { bullMqConnection } from '../../../infrastructure/bullmq/bullMqInfra';
 
 describe('AcceptedBackupRequestConsumer - BullMq', () => {
 	let mockTypeormCtx: MockTypeormContext;
@@ -38,6 +40,7 @@ describe('AcceptedBackupRequestConsumer - BullMq', () => {
 	});
 
 	const queueRequest = {
+		backupRequestId: 'backup-request-id',
 		backupJobId: 'backup-job-id',
 		dataDate: new Date('2022-05-01T01:02:03.456Z'),
 		preparedDataPathName: 'prepared/data/path/name',
@@ -48,22 +51,65 @@ describe('AcceptedBackupRequestConsumer - BullMq', () => {
 		requesterId: 'requester-id',
 	};
 
-	test('when a job fails too many times, it throws an UnrecoverableError', async () => {
-		expect.assertions(1);
+	test('when a job fails with a connect error, it throws the expected error', async () => {
+		// construct an error we'll see as a TypeORM connect error
+		const connectError = new Error('connect error');
+		(connectError as unknown as Record<string, string>)['code'] = 'ESOCKET';
 
-		mockTypeormCtx.manager.find.mockRejectedValue(new Error('database error'));
+		mockTypeormCtx.manager.findOne.mockRejectedValue(connectError);
 		const brRepo = new TypeormBackupRequestRepo(typeormCtx, dbCircuitBreaker);
-		const useCase = new ReceiveBackupRequestUseCase(brRepo);
+		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+
+		const useCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
 
 		const job = {
 			data: {
 				connectFailureCount: 0,
-				request: { ...queueRequest },
+				event: { ...queueRequest },
 			},
-			attemptsMade: 999, // ensure failure for too many attempts
+			attemptsMade: 0,
+			update: async () => {
+				return;
+			},
 		} as unknown as bullMq.Job;
 
-		const consumer = new AcceptedBackupRequestConsumer(useCase);
+		const consumer = new AcceptedBackupRequestConsumer(useCase, 5);
+
+		try {
+			const result = await consumer.consume(job);
+			console.log('unexpected success', result);
+		} catch (e) {
+			const err = e as any;
+			expect(err.name).toEqual('EventBusError');
+			expect(err.message).toContain('connect');
+		}
+	});
+
+	test('when a job fails too many times, it throws an UnrecoverableError', async () => {
+		expect.assertions(1);
+
+		mockTypeormCtx.manager.findOne.mockRejectedValue(new Error('database error'));
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, dbCircuitBreaker);
+
+		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+
+		const useCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
+
+		const job = {
+			data: {
+				connectFailureCount: 0,
+				event: {
+					...queueRequest,
+					transportTypeCode: 'INVALID', // cause use case to fail
+				},
+			},
+			attemptsMade: 999, // ensure failure for too many attempts
+			update: async () => {
+				return;
+			},
+		} as unknown as bullMq.Job;
+
+		const consumer = new AcceptedBackupRequestConsumer(useCase, 1);
 
 		try {
 			const result = await consumer.consume(job);
@@ -74,24 +120,61 @@ describe('AcceptedBackupRequestConsumer - BullMq', () => {
 		}
 	});
 
-	test('when called with a Job, it does something', async () => {
-		mockTypeormCtx.manager.find.mockRejectedValue(new Error('database error'));
+	test('when a job fails with a general error, it throws the expected error', async () => {
+		mockTypeormCtx.manager.findOne.mockRejectedValue(new Error('database error'));
 		const brRepo = new TypeormBackupRequestRepo(typeormCtx, dbCircuitBreaker);
-		const useCase = new ReceiveBackupRequestUseCase(brRepo);
+		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+
+		const useCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
 
 		const job = {
 			data: {
 				connectFailureCount: 0,
-				request: { ...queueRequest },
+				event: { ...queueRequest },
 			},
 			attemptsMade: 0,
+			update: async () => {
+				return;
+			},
 		} as unknown as bullMq.Job;
 
-		const consumer = new AcceptedBackupRequestConsumer(useCase);
+		const consumer = new AcceptedBackupRequestConsumer(useCase, 5);
 
-		const result = (await consumer.consume(job)) as any;
+		try {
+			const result = await consumer.consume(job);
+			console.log('unexpected success', result);
+		} catch (e) {
+			const err = e as any;
+			expect(err.name).toEqual('EventBusError');
+			expect(err.message).toContain('other');
+		}
+	});
 
-		expect(result.request.backupJobId).toEqual(queueRequest.backupJobId);
-		expect(result.request.statusTypeCode).toEqual(RequestStatusTypeValues.Received);
+	test('when a job succeeds, it returns with no thrown errors', async () => {
+		mockTypeormCtx.manager.findOne.mockResolvedValue(null);
+		mockTypeormCtx.manager.save.mockResolvedValue({});
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, dbCircuitBreaker);
+
+		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
+		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+
+		const useCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
+
+		const job = {
+			data: {
+				connectFailureCount: 0,
+				event: { ...queueRequest },
+			},
+			attemptsMade: 0,
+			update: async () => {
+				return;
+			},
+		} as unknown as bullMq.Job;
+
+		const consumer = new AcceptedBackupRequestConsumer(useCase, 5);
+
+		const result = await consumer.consume(job);
+		expect(result.backupRequestId.value).toEqual(queueRequest.backupRequestId);
+		expect(result.statusTypeCode).toEqual(RequestStatusTypeValues.Received);
 	});
 });
