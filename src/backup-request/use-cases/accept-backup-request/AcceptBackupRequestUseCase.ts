@@ -43,6 +43,6 @@ export class AcceptBackupRequestUseCase implements UseCase<AcceptBackupRequestDT
 		}
 
 		// type guarded by isErr() above
-		return await this.eventBus.add('accepted-backup-requests', backupRequestResult.value);
+		return await this.eventBus.publish('accepted-backup-requests', backupRequestResult.value);
 	}
 }

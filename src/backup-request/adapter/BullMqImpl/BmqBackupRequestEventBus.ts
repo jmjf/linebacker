@@ -25,9 +25,23 @@ export class BmqBackupRequestEventBus implements IBackupRequestEventBus {
 		const functionName = 'publish';
 
 		const event = this.mapToQueue(backupRequest);
+		console.log('publish', event);
 		try {
 			const queue = new this.bullMq.Queue(topicName, { connection: this.connection });
-			const res = await queue.add(backupRequest.idValue, event);
+			const res = await queue.add(
+				event.backupRequestId,
+				{ event },
+				{
+					attempts: 3,
+					backoff: {
+						type: 'exponential',
+						delay: 1000,
+					},
+					removeOnComplete: 100,
+					removeOnFail: 100,
+				}
+			);
+
 			return ok(backupRequest);
 		} catch (e) {
 			const error = e as Error;

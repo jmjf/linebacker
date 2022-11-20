@@ -86,7 +86,7 @@ export class ReceiveBackupRequestUseCase implements UseCase<ReceiveBackupRequest
 			}
 		}
 
-		const publishResult = await this.eventBus.publish('test', backupRequest);
+		const publishResult = await this.eventBus.publish('received-backup-requests', backupRequest);
 		if (publishResult.isErr()) {
 			return publishResult;
 		}
