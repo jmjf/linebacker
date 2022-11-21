@@ -35,6 +35,9 @@ import { AcceptedBackupRequestConsumer } from './backup-request/adapter/BullMqIm
 import { ReceiveBackupRequestUseCase } from './backup-request/use-cases/receive-backup-request/ReceiveBackupRequestUseCase';
 
 import { ReceivedBackupRequestConsumer } from './backup-request/adapter/BullMqImpl/ReceivedBackupRequestConsumer';
+import { MockBackupJobServiceAdapter } from './backup-job/adapter/impl/MockBackupJobServiceAdapter';
+import { BackupProviderTypeValues } from './backup-job/domain/BackupProviderType';
+import { CheckRequestAllowedUseCase } from './backup-request/use-cases/check-request-allowed-2/CheckRequestAllowedUseCase';
 
 const moduleName = path.basename(module.filename);
 
@@ -46,7 +49,17 @@ const buildWorker = (circuitBreakers: ICircuitBreakers) => {
 	const acceptedConsumer = new AcceptedBackupRequestConsumer(rcvUseCase, 5);
 	const acceptedConsumerConsume = acceptedConsumer.consume.bind(acceptedConsumer);
 
-	const receivedConsumer = new ReceivedBackupRequestConsumer(5);
+	const jobSvc = new MockBackupJobServiceAdapter({
+		getByIdResult: {
+			storagePathName: 'my/storage/path',
+			backupProviderCode: BackupProviderTypeValues.CloudA,
+			daysToKeep: 3650,
+			isActive: true,
+			holdFlag: false,
+		},
+	});
+	const checkUseCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
+	const receivedConsumer = new ReceivedBackupRequestConsumer(checkUseCase, 5);
 	const receivedConsumerConsume = receivedConsumer.consume.bind(receivedConsumer);
 
 	return new bullMq.Worker(

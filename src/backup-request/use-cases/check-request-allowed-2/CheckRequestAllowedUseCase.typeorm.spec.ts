@@ -1,0 +1,254 @@
+jest.mock('bullmq');
+import * as bullMq from 'bullmq';
+const mockBullMq = jest.mocked(bullMq);
+
+import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
+import { ok } from '../../../common/core/Result';
+import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
+
+import { IBackupJobProps } from '../../../backup-job/domain/BackupJob';
+import { BackupProviderTypeValues } from '../../../backup-job/domain/BackupProviderType';
+import { MockBackupJobServiceAdapter } from '../../../backup-job/adapter/impl/MockBackupJobServiceAdapter';
+
+import { BackupRequestStatusType, BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
+import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
+
+import { CheckRequestAllowedDTO } from './CheckRequestAllowedDTO';
+import { CheckRequestAllowedUseCase } from './CheckRequestAllowedUseCase';
+
+import {
+	MockTypeormContext,
+	TypeormContext,
+	createMockTypeormContext,
+} from '../../../infrastructure/typeorm/typeormContext';
+import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
+import { TypeormBackupRequest } from '../../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
+import { Dictionary } from '../../../common/utils/utils';
+import { BmqBackupRequestEventBus } from '../../adapter/BullMqImpl/BmqBackupRequestEventBus';
+import { bullMqConnection } from '../../../infrastructure/bullmq/bullMqInfra';
+
+describe('CheckRequestAllowedUseCase - typeorm', () => {
+	let mockTypeormCtx: MockTypeormContext;
+	let typeormCtx: TypeormContext;
+	let circuitBreaker: CircuitBreakerWithRetry;
+	let abortController: AbortController;
+
+	beforeEach(() => {
+		mockTypeormCtx = createMockTypeormContext();
+		typeormCtx = mockTypeormCtx as unknown as TypeormContext;
+
+		mockBullMq.Queue.mockClear();
+
+		const isAlive = () => {
+			return Promise.resolve(ok(true));
+		};
+		abortController = new AbortController();
+		circuitBreaker = new CircuitBreakerWithRetry({
+			isAlive,
+			abortSignal: abortController.signal,
+			serviceName: 'TypeORM',
+			successToCloseCount: 1,
+			failureToOpenCount: 100,
+			halfOpenRetryDelayMs: 5,
+			closedRetryDelayMs: 5,
+			openAliveCheckDelayMs: 5,
+		});
+	});
+
+	const baseDto: CheckRequestAllowedDTO = {
+		backupRequestId: 'checkAllowedRequestId',
+	};
+
+	const backupJobProps: IBackupJobProps = {
+		storagePathName: 'my/storage/path',
+		backupProviderCode: BackupProviderTypeValues.CloudA,
+		daysToKeep: 3650,
+		isActive: true,
+		holdFlag: false,
+	};
+
+	const dbBackupRequest: TypeormBackupRequest = {
+		backupRequestId: 'dbBackupRequestId',
+		backupJobId: 'dbBackupJobId',
+		dataDate: new Date(),
+		preparedDataPathName: 'path',
+		getOnStartFlag: true,
+		transportTypeCode: RequestTransportTypeValues.HTTP,
+		statusTypeCode: BackupRequestStatusTypeValues.Received,
+		receivedTimestamp: new Date(),
+		requesterId: 'dbRequesterId',
+		backupProviderCode: null,
+		storagePathName: null,
+		checkedTimestamp: null,
+		sentToInterfaceTimestamp: null,
+		replyTimestamp: null,
+		replyMessageText: null,
+	};
+
+	test('when backup request is not found by id, it returns failure', async () => {
+		// Arrange
+		// findOne() returns null if not found
+		mockTypeormCtx.manager.findOne.mockResolvedValueOnce(null);
+
+		const repo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+		const jobSvc = new MockBackupJobServiceAdapter({
+			getByIdError: new AdapterErrors.NotFoundError(
+				`{ msg: 'backupJobId not found for backupRequestId ${baseDto.backupRequestId}'`
+			),
+		});
+		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+
+		const useCase = new CheckRequestAllowedUseCase(repo, jobSvc, bmqBus);
+		const dto = { ...baseDto };
+
+		// Act
+		const result = await useCase.execute(dto);
+
+		// Assert
+		expect(result.isErr()).toBe(true);
+		if (result.isErr()) {
+			// type guard
+			expect(result.error.name).toBe('NotFoundError');
+			expect((result.error.errorData as any).backupRequestId).toMatch(dto.backupRequestId);
+		}
+	});
+
+	test('when backup job is not found, it returns failure', async () => {
+		// Arrange
+		mockTypeormCtx.manager.findOne.mockResolvedValueOnce(dbBackupRequest);
+
+		const repo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+		const jobSvc = new MockBackupJobServiceAdapter({
+			getByIdError: new AdapterErrors.BackupJobServiceError(`{msg: 'backupJobId not found' }`),
+		});
+		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+
+		const useCase = new CheckRequestAllowedUseCase(repo, jobSvc, bmqBus);
+		const dto = { ...baseDto };
+
+		// Act
+		const result = await useCase.execute(dto);
+
+		// Assert
+		expect(result.isErr()).toBe(true);
+		if (result.isErr()) {
+			// type guard
+			expect(result.error.name).toBe('BackupJobServiceError');
+			// future test message too
+		}
+	});
+
+	test('when request status type is not post-received value and not Received, it returns failure', async () => {
+		// Arrange
+		mockTypeormCtx.manager.findOne.mockResolvedValueOnce({
+			...dbBackupRequest,
+			statusTypeCode: 'INVALID',
+		});
+
+		const repo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+
+		const jobSvc = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });
+		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+
+		const useCase = new CheckRequestAllowedUseCase(repo, jobSvc, bmqBus);
+		const dto = { ...baseDto };
+
+		// Act
+		const result = await useCase.execute(dto);
+
+		// Assert
+		expect(result.isErr()).toBe(true);
+		if (result.isErr()) {
+			// type guard
+			expect(result.error.name).toBe('BackupRequestStatusError');
+			expect((result.error.errorData as any).statusTypeCode).toMatch('INVALID');
+		}
+	});
+
+	// // test.each(statusTestCases) runs the same test with different data (defined in statusTestCases)
+	// I had to coerce several types to get the test to behave, but now this one block of code tests all the cases
+	const statusTestCases = [
+		{
+			status: BackupRequestStatusTypeValues.Allowed,
+			timestamp: 'checkedTimestamp',
+		},
+		{
+			status: BackupRequestStatusTypeValues.NotAllowed,
+			timestamp: 'checkedTimestamp',
+		},
+		{
+			status: BackupRequestStatusTypeValues.Sent,
+			timestamp: 'sentToInterfaceTimestamp',
+		},
+		{
+			status: BackupRequestStatusTypeValues.Succeeded,
+			timestamp: 'replyTimestamp',
+		},
+		{ status: BackupRequestStatusTypeValues.Failed, timestamp: 'replyTimestamp' },
+	];
+	test.each(statusTestCases)(
+		'when backup request is in $status status, it returns an err (must be Received)',
+		async ({ status, timestamp }) => {
+			// Arrange
+			// timestamp that matters is defined in inputs, so need to add it after setting up base props
+			const resultBackupRequest: Dictionary = {
+				...dbBackupRequest,
+				statusTypeCode: status as BackupRequestStatusType,
+			};
+			resultBackupRequest[timestamp] = new Date();
+
+			mockTypeormCtx.manager.findOne.mockResolvedValueOnce(resultBackupRequest);
+
+			const repo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+			const saveSpy = jest.spyOn(repo, 'save');
+
+			const jobSvc = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });
+			const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+			const publishSpy = jest.spyOn(bmqBus, 'publish');
+
+			const useCase = new CheckRequestAllowedUseCase(repo, jobSvc, bmqBus);
+			const dto = { ...baseDto };
+
+			// Act
+			const result = await useCase.execute(dto);
+
+			// Assert
+			expect(result.isErr()).toBe(true);
+			expect(saveSpy).not.toHaveBeenCalled();
+			expect(publishSpy).not.toHaveBeenCalled();
+			if (result.isErr()) {
+				// type guard
+				expect(result.error.name).toBe('BackupRequestStatusError');
+				expect((result.error.errorData as any).statusTypeCode).toContain(status);
+			}
+		}
+	);
+
+	test('when backup job for request meets allowed rules, it returns a BackupRequest in Allowed status', async () => {
+		// Arrange
+		mockTypeormCtx.manager.findOne.mockResolvedValueOnce(dbBackupRequest);
+		mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackupRequest);
+
+		const repo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+
+		const jobSvc = new MockBackupJobServiceAdapter({
+			getByIdResult: { ...backupJobProps },
+		});
+		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+
+		const useCase = new CheckRequestAllowedUseCase(repo, jobSvc, bmqBus);
+		const dto = { ...baseDto };
+
+		// Act
+		const startTimestamp = new Date();
+		const result = await useCase.execute(dto);
+
+		// Assert
+		expect(result.isOk()).toBe(true);
+		if (result.isOk()) {
+			// type guard makes the rest easier
+			expect(result.value.statusTypeCode).toBe(BackupRequestStatusTypeValues.Allowed);
+			expect(result.value.checkedTimestamp.valueOf()).toBeGreaterThanOrEqual(startTimestamp.valueOf());
+		}
+	});
+});

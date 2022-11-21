@@ -66,6 +66,7 @@ describe('AcceptedBackupRequestConsumer - BullMq', () => {
 			data: {
 				connectFailureCount: 0,
 				retryCount: 0,
+				eventName: 'BackupRequestAccepted',
 				domainEvent: { ...queueRequest },
 			},
 			attemptsMade: 0,
@@ -100,6 +101,7 @@ describe('AcceptedBackupRequestConsumer - BullMq', () => {
 			data: {
 				connectFailureCount: 0,
 				retryCount: 0,
+				eventName: 'BackupRequestAccepted',
 				domainEvent: {
 					...queueRequest,
 					transportTypeCode: 'INVALID', // cause use case to fail
@@ -133,6 +135,7 @@ describe('AcceptedBackupRequestConsumer - BullMq', () => {
 			data: {
 				connectFailureCount: 0,
 				retryCount: 0,
+				eventName: 'BackupRequestAccepted',
 				domainEvent: { ...queueRequest },
 			},
 			attemptsMade: 0,
@@ -167,6 +170,7 @@ describe('AcceptedBackupRequestConsumer - BullMq', () => {
 			data: {
 				connectFailureCount: 0,
 				retryCount: 0,
+				eventName: 'BackupRequestAccepted',
 				domainEvent: { ...queueRequest },
 			},
 			attemptsMade: 0,

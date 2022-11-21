@@ -1,45 +1,20 @@
 import { Job, UnrecoverableError } from 'bullmq';
+import path from 'node:path';
 
 import { logger } from '../../../infrastructure/logging/pinoLogger';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 
-// import { ReceiveBackupRequestUseCase } from '../../use-cases/receive-backup-request/ReceiveBackupRequestUseCase';
+import { CheckRequestAllowedUseCase } from '../../use-cases/check-request-allowed-2/CheckRequestAllowedUseCase';
 import { IEventBusConsumer } from '../IEventBusConsumer';
-import path from 'node:path';
-
-// begin test use case
-import { UseCase } from '../../../common/application/UseCase';
-import { ok, Result } from '../../../common/core/Result';
-import { BaseError } from '../../../common/core/BaseError';
-
-interface TestDTO {
-	backupRequestId: string;
-}
-
-class TestUseCase implements UseCase<TestDTO, Promise<Result<string, BaseError>>> {
-	constructor() {
-		//
-	}
-
-	async execute(dto: TestDTO): Promise<Result<string, BaseError>> {
-		logger.info(dto, 'Received -- test use case');
-		return ok('test');
-	}
-}
-
-// end test use case
 
 const moduleName = path.basename(module.filename);
 export class ReceivedBackupRequestConsumer implements IEventBusConsumer {
-	private useCase: TestUseCase;
+	private useCase: CheckRequestAllowedUseCase;
 	private maxTrueFailures: number;
 
-	constructor(
-		//receiveBackupRequestUseCase: ReceiveBackupRequestUseCase,
-		maxTrueFailures: number
-	) {
+	constructor(checkRequestAllowedUseCase: CheckRequestAllowedUseCase, maxTrueFailures: number) {
 		// this.useCase = receiveBackupRequestUseCase;
-		this.useCase = new TestUseCase();
+		this.useCase = checkRequestAllowedUseCase;
 		this.maxTrueFailures = maxTrueFailures;
 	}
 
