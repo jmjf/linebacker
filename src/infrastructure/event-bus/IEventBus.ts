@@ -1,6 +1,7 @@
 export interface IEventBusEventData {
 	connectFailureCount: number;
 	retryCount: number;
+	eventName: string;
 }
 
 export interface IEventBusEvent {

@@ -26,10 +26,11 @@ export class BackupRequestAccepted implements IEventBusEvent {
 
 	constructor(backupRequest: BackupRequest) {
 		this._eventTimestamp = new Date();
-		this._topicName = 'backup-request-accepted';
+		this._topicName = 'linebacker';
 		this._eventData = {
 			connectFailureCount: 0,
 			retryCount: 0,
+			eventName: this.constructor.name,
 			domainEvent: {
 				backupRequestId: backupRequest.backupRequestId.value,
 				backupJobId: backupRequest.backupJobId.value,
