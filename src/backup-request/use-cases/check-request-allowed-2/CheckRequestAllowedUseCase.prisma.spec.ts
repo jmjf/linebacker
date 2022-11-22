@@ -1,3 +1,7 @@
+jest.mock('bullmq');
+import * as bullMq from 'bullmq';
+const mockBullMq = jest.mocked(bullMq);
+
 import { IBackupJobProps } from '../../../backup-job/domain/BackupJob';
 import { BackupProviderTypeValues } from '../../../backup-job/domain/BackupProviderType';
 import { MockBackupJobServiceAdapter } from '../../../backup-job/adapter/impl/MockBackupJobServiceAdapter';
@@ -20,6 +24,8 @@ import { PrismaBackupRequest } from '@prisma/client';
 import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 import { Dictionary } from '../../../common/utils/utils';
+import { BmqBackupRequestEventBus } from '../../adapter/BullMqImpl/BmqBackupRequestEventBus';
+import { bullMqConnection } from '../../../infrastructure/bullmq/bullMqInfra';
 
 describe('CheckRequestAllowedUseCase - Prisma', () => {
 	let mockPrismaCtx: MockPrismaContext;
@@ -30,6 +36,8 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 	beforeEach(() => {
 		mockPrismaCtx = createMockPrismaContext();
 		prismaCtx = mockPrismaCtx as unknown as PrismaContext;
+
+		mockBullMq.Queue.mockClear();
 
 		const isAlive = () => {
 			return Promise.resolve(ok(true));
@@ -82,50 +90,27 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		replyMessageText: null,
 	};
 
-	test('when backup job for request meets allowed rules, it returns a BackupRequest in Allowed status', async () => {
-		// Arrange
-
-		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
-		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(dbBackupRequest);
-
-		const repo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
-
-		const adapter = new MockBackupJobServiceAdapter({
-			getByIdResult: { ...backupJobProps },
-		});
-
-		const useCase = new CheckRequestAllowedUseCase(repo, adapter);
-		const dto = { ...baseDto };
-
-		// Act
-		const startTimestamp = new Date();
-		const result = await useCase.execute(dto);
-
-		// Assert
-		expect(result.isOk()).toBe(true);
-		if (result.isOk()) {
-			// type guard makes the rest easier
-			expect(result.value.statusTypeCode).toBe(BackupRequestStatusTypeValues.Allowed);
-			expect(result.value.checkedTimestamp.valueOf()).toBeGreaterThanOrEqual(startTimestamp.valueOf());
-		}
-	});
-
-	test('when backup request is not found by id, it returns failure', async () => {
+	test('when backup request is not found by id, it returns a NotFoundError', async () => {
 		// Arrange
 
 		// findUnique() returns null if not found
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(null as unknown as PrismaBackupRequest);
 
-		const repo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
+		const brRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
+		const saveSpy = jest.spyOn(brRepo, 'save');
 
-		const adapter = new MockBackupJobServiceAdapter({
+		const jobSvc = new MockBackupJobServiceAdapter({
 			getByIdError: new AdapterErrors.NotFoundError(
 				`{ msg: 'backupJobId not found for backupRequestId ${baseDto.backupRequestId}'`
 			),
 		});
 
-		const useCase = new CheckRequestAllowedUseCase(repo, adapter);
+		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
+		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const publishSpy = jest.spyOn(bmqBus, 'publish');
+
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
 		const dto = { ...baseDto };
 
 		// Act
@@ -133,6 +118,8 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 
 		// Assert
 		expect(result.isErr()).toBe(true);
+		expect(saveSpy).not.toHaveBeenCalled();
+		expect(publishSpy).not.toHaveBeenCalled();
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('NotFoundError');
@@ -140,19 +127,24 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		}
 	});
 
-	test('when backup job is not found, it returns failure', async () => {
+	test('when backup job is not found, it returns a BackupJobServiceError', async () => {
 		// Arrange
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(dbBackupRequest);
 
-		const repo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
+		const brRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
+		const saveSpy = jest.spyOn(brRepo, 'save');
 
-		const adapter = new MockBackupJobServiceAdapter({
+		const jobSvc = new MockBackupJobServiceAdapter({
 			getByIdError: new AdapterErrors.BackupJobServiceError(`{msg: 'backupJobId not found' }`),
 		});
 
-		const useCase = new CheckRequestAllowedUseCase(repo, adapter);
+		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
+		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const publishSpy = jest.spyOn(bmqBus, 'publish');
+
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
 		const dto = { ...baseDto };
 
 		// Act
@@ -160,6 +152,8 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 
 		// Assert
 		expect(result.isErr()).toBe(true);
+		expect(saveSpy).not.toHaveBeenCalled();
+		expect(publishSpy).not.toHaveBeenCalled();
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('BackupJobServiceError');
@@ -167,7 +161,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		}
 	});
 
-	test('when request status type is not post-received value and not Received, it returns failure', async () => {
+	test('when request status type is invalid, it returns a BackupRequestStatusError', async () => {
 		// Arrange
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
@@ -176,11 +170,16 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 			statusTypeCode: 'INVALID',
 		});
 
-		const repo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
+		const brRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
+		const saveSpy = jest.spyOn(brRepo, 'save');
 
-		const adapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });
+		const jobSvc = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });
 
-		const useCase = new CheckRequestAllowedUseCase(repo, adapter);
+		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
+		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const publishSpy = jest.spyOn(bmqBus, 'publish');
+
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
 		const dto = { ...baseDto };
 
 		// Act
@@ -188,20 +187,18 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 
 		// Assert
 		expect(result.isErr()).toBe(true);
+		expect(saveSpy).not.toHaveBeenCalled();
+		expect(publishSpy).not.toHaveBeenCalled();
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('BackupRequestStatusError');
-			expect(result.error.message).toMatch('in Received');
+			expect((result.error.errorData as any).statusTypeCode).toMatch('INVALID');
 		}
 	});
 
 	// test.each(statusTestCases) runs the same test with different data (defined in statusTestCases)
 	// I had to coerce several types to get the test to behave, but now this one block of code tests all the cases
 	const statusTestCases = [
-		{
-			status: BackupRequestStatusTypeValues.Allowed,
-			timestamp: 'checkedTimestamp',
-		},
 		{
 			status: BackupRequestStatusTypeValues.NotAllowed,
 			timestamp: 'checkedTimestamp',
@@ -221,7 +218,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		async ({ status, timestamp }) => {
 			// Arrange
 			// timestamp that matters is defined in inputs, so need to add it after setting up base props
-			const resultBackupRequest: Dictionary = {
+			const resultBackupRequest: Record<string, any> = {
 				...dbBackupRequest,
 				statusTypeCode: status as BackupRequestStatusType,
 			};
@@ -232,12 +229,16 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 				resultBackupRequest as PrismaBackupRequest
 			);
 
-			const repo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
-			const saveSpy = jest.spyOn(repo, 'save');
+			const brRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
+			const saveSpy = jest.spyOn(brRepo, 'save');
 
-			const adapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });
+			const jobSvc = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });
 
-			const useCase = new CheckRequestAllowedUseCase(repo, adapter);
+			mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
+			const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+			const publishSpy = jest.spyOn(bmqBus, 'publish');
+
+			const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
 			const dto = { ...baseDto };
 
 			// Act
@@ -245,7 +246,8 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 
 			// Assert
 			expect(result.isErr()).toBe(true);
-			expect(saveSpy).toHaveBeenCalledTimes(0);
+			expect(saveSpy).not.toHaveBeenCalled();
+			expect(publishSpy).not.toHaveBeenCalled();
 			if (result.isErr()) {
 				// type guard
 				expect(result.error.name).toBe('BackupRequestStatusError');
@@ -253,4 +255,111 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 			}
 		}
 	);
+
+	test('when event bus publish fails, it saves and returns an EventBusError', async () => {
+		// Arrange
+
+		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
+		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(dbBackupRequest);
+		mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockResolvedValue({} as any);
+
+		const brRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
+		const saveSpy = jest.spyOn(brRepo, 'save');
+
+		const jobSvc = new MockBackupJobServiceAdapter({
+			getByIdResult: { ...backupJobProps },
+		});
+
+		mockBullMq.Queue.prototype.add.mockRejectedValue(new AdapterErrors.EventBusError('simulated event bus error'));
+		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const bmqPublishSpy = jest.spyOn(bmqBus, 'publish');
+
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
+		const dto = { ...baseDto };
+
+		// Act
+		const result = await useCase.execute(dto);
+
+		// Assert
+		expect(result.isErr()).toBe(true);
+		expect(saveSpy).toHaveBeenCalledTimes(1);
+		expect(bmqPublishSpy).toHaveBeenCalledTimes(1);
+		if (result.isErr()) {
+			// type guard makes the rest easier
+			expect(result.error.name).toBe('EventBusError');
+		}
+	});
+
+	test('when backup request is Received and meets allowed rules, it saves, publishes, and returns a BackupRequest in Allowed status', async () => {
+		// Arrange
+
+		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
+		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(dbBackupRequest);
+		mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockResolvedValue({} as any);
+
+		const brRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
+		const saveSpy = jest.spyOn(brRepo, 'save');
+
+		const jobSvc = new MockBackupJobServiceAdapter({
+			getByIdResult: { ...backupJobProps },
+		});
+
+		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
+		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const bmqPublishSpy = jest.spyOn(bmqBus, 'publish');
+
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
+		const dto = { ...baseDto };
+
+		// Act
+		const startTimestamp = new Date();
+		const result = await useCase.execute(dto);
+
+		// Assert
+		expect(result.isOk()).toBe(true);
+		expect(saveSpy).toHaveBeenCalledTimes(1);
+		expect(bmqPublishSpy).toHaveBeenCalledTimes(1);
+		if (result.isOk()) {
+			// type guard makes the rest easier
+			expect(result.value.statusTypeCode).toBe(BackupRequestStatusTypeValues.Allowed);
+			expect(result.value.checkedTimestamp.valueOf()).toBeGreaterThanOrEqual(startTimestamp.valueOf());
+		}
+	});
+
+	test('when backup job for request is Allowed, it publishes and returns a BackupRequest in Allowed status, does not save', async () => {
+		// Arrange
+
+		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
+		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue({
+			...dbBackupRequest,
+			statusTypeCode: BackupRequestStatusTypeValues.Allowed,
+			checkedTimestamp: new Date(),
+		});
+		mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockResolvedValue({} as any);
+
+		const brRepo = new PrismaBackupRequestRepo(prismaCtx, circuitBreaker);
+		const saveSpy = jest.spyOn(brRepo, 'save');
+
+		const jobSvc = new MockBackupJobServiceAdapter({
+			getByIdResult: { ...backupJobProps },
+		});
+
+		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
+		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const publishSpy = jest.spyOn(bmqBus, 'publish');
+
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
+		const dto = { ...baseDto };
+
+		// Act
+		const result = await useCase.execute(dto);
+
+		// Assert
+		expect(result.isOk()).toBe(true);
+		expect(saveSpy).not.toHaveBeenCalled();
+		expect(publishSpy).toHaveBeenCalledTimes(1);
+		if (result.isOk()) {
+			expect(result.value.backupRequestId).toBeTruthy();
+		}
+	});
 });

@@ -90,15 +90,20 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		// findOne() returns null if not found
 		mockTypeormCtx.manager.findOne.mockResolvedValueOnce(null);
 
-		const repo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+		const saveSpy = jest.spyOn(brRepo, 'save');
+
 		const jobSvc = new MockBackupJobServiceAdapter({
 			getByIdError: new AdapterErrors.NotFoundError(
 				`{ msg: 'backupJobId not found for backupRequestId ${baseDto.backupRequestId}'`
 			),
 		});
-		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
 
-		const useCase = new CheckRequestAllowedUseCase(repo, jobSvc, bmqBus);
+		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
+		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const publishSpy = jest.spyOn(bmqBus, 'publish');
+
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
 		const dto = { ...baseDto };
 
 		// Act
@@ -106,6 +111,8 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 
 		// Assert
 		expect(result.isErr()).toBe(true);
+		expect(saveSpy).not.toHaveBeenCalled();
+		expect(publishSpy).not.toHaveBeenCalled();
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('NotFoundError');
@@ -117,13 +124,18 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		// Arrange
 		mockTypeormCtx.manager.findOne.mockResolvedValueOnce(dbBackupRequest);
 
-		const repo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+		const saveSpy = jest.spyOn(brRepo, 'save');
+
 		const jobSvc = new MockBackupJobServiceAdapter({
 			getByIdError: new AdapterErrors.BackupJobServiceError(`{msg: 'backupJobId not found' }`),
 		});
-		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
 
-		const useCase = new CheckRequestAllowedUseCase(repo, jobSvc, bmqBus);
+		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
+		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const publishSpy = jest.spyOn(bmqBus, 'publish');
+
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
 		const dto = { ...baseDto };
 
 		// Act
@@ -131,6 +143,8 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 
 		// Assert
 		expect(result.isErr()).toBe(true);
+		expect(saveSpy).not.toHaveBeenCalled();
+		expect(publishSpy).not.toHaveBeenCalled();
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('BackupJobServiceError');
@@ -138,19 +152,23 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		}
 	});
 
-	test('when request status type is not post-received value and not Received, it returns failure', async () => {
+	test('when request status type is invalid, it returns failure', async () => {
 		// Arrange
 		mockTypeormCtx.manager.findOne.mockResolvedValueOnce({
 			...dbBackupRequest,
 			statusTypeCode: 'INVALID',
 		});
 
-		const repo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		const jobSvc = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });
-		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
 
-		const useCase = new CheckRequestAllowedUseCase(repo, jobSvc, bmqBus);
+		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
+		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const publishSpy = jest.spyOn(bmqBus, 'publish');
+
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
 		const dto = { ...baseDto };
 
 		// Act
@@ -158,6 +176,8 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 
 		// Assert
 		expect(result.isErr()).toBe(true);
+		expect(saveSpy).not.toHaveBeenCalled();
+		expect(publishSpy).not.toHaveBeenCalled();
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('BackupRequestStatusError');
@@ -168,10 +188,6 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 	// // test.each(statusTestCases) runs the same test with different data (defined in statusTestCases)
 	// I had to coerce several types to get the test to behave, but now this one block of code tests all the cases
 	const statusTestCases = [
-		{
-			status: BackupRequestStatusTypeValues.Allowed,
-			timestamp: 'checkedTimestamp',
-		},
 		{
 			status: BackupRequestStatusTypeValues.NotAllowed,
 			timestamp: 'checkedTimestamp',
@@ -191,7 +207,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		async ({ status, timestamp }) => {
 			// Arrange
 			// timestamp that matters is defined in inputs, so need to add it after setting up base props
-			const resultBackupRequest: Dictionary = {
+			const resultBackupRequest: Record<string, any> = {
 				...dbBackupRequest,
 				statusTypeCode: status as BackupRequestStatusType,
 			};
@@ -199,14 +215,16 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 
 			mockTypeormCtx.manager.findOne.mockResolvedValueOnce(resultBackupRequest);
 
-			const repo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
-			const saveSpy = jest.spyOn(repo, 'save');
+			const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+			const saveSpy = jest.spyOn(brRepo, 'save');
 
 			const jobSvc = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });
+
+			mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
 			const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
 			const publishSpy = jest.spyOn(bmqBus, 'publish');
 
-			const useCase = new CheckRequestAllowedUseCase(repo, jobSvc, bmqBus);
+			const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
 			const dto = { ...baseDto };
 
 			// Act
@@ -224,19 +242,55 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		}
 	);
 
-	test('when backup job for request meets allowed rules, it returns a BackupRequest in Allowed status', async () => {
+	test('when event bus publish fails, it saves and returns an EventBusError', async () => {
 		// Arrange
 		mockTypeormCtx.manager.findOne.mockResolvedValueOnce(dbBackupRequest);
 		mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackupRequest);
 
-		const repo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+		const saveSpy = jest.spyOn(brRepo, 'save');
 
 		const jobSvc = new MockBackupJobServiceAdapter({
 			getByIdResult: { ...backupJobProps },
 		});
-		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
 
-		const useCase = new CheckRequestAllowedUseCase(repo, jobSvc, bmqBus);
+		mockBullMq.Queue.prototype.add.mockRejectedValue(new AdapterErrors.EventBusError('simulated event bus error'));
+		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const bmqPublishSpy = jest.spyOn(bmqBus, 'publish');
+
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
+		const dto = { ...baseDto };
+
+		// Act
+		const result = await useCase.execute(dto);
+
+		// Assert
+		expect(result.isErr()).toBe(true);
+		expect(saveSpy).toHaveBeenCalledTimes(1);
+		expect(bmqPublishSpy).toHaveBeenCalledTimes(1);
+		if (result.isErr()) {
+			// type guard makes the rest easier
+			expect(result.error.name).toBe('EventBusError');
+		}
+	});
+
+	test('when backup request is Received and meets allowed rules, it saves, publishes, and returns a BackupRequest in Allowed status', async () => {
+		// Arrange
+		mockTypeormCtx.manager.findOne.mockResolvedValueOnce(dbBackupRequest);
+		mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackupRequest);
+
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+		const saveSpy = jest.spyOn(brRepo, 'save');
+
+		const jobSvc = new MockBackupJobServiceAdapter({
+			getByIdResult: { ...backupJobProps },
+		});
+
+		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
+		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const bmqPublishSpy = jest.spyOn(bmqBus, 'publish');
+
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
 		const dto = { ...baseDto };
 
 		// Act
@@ -245,10 +299,47 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 
 		// Assert
 		expect(result.isOk()).toBe(true);
+		expect(saveSpy).toHaveBeenCalledTimes(1);
+		expect(bmqPublishSpy).toHaveBeenCalledTimes(1);
 		if (result.isOk()) {
 			// type guard makes the rest easier
 			expect(result.value.statusTypeCode).toBe(BackupRequestStatusTypeValues.Allowed);
 			expect(result.value.checkedTimestamp.valueOf()).toBeGreaterThanOrEqual(startTimestamp.valueOf());
+		}
+	});
+
+	test('when backup job for request is Allowed, it publishes and returns a BackupRequest in Allowed status, does not save', async () => {
+		// Arrange
+		mockTypeormCtx.manager.findOne.mockResolvedValueOnce({
+			...dbBackupRequest,
+			statusTypeCode: BackupRequestStatusTypeValues.Allowed,
+			checkedTimestamp: new Date(),
+		});
+		mockTypeormCtx.manager.save.mockResolvedValueOnce({} as TypeormBackupRequest);
+
+		const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+		const saveSpy = jest.spyOn(brRepo, 'save');
+
+		const jobSvc = new MockBackupJobServiceAdapter({
+			getByIdResult: { ...backupJobProps },
+		});
+
+		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
+		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const publishSpy = jest.spyOn(bmqBus, 'publish');
+
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
+		const dto = { ...baseDto };
+
+		// Act
+		const result = await useCase.execute(dto);
+
+		// Assert
+		expect(result.isOk()).toBe(true);
+		expect(saveSpy).not.toHaveBeenCalled();
+		expect(publishSpy).toHaveBeenCalledTimes(1);
+		if (result.isOk()) {
+			expect(result.value.backupRequestId).toBeTruthy();
 		}
 	});
 });
