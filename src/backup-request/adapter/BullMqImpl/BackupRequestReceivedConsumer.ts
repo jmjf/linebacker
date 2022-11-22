@@ -8,7 +8,8 @@ import { CheckRequestAllowedUseCase } from '../../use-cases/check-request-allowe
 import { IEventBusConsumer } from '../IEventBusConsumer';
 
 const moduleName = path.basename(module.filename);
-export class ReceivedBackupRequestConsumer implements IEventBusConsumer {
+
+export class BackupRequestReceivedConsumer implements IEventBusConsumer {
 	private useCase: CheckRequestAllowedUseCase;
 	private maxTrueFailures: number;
 

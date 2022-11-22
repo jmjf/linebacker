@@ -2,7 +2,7 @@ jest.mock('bullmq');
 import * as bullMq from 'bullmq';
 const mockBullMq = jest.mocked(bullMq);
 
-import { ReceivedBackupRequestConsumer } from './ReceivedBackupRequestConsumer';
+import { BackupRequestReceivedConsumer } from './BackupRequestReceivedConsumer';
 import { TypeormBackupRequestRepo } from '../impl/TypeormBackupRequestRepo';
 import {
 	createMockTypeormContext,
@@ -93,7 +93,7 @@ describe('BackupRequestReceivedConsumer - BullMq', () => {
 			},
 		} as unknown as bullMq.Job;
 
-		const consumer = new ReceivedBackupRequestConsumer(useCase, 5);
+		const consumer = new BackupRequestReceivedConsumer(useCase, 5);
 
 		try {
 			const result = await consumer.consume(job);
@@ -133,7 +133,7 @@ describe('BackupRequestReceivedConsumer - BullMq', () => {
 			},
 		} as unknown as bullMq.Job;
 
-		const consumer = new ReceivedBackupRequestConsumer(useCase, 1);
+		const consumer = new BackupRequestReceivedConsumer(useCase, 1);
 
 		try {
 			const result = await consumer.consume(job);
@@ -167,7 +167,7 @@ describe('BackupRequestReceivedConsumer - BullMq', () => {
 			},
 		} as unknown as bullMq.Job;
 
-		const consumer = new ReceivedBackupRequestConsumer(useCase, 5);
+		const consumer = new BackupRequestReceivedConsumer(useCase, 5);
 
 		try {
 			const result = await consumer.consume(job);
@@ -204,7 +204,7 @@ describe('BackupRequestReceivedConsumer - BullMq', () => {
 			},
 		} as unknown as bullMq.Job;
 
-		const consumer = new ReceivedBackupRequestConsumer(useCase, 5);
+		const consumer = new BackupRequestReceivedConsumer(useCase, 5);
 
 		const result = await consumer.consume(job);
 

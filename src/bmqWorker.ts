@@ -7,7 +7,7 @@ logger.setBindings({
 	pm2InstanceId: process.env.PM2_INSTANCE_ID,
 });
 
-const logContext = { location: 'BullMQ Accepted Worker', function: 'pre-start' };
+const logContext = { location: 'BullMQ Worker', functionName: 'pre-start' };
 
 logger.info(logContext, 'getting environment');
 if (!process.env.APP_ENV) {
@@ -31,10 +31,10 @@ import { bullMqConnection } from './infrastructure/bullmq/bullMqInfra';
 import { BmqBackupRequestEventBus } from './backup-request/adapter/BullMqImpl/BmqBackupRequestEventBus';
 import { TypeormBackupRequestRepo } from './backup-request/adapter/impl/TypeormBackupRequestRepo';
 
-import { AcceptedBackupRequestConsumer } from './backup-request/adapter/BullMqImpl/AcceptedBackupRequestConsumer';
+import { BackupRequestAcceptedConsumer } from './backup-request/adapter/BullMqImpl/BackupRequestAcceptedConsumer';
 import { ReceiveBackupRequestUseCase } from './backup-request/use-cases/receive-backup-request/ReceiveBackupRequestUseCase';
 
-import { ReceivedBackupRequestConsumer } from './backup-request/adapter/BullMqImpl/ReceivedBackupRequestConsumer';
+import { BackupRequestReceivedConsumer } from './backup-request/adapter/BullMqImpl/BackupRequestReceivedConsumer';
 import { MockBackupJobServiceAdapter } from './backup-job/adapter/impl/MockBackupJobServiceAdapter';
 import { BackupProviderTypeValues } from './backup-job/domain/BackupProviderType';
 import { CheckRequestAllowedUseCase } from './backup-request/use-cases/check-request-allowed-2/CheckRequestAllowedUseCase';
@@ -46,7 +46,7 @@ const buildWorker = (circuitBreakers: ICircuitBreakers) => {
 	const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
 
 	const rcvUseCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
-	const acceptedConsumer = new AcceptedBackupRequestConsumer(rcvUseCase, 5);
+	const acceptedConsumer = new BackupRequestAcceptedConsumer(rcvUseCase, 5);
 	const acceptedConsumerConsume = acceptedConsumer.consume.bind(acceptedConsumer);
 
 	const jobSvc = new MockBackupJobServiceAdapter({
@@ -59,7 +59,7 @@ const buildWorker = (circuitBreakers: ICircuitBreakers) => {
 		},
 	});
 	const checkUseCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
-	const receivedConsumer = new ReceivedBackupRequestConsumer(checkUseCase, 5);
+	const receivedConsumer = new BackupRequestReceivedConsumer(checkUseCase, 5);
 	const receivedConsumerConsume = receivedConsumer.consume.bind(receivedConsumer);
 
 	return new bullMq.Worker(
@@ -75,8 +75,9 @@ const buildWorker = (circuitBreakers: ICircuitBreakers) => {
 				default:
 					logger.error(
 						{ jobName: job.name, jobData: job.data, moduleName, functionName: 'workerProcessor' },
-						'Unknown event'
+						'Unknown event name'
 					);
+					// throwing fails the job, doesn't halt the worker
 					throw new Error('unknown event');
 			}
 		},
@@ -89,7 +90,8 @@ const buildWorker = (circuitBreakers: ICircuitBreakers) => {
 };
 
 const startWorker = async () => {
-	const logContext = { location: 'BullMQ Accepted Worker', function: 'startServer' };
+	const functionName = 'startWorker';
+	const logContext = { location: 'BullMQ Worker', functionName };
 
 	logger.info(logContext, 'initializing TypeORM data source');
 	await typeormDataSource.initialize();
@@ -101,8 +103,14 @@ const startWorker = async () => {
 	const worker = buildWorker(circuitBreakers);
 	await delay(10000);
 	logger.info('Starting worker');
-	worker.run();
-	logger.info('Worker running');
+	try {
+		worker.run();
+	} catch (e) {
+		logger.error({ error: e, moduleName, functionName }, `Caught error after worker.run()`);
+		appAbortController.abort();
+		await delay(5000);
+		process.exit(1);
+	}
 };
 
 startWorker();

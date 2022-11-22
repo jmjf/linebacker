@@ -8,7 +8,7 @@ import { IEventBusConsumer } from '../IEventBusConsumer';
 import path from 'node:path';
 
 const moduleName = path.basename(module.filename);
-export class AcceptedBackupRequestConsumer implements IEventBusConsumer {
+export class BackupRequestAcceptedConsumer implements IEventBusConsumer {
 	private useCase: ReceiveBackupRequestUseCase;
 	private maxTrueFailures: number;
 

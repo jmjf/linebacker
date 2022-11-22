@@ -2,7 +2,7 @@ jest.mock('bullmq');
 import * as bullMq from 'bullmq';
 const mockBullMq = jest.mocked(bullMq);
 
-import { AcceptedBackupRequestConsumer } from './AcceptedBackupRequestConsumer';
+import { BackupRequestAcceptedConsumer } from './BackupRequestAcceptedConsumer';
 import { TypeormBackupRequestRepo } from '../impl/TypeormBackupRequestRepo';
 import {
 	createMockTypeormContext,
@@ -17,7 +17,7 @@ import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusT
 import { BmqBackupRequestEventBus } from './BmqBackupRequestEventBus';
 import { bullMqConnection } from '../../../infrastructure/bullmq/bullMqInfra';
 
-describe('AcceptedBackupRequestConsumer - BullMq', () => {
+describe('BackupRequestAcceptedConsumer - BullMq', () => {
 	let mockTypeormCtx: MockTypeormContext;
 	let typeormCtx: TypeormContext;
 
@@ -75,7 +75,7 @@ describe('AcceptedBackupRequestConsumer - BullMq', () => {
 			},
 		} as unknown as bullMq.Job;
 
-		const consumer = new AcceptedBackupRequestConsumer(useCase, 5);
+		const consumer = new BackupRequestAcceptedConsumer(useCase, 5);
 
 		try {
 			const result = await consumer.consume(job);
@@ -113,7 +113,7 @@ describe('AcceptedBackupRequestConsumer - BullMq', () => {
 			},
 		} as unknown as bullMq.Job;
 
-		const consumer = new AcceptedBackupRequestConsumer(useCase, 1);
+		const consumer = new BackupRequestAcceptedConsumer(useCase, 1);
 
 		try {
 			const result = await consumer.consume(job);
@@ -144,7 +144,7 @@ describe('AcceptedBackupRequestConsumer - BullMq', () => {
 			},
 		} as unknown as bullMq.Job;
 
-		const consumer = new AcceptedBackupRequestConsumer(useCase, 5);
+		const consumer = new BackupRequestAcceptedConsumer(useCase, 5);
 
 		try {
 			const result = await consumer.consume(job);
@@ -179,7 +179,7 @@ describe('AcceptedBackupRequestConsumer - BullMq', () => {
 			},
 		} as unknown as bullMq.Job;
 
-		const consumer = new AcceptedBackupRequestConsumer(useCase, 5);
+		const consumer = new BackupRequestAcceptedConsumer(useCase, 5);
 
 		const result = await consumer.consume(job);
 
