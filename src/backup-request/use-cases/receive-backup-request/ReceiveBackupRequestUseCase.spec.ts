@@ -15,7 +15,7 @@ import { ReceiveBackupRequestDTO, ReceiveBackupRequestUseCase } from './ReceiveB
 import { RequestTransportType } from '../../domain/RequestTransportType';
 import { TypeormBackupRequest } from '../../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
 import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
-import { BmqBackupRequestEventBus } from '../../adapter/BullMqImpl/BmqBackupRequestEventBus';
+import { BmqEventBus } from '../../adapter/BullMqImpl/BmqEventBus';
 import { bullMqConnection } from '../../../infrastructure/bullmq/bullMqInfra';
 
 describe('ReceiveBackupRequestUseCase', () => {
@@ -60,7 +60,7 @@ describe('ReceiveBackupRequestUseCase', () => {
 			const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 			const brSaveSpy = jest.spyOn(brRepo, 'save');
 
-			const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+			const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 			const bmqAddSpy = jest.spyOn(bmqBus, 'publish');
 
 			const useCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
@@ -80,7 +80,7 @@ describe('ReceiveBackupRequestUseCase', () => {
 			const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 			const brSaveSpy = jest.spyOn(brRepo, 'save');
 
-			const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+			const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 			const bmqAddSpy = jest.spyOn(bmqBus, 'publish');
 
 			const useCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
@@ -106,7 +106,7 @@ describe('ReceiveBackupRequestUseCase', () => {
 			const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 			const brSaveSpy = jest.spyOn(brRepo, 'save');
 
-			const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+			const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 			const bmqAddSpy = jest.spyOn(bmqBus, 'publish');
 
 			const useCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
@@ -128,7 +128,7 @@ describe('ReceiveBackupRequestUseCase', () => {
 			const brSaveSpy = jest.spyOn(brRepo, 'save');
 
 			mockBullMq.Queue.prototype.add.mockRejectedValue(new Error('mock event bus error'));
-			const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+			const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 			const bmqAddSpy = jest.spyOn(bmqBus, 'publish');
 
 			const useCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
@@ -151,7 +151,7 @@ describe('ReceiveBackupRequestUseCase', () => {
 			const brSaveSpy = jest.spyOn(brRepo, 'save');
 
 			mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-			const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+			const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 			const bmqAddSpy = jest.spyOn(bmqBus, 'publish');
 
 			const useCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
@@ -177,7 +177,7 @@ describe('ReceiveBackupRequestUseCase', () => {
 			const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 			const brSaveSpy = jest.spyOn(brRepo, 'save');
 
-			const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+			const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 			const bmqAddSpy = jest.spyOn(bmqBus, 'publish');
 
 			const useCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
@@ -204,7 +204,7 @@ describe('ReceiveBackupRequestUseCase', () => {
 			const brSaveSpy = jest.spyOn(brRepo, 'save');
 
 			mockBullMq.Queue.prototype.add.mockRejectedValue(new Error('mock event bus error'));
-			const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+			const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 			const bmqAddSpy = jest.spyOn(bmqBus, 'publish');
 
 			const useCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
@@ -230,7 +230,7 @@ describe('ReceiveBackupRequestUseCase', () => {
 			const brSaveSpy = jest.spyOn(brRepo, 'save');
 
 			mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-			const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+			const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 			const bmqAddSpy = jest.spyOn(bmqBus, 'publish');
 
 			const useCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);

@@ -28,25 +28,27 @@ import { typeormCtx } from './infrastructure/typeorm/typeormContext';
 import { buildCircuitBreakers, ICircuitBreakers } from './infrastructure/typeorm/buildCircuitBreakers.typeorm';
 import { bullMqConnection } from './infrastructure/bullmq/bullMqInfra';
 
-import { BmqBackupRequestEventBus } from './backup-request/adapter/BullMqImpl/BmqBackupRequestEventBus';
+import { BmqEventBus } from './backup-request/adapter/BullMqImpl/BmqEventBus';
 import { TypeormBackupRequestRepo } from './backup-request/adapter/impl/TypeormBackupRequestRepo';
 
-import { BackupRequestAcceptedConsumer } from './backup-request/adapter/BullMqImpl/BackupRequestAcceptedConsumer';
-import { ReceiveBackupRequestUseCase } from './backup-request/use-cases/receive-backup-request/ReceiveBackupRequestUseCase';
+import { BmqConsumer } from './backup-request/adapter/BullMqImpl/BmqConsumer';
 
-import { BackupRequestReceivedConsumer } from './backup-request/adapter/BullMqImpl/BackupRequestReceivedConsumer';
 import { MockBackupJobServiceAdapter } from './backup-job/adapter/impl/MockBackupJobServiceAdapter';
 import { BackupProviderTypeValues } from './backup-job/domain/BackupProviderType';
+
+import { ReceiveBackupRequestUseCase } from './backup-request/use-cases/receive-backup-request/ReceiveBackupRequestUseCase';
 import { CheckRequestAllowedUseCase } from './backup-request/use-cases/check-request-allowed-2/CheckRequestAllowedUseCase';
+import { SendRequestToInterfaceUseCase } from './backup-request/use-cases/send-request-to-interface/SendRequestToInterfaceUseCase';
+import { AzureBackupInterfaceStoreAdapter } from './backup-request/adapter/impl/AzureBackupInterfaceStoreAdapter';
 
 const moduleName = path.basename(module.filename);
 
 const buildWorker = (circuitBreakers: ICircuitBreakers) => {
 	const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreakers.dbCircuitBreaker);
-	const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+	const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 
 	const rcvUseCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
-	const acceptedConsumer = new BackupRequestAcceptedConsumer(rcvUseCase, 5);
+	const acceptedConsumer = new BmqConsumer(rcvUseCase, 5);
 	const acceptedConsumerConsume = acceptedConsumer.consume.bind(acceptedConsumer);
 
 	const jobSvc = new MockBackupJobServiceAdapter({
@@ -58,9 +60,21 @@ const buildWorker = (circuitBreakers: ICircuitBreakers) => {
 			holdFlag: false,
 		},
 	});
+
 	const checkUseCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
-	const receivedConsumer = new BackupRequestReceivedConsumer(checkUseCase, 5);
+	const receivedConsumer = new BmqConsumer(checkUseCase, 5);
 	const receivedConsumerConsume = receivedConsumer.consume.bind(receivedConsumer);
+
+	const azureInterfaceAdapter = new AzureBackupInterfaceStoreAdapter(
+		'allowed-backup-requests',
+		circuitBreakers.azureQueueCircuitBreaker
+	);
+	const azureSendUseCase = new SendRequestToInterfaceUseCase({
+		backupRequestRepo: brRepo,
+		interfaceStoreAdapter: azureInterfaceAdapter,
+	});
+	const azureAllowedConsumer = new BmqConsumer(azureSendUseCase, 5);
+	const azureAllowedConsumerConsume = azureAllowedConsumer.consume.bind(azureAllowedConsumer);
 
 	return new bullMq.Worker(
 		'linebacker',
@@ -71,6 +85,9 @@ const buildWorker = (circuitBreakers: ICircuitBreakers) => {
 					break;
 				case 'BackupRequestReceived':
 					receivedConsumerConsume(job);
+					break;
+				case 'BackupRequestAllowed':
+					azureAllowedConsumerConsume(job);
 					break;
 				default:
 					logger.error(

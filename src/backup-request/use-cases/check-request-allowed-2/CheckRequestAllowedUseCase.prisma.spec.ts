@@ -24,7 +24,7 @@ import { PrismaBackupRequest } from '@prisma/client';
 import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 import { Dictionary } from '../../../common/utils/utils';
-import { BmqBackupRequestEventBus } from '../../adapter/BullMqImpl/BmqBackupRequestEventBus';
+import { BmqEventBus } from '../../adapter/BullMqImpl/BmqEventBus';
 import { bullMqConnection } from '../../../infrastructure/bullmq/bullMqInfra';
 
 describe('CheckRequestAllowedUseCase - Prisma', () => {
@@ -107,7 +107,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		});
 
 		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 		const publishSpy = jest.spyOn(bmqBus, 'publish');
 
 		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
@@ -141,7 +141,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		});
 
 		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 		const publishSpy = jest.spyOn(bmqBus, 'publish');
 
 		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
@@ -176,7 +176,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		const jobSvc = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });
 
 		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 		const publishSpy = jest.spyOn(bmqBus, 'publish');
 
 		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
@@ -235,7 +235,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 			const jobSvc = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });
 
 			mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-			const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+			const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 			const publishSpy = jest.spyOn(bmqBus, 'publish');
 
 			const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
@@ -271,7 +271,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		});
 
 		mockBullMq.Queue.prototype.add.mockRejectedValue(new AdapterErrors.EventBusError('simulated event bus error'));
-		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 		const bmqPublishSpy = jest.spyOn(bmqBus, 'publish');
 
 		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
@@ -305,7 +305,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		});
 
 		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 		const bmqPublishSpy = jest.spyOn(bmqBus, 'publish');
 
 		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
@@ -345,7 +345,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		});
 
 		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 		const publishSpy = jest.spyOn(bmqBus, 'publish');
 
 		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);

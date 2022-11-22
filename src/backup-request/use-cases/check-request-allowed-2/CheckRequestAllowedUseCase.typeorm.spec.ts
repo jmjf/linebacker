@@ -24,7 +24,7 @@ import {
 import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
 import { TypeormBackupRequest } from '../../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
 import { Dictionary } from '../../../common/utils/utils';
-import { BmqBackupRequestEventBus } from '../../adapter/BullMqImpl/BmqBackupRequestEventBus';
+import { BmqEventBus } from '../../adapter/BullMqImpl/BmqEventBus';
 import { bullMqConnection } from '../../../infrastructure/bullmq/bullMqInfra';
 
 describe('CheckRequestAllowedUseCase - typeorm', () => {
@@ -100,7 +100,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		});
 
 		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 		const publishSpy = jest.spyOn(bmqBus, 'publish');
 
 		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
@@ -132,7 +132,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		});
 
 		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 		const publishSpy = jest.spyOn(bmqBus, 'publish');
 
 		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
@@ -165,7 +165,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		const jobSvc = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });
 
 		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 		const publishSpy = jest.spyOn(bmqBus, 'publish');
 
 		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
@@ -221,7 +221,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 			const jobSvc = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });
 
 			mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-			const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+			const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 			const publishSpy = jest.spyOn(bmqBus, 'publish');
 
 			const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
@@ -255,7 +255,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		});
 
 		mockBullMq.Queue.prototype.add.mockRejectedValue(new AdapterErrors.EventBusError('simulated event bus error'));
-		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 		const bmqPublishSpy = jest.spyOn(bmqBus, 'publish');
 
 		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
@@ -287,7 +287,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		});
 
 		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 		const bmqPublishSpy = jest.spyOn(bmqBus, 'publish');
 
 		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
@@ -325,7 +325,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		});
 
 		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-		const bmqBus = new BmqBackupRequestEventBus(bullMq, bullMqConnection);
+		const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 		const publishSpy = jest.spyOn(bmqBus, 'publish');
 
 		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);

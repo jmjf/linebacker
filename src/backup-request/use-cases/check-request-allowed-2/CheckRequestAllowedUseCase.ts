@@ -81,6 +81,7 @@ export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDT
 				return saveResult;
 			}
 		}
+
 		const publishResult = await this.eventBus.publish(new BackupRequestAllowed(backupRequest));
 		if (publishResult.isErr()) {
 			return err(publishResult.error);

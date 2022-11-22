@@ -4,18 +4,21 @@ import path from 'node:path';
 import { logger } from '../../../infrastructure/logging/pinoLogger';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 
-import { CheckRequestAllowedUseCase } from '../../use-cases/check-request-allowed-2/CheckRequestAllowedUseCase';
+import { SendRequestToInterfaceUseCase } from '../../use-cases/send-request-to-interface/SendRequestToInterfaceUseCase';
 import { IEventBusConsumer } from '../IEventBusConsumer';
+import { ReceiveBackupRequestUseCase } from '../../use-cases/receive-backup-request/ReceiveBackupRequestUseCase';
+import { CheckRequestAllowedUseCase } from '../../use-cases/check-request-allowed-2/CheckRequestAllowedUseCase';
 
 const moduleName = path.basename(module.filename);
 
-export class BackupRequestReceivedConsumer implements IEventBusConsumer {
-	private useCase: CheckRequestAllowedUseCase;
+type BmqConsumerUseCase = ReceiveBackupRequestUseCase | CheckRequestAllowedUseCase | SendRequestToInterfaceUseCase;
+
+export class BmqConsumer implements IEventBusConsumer {
+	private useCase: BmqConsumerUseCase;
 	private maxTrueFailures: number;
 
-	constructor(checkRequestAllowedUseCase: CheckRequestAllowedUseCase, maxTrueFailures: number) {
-		// this.useCase = receiveBackupRequestUseCase;
-		this.useCase = checkRequestAllowedUseCase;
+	constructor(useCase: BmqConsumerUseCase, maxTrueFailures: number) {
+		this.useCase = useCase;
 		this.maxTrueFailures = maxTrueFailures;
 	}
 

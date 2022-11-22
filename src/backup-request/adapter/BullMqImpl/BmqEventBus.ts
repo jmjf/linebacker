@@ -4,14 +4,14 @@ import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 import { IEventBusEvent } from '../../../infrastructure/event-bus/IEventBus';
 import { BullMq } from '../../../infrastructure/bullmq/bullMqInfra';
 
-import { BackupRequest } from '../../domain/BackupRequest';
 import { IEventBus } from '../IEventBus';
 
 import { ConnectionOptions } from 'bullmq';
 import path from 'node:path';
 
 const moduleName = path.basename(module.filename);
-export class BmqBackupRequestEventBus implements IEventBus {
+
+export class BmqEventBus implements IEventBus {
 	private bullMq: BullMq;
 	private connection: ConnectionOptions;
 
@@ -48,20 +48,5 @@ export class BmqBackupRequestEventBus implements IEventBus {
 				})
 			);
 		}
-	}
-
-	private mapToQueue(backupRequest: BackupRequest) {
-		const { backupRequestId, backupJobId } = backupRequest;
-		return {
-			backupRequestId: backupRequestId.value,
-			backupJobId: backupJobId.value,
-			dataDate: backupRequest.dataDate,
-			preparedDataPathName: backupRequest.preparedDataPathName,
-			getOnStartFlag: backupRequest.getOnStartFlag,
-			transportTypeCode: backupRequest.transportTypeCode,
-			statusTypeCode: backupRequest.statusTypeCode,
-			receivedTimestamp: backupRequest.receivedTimestamp,
-			requesterId: backupRequest.requesterId,
-		};
 	}
 }
