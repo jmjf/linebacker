@@ -2,6 +2,9 @@ jest.mock('bullmq');
 import * as bullMq from 'bullmq';
 const mockBullMq = jest.mocked(bullMq);
 
+import { bullmqBus as eventBus } from '../../../common/infrastructure/event-bus/BullmqEventBus';
+import * as InfrastructureErrors from '../../../common/infrastructure/InfrastructureErrors';
+
 import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 import { ok } from '../../../common/core/Result';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
@@ -13,8 +16,7 @@ import { MockBackupJobServiceAdapter } from '../../../backup-job/adapter/impl/Mo
 import { BackupRequestStatusType, BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 
-import { CheckRequestAllowedDTO } from './CheckRequestAllowedDTO';
-import { CheckRequestAllowedUseCase } from './CheckRequestAllowedUseCase';
+import { CheckRequestAllowedUseCase, CheckRequestAllowedDTO } from './CheckRequestAllowedUseCase';
 
 import {
 	MockTypeormContext,
@@ -23,9 +25,6 @@ import {
 } from '../../../infrastructure/typeorm/typeormContext';
 import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
 import { TypeormBackupRequest } from '../../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
-import { Dictionary } from '../../../common/utils/utils';
-import { BmqEventBus } from '../../adapter/BullMqImpl/BmqEventBus';
-import { bullMqConnection } from '../../../infrastructure/bullmq/bullMqInfra';
 
 describe('CheckRequestAllowedUseCase - typeorm', () => {
 	let mockTypeormCtx: MockTypeormContext;
@@ -33,11 +32,14 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 	let circuitBreaker: CircuitBreakerWithRetry;
 	let abortController: AbortController;
 
+	const eventBusPublishSpy = jest.spyOn(eventBus, 'publishEvent');
+
 	beforeEach(() => {
 		mockTypeormCtx = createMockTypeormContext();
 		typeormCtx = mockTypeormCtx as unknown as TypeormContext;
 
 		mockBullMq.Queue.mockClear();
+		eventBusPublishSpy.mockClear();
 
 		const isAlive = () => {
 			return Promise.resolve(ok(true));
@@ -100,10 +102,8 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		});
 
 		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-		const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
-		const publishSpy = jest.spyOn(bmqBus, 'publish');
 
-		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, eventBus);
 		const dto = { ...baseDto };
 
 		// Act
@@ -112,7 +112,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		// Assert
 		expect(result.isErr()).toBe(true);
 		expect(saveSpy).not.toHaveBeenCalled();
-		expect(publishSpy).not.toHaveBeenCalled();
+		expect(eventBusPublishSpy).not.toHaveBeenCalled();
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('NotFoundError');
@@ -132,10 +132,8 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		});
 
 		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-		const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
-		const publishSpy = jest.spyOn(bmqBus, 'publish');
 
-		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, eventBus);
 		const dto = { ...baseDto };
 
 		// Act
@@ -144,7 +142,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		// Assert
 		expect(result.isErr()).toBe(true);
 		expect(saveSpy).not.toHaveBeenCalled();
-		expect(publishSpy).not.toHaveBeenCalled();
+		expect(eventBusPublishSpy).not.toHaveBeenCalled();
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('BackupJobServiceError');
@@ -165,10 +163,8 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		const jobSvc = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });
 
 		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-		const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
-		const publishSpy = jest.spyOn(bmqBus, 'publish');
 
-		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, eventBus);
 		const dto = { ...baseDto };
 
 		// Act
@@ -177,7 +173,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		// Assert
 		expect(result.isErr()).toBe(true);
 		expect(saveSpy).not.toHaveBeenCalled();
-		expect(publishSpy).not.toHaveBeenCalled();
+		expect(eventBusPublishSpy).not.toHaveBeenCalled();
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('BackupRequestStatusError');
@@ -221,10 +217,8 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 			const jobSvc = new MockBackupJobServiceAdapter({ getByIdResult: { ...backupJobProps } });
 
 			mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-			const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
-			const publishSpy = jest.spyOn(bmqBus, 'publish');
 
-			const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
+			const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, eventBus);
 			const dto = { ...baseDto };
 
 			// Act
@@ -233,7 +227,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 			// Assert
 			expect(result.isErr()).toBe(true);
 			expect(saveSpy).not.toHaveBeenCalled();
-			expect(publishSpy).not.toHaveBeenCalled();
+			expect(eventBusPublishSpy).not.toHaveBeenCalled();
 			if (result.isErr()) {
 				// type guard
 				expect(result.error.name).toBe('BackupRequestStatusError');
@@ -254,11 +248,12 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 			getByIdResult: { ...backupJobProps },
 		});
 
-		mockBullMq.Queue.prototype.add.mockRejectedValue(new AdapterErrors.EventBusError('simulated event bus error'));
-		const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
-		const bmqPublishSpy = jest.spyOn(bmqBus, 'publish');
+		mockBullMq.Queue.prototype.add.mockRejectedValue(
+			new InfrastructureErrors.EventBusError('simulated event bus error')
+		);
+		const bmqPublishSpy = jest.spyOn(eventBus, 'publishEvent');
 
-		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, eventBus);
 		const dto = { ...baseDto };
 
 		// Act
@@ -287,10 +282,9 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		});
 
 		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-		const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
-		const bmqPublishSpy = jest.spyOn(bmqBus, 'publish');
+		const bmqPublishSpy = jest.spyOn(eventBus, 'publishEvent');
 
-		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, eventBus);
 		const dto = { ...baseDto };
 
 		// Act
@@ -325,10 +319,8 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		});
 
 		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-		const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
-		const publishSpy = jest.spyOn(bmqBus, 'publish');
 
-		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, eventBus);
 		const dto = { ...baseDto };
 
 		// Act
@@ -337,7 +329,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		// Assert
 		expect(result.isOk()).toBe(true);
 		expect(saveSpy).not.toHaveBeenCalled();
-		expect(publishSpy).toHaveBeenCalledTimes(1);
+		expect(eventBusPublishSpy).toHaveBeenCalledTimes(1);
 		if (result.isOk()) {
 			expect(result.value.backupRequestId).toBeTruthy();
 		}

@@ -2,39 +2,40 @@ import { Job, UnrecoverableError } from 'bullmq';
 import path from 'node:path';
 
 import { logger } from '../../../infrastructure/logging/pinoLogger';
-import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
+import * as InfrastructureErrors from '../InfrastructureErrors';
 
-import { SendRequestToInterfaceUseCase } from '../../use-cases/send-request-to-interface/SendRequestToInterfaceUseCase';
-import { IEventBusConsumer } from '../IEventBusConsumer';
-import { ReceiveBackupRequestUseCase } from '../../use-cases/receive-backup-request/ReceiveBackupRequestUseCase';
-import { CheckRequestAllowedUseCase } from '../../use-cases/check-request-allowed-2/CheckRequestAllowedUseCase';
+import { SendRequestToInterfaceUseCase } from '../../../backup-request/use-cases/send-request-to-interface/SendRequestToInterfaceUseCase';
+import { IEventBusConsumer } from '../../../backup-request/adapter/IEventBusConsumer';
+import { ReceiveBackupRequestUseCase } from '../../../backup-request/use-cases/receive-backup-request/ReceiveBackupRequestUseCase';
+import { CheckRequestAllowedUseCase } from '../../../backup-request/use-cases/check-request-allowed-2/CheckRequestAllowedUseCase';
 
 const moduleName = path.basename(module.filename);
 
-type BmqConsumerUseCase = ReceiveBackupRequestUseCase | CheckRequestAllowedUseCase | SendRequestToInterfaceUseCase;
+type BullmqConsumerUseCase = ReceiveBackupRequestUseCase | CheckRequestAllowedUseCase | SendRequestToInterfaceUseCase;
 
-export class BmqConsumer implements IEventBusConsumer {
-	private useCase: BmqConsumerUseCase;
+export class BullmqConsumer implements IEventBusConsumer {
+	private useCase: BullmqConsumerUseCase;
 	private maxTrueFailures: number;
 
-	constructor(useCase: BmqConsumerUseCase, maxTrueFailures: number) {
+	constructor(useCase: BullmqConsumerUseCase, maxTrueFailures: number) {
 		this.useCase = useCase;
 		this.maxTrueFailures = maxTrueFailures;
 	}
 
 	async consume(job: Job) {
 		const functionName = 'consume';
-		const logContext = { jobName: job.name, jobId: job.id, moduleName, functionName };
+		const logContext = { jobName: job.name, jobId: job.id, eventType: '', moduleName, functionName };
 
 		logger.trace({ useCaseName: this.useCase.constructor.name, jobData: job.data, ...logContext }, 'consuming job');
 
 		const attemptsMade = job.attemptsMade;
-		const { domainEvent, connectFailureCount, retryCount } = job.data;
+		const { event, eventType, connectFailureCount, retryCount } = job.data;
+		logContext.eventType = eventType;
 
-		logger.trace({ jobName: job.name, jobId: job.id, moduleName, functionName }, 'Execute use case');
+		logger.trace({ ...logContext }, 'Execute use case');
 
 		try {
-			const result = await this.useCase.execute(domainEvent);
+			const result = await this.useCase.execute(event);
 			logger.trace(
 				{ isOk: result.isOk(), result: result.isOk() ? result.value : result.error, ...logContext },
 				'Use case result'
@@ -45,12 +46,12 @@ export class BmqConsumer implements IEventBusConsumer {
 
 				if (result.error.errorData && (result.error.errorData as any).isConnectFailure) {
 					job.update({ ...job.data, connectFailureCount: connectFailureCount + 1, retryCount: retryCount + 1 });
-					throw new AdapterErrors.EventBusError('Connect error - retry', result.error);
+					throw new InfrastructureErrors.EventBusError('Connect error - retry', result.error);
 				}
 
 				if (attemptsMade - connectFailureCount <= this.maxTrueFailures) {
 					job.update({ ...job.data, retryCount: retryCount + 1 });
-					throw new AdapterErrors.EventBusError('Other error - retry', result.error);
+					throw new InfrastructureErrors.EventBusError('Other error - retry', result.error);
 				}
 
 				throw new UnrecoverableError('Too many failures - fail');

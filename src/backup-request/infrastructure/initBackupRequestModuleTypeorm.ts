@@ -3,6 +3,9 @@ import {
 	MockBackupJobServiceAdapter,
 } from '../../backup-job/adapter/impl/MockBackupJobServiceAdapter';
 import { TypeormContext } from '../../infrastructure/typeorm/typeormContext';
+
+import { bullmqBus } from '../../common/infrastructure/event-bus/BullmqEventBus';
+
 import { ExpressCreateBackupRequestController } from '../adapter/impl/ExpressCreateBackupRequestController';
 
 import { FastifyCreateBackupRequestController } from '../adapter/impl/FastifyCreateBackupRequestController';
@@ -17,7 +20,6 @@ import { SendRequestToInterfaceUseCase } from '../use-cases/send-request-to-inte
 import { ICircuitBreakers } from '../../infrastructure/prisma/buildCircuitBreakers.prisma';
 import { RestartStalledRequestsUseCase } from '../use-cases/restart-stalled-requests/RestartStalledRequestsUseCase';
 import { ApplicationResilienceReadySubscriber } from '../use-cases/restart-stalled-requests/ApplicationResilienceReadySubscriber';
-import { BmqEventBus } from '../adapter/BullMqImpl/BmqEventBus';
 import { AcceptBackupRequestUseCase } from '../use-cases/accept-backup-request/AcceptBackupRequestUseCase';
 import { ExpressAcceptBackupRequestController } from '../adapter/impl/ExpressAcceptBackupRequestController';
 import { BullMq } from '../../infrastructure/bullmq/bullMqInfra';
@@ -29,11 +31,7 @@ export const initBackupRequestModule = (
 	controllerType: 'Fastify' | 'Express',
 	abortSignal: AbortSignal
 ) => {
-	const bmqBackupRequestEventBus = new BmqEventBus(bullMq, {
-		host: 'localhost',
-		port: 6379,
-	});
-	const acceptBackupRequestUseCase = new AcceptBackupRequestUseCase(bmqBackupRequestEventBus);
+	const acceptBackupRequestUseCase = new AcceptBackupRequestUseCase(bullmqBus);
 	const acceptBackupRequestController = new ExpressAcceptBackupRequestController(acceptBackupRequestUseCase);
 
 	const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreakers.dbCircuitBreaker);

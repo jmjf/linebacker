@@ -7,10 +7,10 @@ import { IBackupRequestRepo } from '../../adapter/IBackupRequestRepo';
 import { RestartStalledRequestsDTO } from './RestartStalledRequestsDTO';
 import { IDomainEvent } from '../../../common/domain/DomainEventBus';
 import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
-import { BackupRequestAllowed } from '../../domain/BackupRequestAllowed';
+import { BackupRequestAllowed } from '../../domain/BackupRequestAllowed.deb';
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 import { BackupRequest } from '../../domain/BackupRequest';
-import { BackupRequestCreated } from '../../domain/BackupRequestCreated';
+import { BackupRequestCreated } from '../../domain/BackupRequestCreated.deb';
 import { DelayedEventRunner } from '../../../infrastructure/resilience/DelayedEventRunner';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);

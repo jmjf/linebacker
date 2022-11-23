@@ -1,11 +1,11 @@
-import { IEventBusEvent, IEventBusEventData } from '../../infrastructure/event-bus/IEventBus';
+import { IEventBusEvent, IEventBusEventData } from '../../common/infrastructure/event-bus/IEventBus';
 import { BackupRequest } from './BackupRequest';
 
 import { BackupRequestStatusType } from './BackupRequestStatusType';
 import { RequestTransportType } from './RequestTransportType';
 
 export interface BackupRequestAcceptedEventData {
-	domainEvent: {
+	event: {
 		backupRequestId: string;
 		backupJobId: string;
 		dataDate: Date;
@@ -30,8 +30,8 @@ export class BackupRequestAccepted implements IEventBusEvent {
 		this._eventData = {
 			connectFailureCount: 0,
 			retryCount: 0,
-			eventName: this.constructor.name,
-			domainEvent: {
+			eventType: this.constructor.name,
+			event: {
 				backupRequestId: backupRequest.backupRequestId.value,
 				backupJobId: backupRequest.backupJobId.value,
 				dataDate: backupRequest.dataDate,
@@ -43,7 +43,7 @@ export class BackupRequestAccepted implements IEventBusEvent {
 				requesterId: backupRequest.requesterId,
 			},
 		};
-		this._eventKey = this._eventData.domainEvent.backupRequestId;
+		this._eventKey = this._eventData.event.backupRequestId;
 	}
 
 	get topicName() {
@@ -58,8 +58,8 @@ export class BackupRequestAccepted implements IEventBusEvent {
 		return this._eventData;
 	}
 
-	get domainEventData() {
-		return this._eventData.domainEvent;
+	get event() {
+		return this._eventData.event;
 	}
 
 	get eventDataString() {

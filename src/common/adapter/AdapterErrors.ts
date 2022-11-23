@@ -12,18 +12,6 @@ export class DatabaseError extends BaseError {
 	}
 }
 
-export class EventBusError extends BaseError {
-	constructor(messageOrErrorData: string | object, errorData?: object) {
-		super(messageOrErrorData, errorData);
-		this.name = 'EventBusError';
-	}
-
-	cleanMessage(): string {
-		const errorDataAny = this.errorData as any;
-		return errorDataAny && errorDataAny.code ? errorDataAny.code.slice(1) : 'Event bus error';
-	}
-}
-
 export class NotFoundError extends BaseError {
 	constructor(messageOrErrorData: string | object, errorData?: object) {
 		super(messageOrErrorData, errorData);

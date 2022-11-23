@@ -9,8 +9,8 @@ import * as DomainErrors from '../../common/domain/DomainErrors';
 
 import { BackupProviderType } from '../../backup-job/domain/BackupProviderType';
 
-import { BackupRequestAllowed } from './BackupRequestAllowed';
-import { BackupRequestCreated } from './BackupRequestCreated';
+import { BackupRequestAllowed } from './BackupRequestAllowed.deb';
+import { BackupRequestCreated } from './BackupRequestCreated.deb';
 import { StoreResultType } from './StoreResultType';
 import { BackupRequestStatusType, BackupRequestStatusTypeValues } from './BackupRequestStatusType';
 import { RequestTransportType, validRequestTransportTypes } from './RequestTransportType';

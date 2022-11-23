@@ -28,10 +28,10 @@ import { typeormCtx } from './infrastructure/typeorm/typeormContext';
 import { buildCircuitBreakers, ICircuitBreakers } from './infrastructure/typeorm/buildCircuitBreakers.typeorm';
 import { bullMqConnection } from './infrastructure/bullmq/bullMqInfra';
 
-import { BmqEventBus } from './backup-request/adapter/BullMqImpl/BmqEventBus';
+import { bullmqBus } from './common/infrastructure/event-bus/BullmqEventBus';
 import { TypeormBackupRequestRepo } from './backup-request/adapter/impl/TypeormBackupRequestRepo';
 
-import { BmqConsumer } from './backup-request/adapter/BullMqImpl/BmqConsumer';
+import { BullmqConsumer } from './common/infrastructure/event-bus/BullmqConsumer';
 
 import { MockBackupJobServiceAdapter } from './backup-job/adapter/impl/MockBackupJobServiceAdapter';
 import { BackupProviderTypeValues } from './backup-job/domain/BackupProviderType';
@@ -45,10 +45,9 @@ const moduleName = path.basename(module.filename);
 
 const buildWorker = (circuitBreakers: ICircuitBreakers) => {
 	const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreakers.dbCircuitBreaker);
-	const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 
-	const rcvUseCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
-	const acceptedConsumer = new BmqConsumer(rcvUseCase, 5);
+	const rcvUseCase = new ReceiveBackupRequestUseCase(brRepo, bullmqBus);
+	const acceptedConsumer = new BullmqConsumer(rcvUseCase, 5);
 	const acceptedConsumerConsume = acceptedConsumer.consume.bind(acceptedConsumer);
 
 	const jobSvc = new MockBackupJobServiceAdapter({
@@ -61,8 +60,8 @@ const buildWorker = (circuitBreakers: ICircuitBreakers) => {
 		},
 	});
 
-	const checkUseCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
-	const receivedConsumer = new BmqConsumer(checkUseCase, 5);
+	const checkUseCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bullmqBus);
+	const receivedConsumer = new BullmqConsumer(checkUseCase, 5);
 	const receivedConsumerConsume = receivedConsumer.consume.bind(receivedConsumer);
 
 	const azureInterfaceAdapter = new AzureBackupInterfaceStoreAdapter(
@@ -73,7 +72,7 @@ const buildWorker = (circuitBreakers: ICircuitBreakers) => {
 		backupRequestRepo: brRepo,
 		interfaceStoreAdapter: azureInterfaceAdapter,
 	});
-	const azureAllowedConsumer = new BmqConsumer(azureSendUseCase, 5);
+	const azureAllowedConsumer = new BullmqConsumer(azureSendUseCase, 5);
 	const azureAllowedConsumerConsume = azureAllowedConsumer.consume.bind(azureAllowedConsumer);
 
 	return new bullMq.Worker(

@@ -1,10 +1,10 @@
-import { IEventBusEvent, IEventBusEventData } from '../../infrastructure/event-bus/IEventBus';
+import { IEventBusEvent, IEventBusEventData } from '../../common/infrastructure/event-bus/IEventBus';
 import { BackupRequest } from './BackupRequest';
 
 export interface BackupRequestReceivedEventData {
 	// After received, all consumers must get data from persisted data
 	// so we only need the request id so they can find it
-	domainEvent: {
+	event: {
 		backupRequestId: string;
 	};
 }
@@ -21,12 +21,12 @@ export class BackupRequestReceived implements IEventBusEvent {
 		this._eventData = {
 			connectFailureCount: 0,
 			retryCount: 0,
-			eventName: this.constructor.name,
-			domainEvent: {
+			eventType: this.constructor.name,
+			event: {
 				backupRequestId: backupRequest.backupRequestId.value,
 			},
 		};
-		this._eventKey = this._eventData.domainEvent.backupRequestId;
+		this._eventKey = this._eventData.event.backupRequestId;
 	}
 
 	get topicName() {
@@ -41,8 +41,8 @@ export class BackupRequestReceived implements IEventBusEvent {
 		return this._eventData;
 	}
 
-	get domainEventData() {
-		return this._eventData.domainEvent;
+	get event() {
+		return this._eventData.event;
 	}
 
 	get eventDataString() {

@@ -3,9 +3,10 @@ import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 import * as DomainErrors from '../../../common/domain/DomainErrors';
 import { UseCase } from '../../../common/application/UseCase';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
+import { IEventBus } from '../../../common/infrastructure/event-bus/IEventBus';
+import * as InfrastructureErrors from '../../../common/infrastructure/InfrastructureErrors';
 
 import { IBackupRequestRepo } from '../../adapter/IBackupRequestRepo';
-import { IEventBus } from '../../adapter/IEventBus';
 import { BackupRequest } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
 import { BackupRequestStatusType, BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
@@ -29,7 +30,7 @@ export interface ReceiveBackupRequestDTO {
 // add errors when you define them
 type Response = Result<
 	BackupRequest,
-	DomainErrors.PropsError | AdapterErrors.DatabaseError | AdapterErrors.EventBusError
+	DomainErrors.PropsError | AdapterErrors.DatabaseError | InfrastructureErrors.EventBusError
 >;
 
 /**
@@ -91,7 +92,7 @@ export class ReceiveBackupRequestUseCase implements UseCase<ReceiveBackupRequest
 			}
 		}
 
-		const publishResult = await this.eventBus.publish(new BackupRequestReceived(backupRequest));
+		const publishResult = await this.eventBus.publishEvent(new BackupRequestReceived(backupRequest));
 		if (publishResult.isErr()) {
 			return err(publishResult.error);
 		}

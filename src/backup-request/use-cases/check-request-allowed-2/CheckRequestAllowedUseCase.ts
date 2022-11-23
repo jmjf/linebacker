@@ -2,20 +2,27 @@ import { Result, err, ok } from '../../../common/core/Result';
 import { UseCase } from '../../../common/application/UseCase';
 import * as ApplicationErrors from '../../../common/application/ApplicationErrors';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
+import * as InfrastructureErrors from '../../../common/infrastructure/InfrastructureErrors';
+import { IEventBus } from '../../../common/infrastructure/event-bus/IEventBus';
 
 import { IBackupJobServiceAdapter } from '../../../backup-job/adapter/BackupJobServiceAdapter';
 import { IBackupRequestRepo } from '../../adapter/IBackupRequestRepo';
 import { BackupRequest } from '../../domain/BackupRequest';
-import { CheckRequestAllowedDTO } from './CheckRequestAllowedDTO';
-import { IEventBus } from '../../adapter/IEventBus';
 import { BackupRequestAllowed } from '../../domain/BackupRequestAllowed.event';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 
 type Response = Result<
 	BackupRequest,
-	ApplicationErrors.BackupRequestStatusError | ApplicationErrors.UnexpectedError | AdapterErrors.BackupJobServiceError
+	| ApplicationErrors.BackupRequestStatusError
+	| ApplicationErrors.UnexpectedError
+	| AdapterErrors.BackupJobServiceError
+	| InfrastructureErrors.EventBusError
 >;
+
+export interface CheckRequestAllowedDTO {
+	backupRequestId: string; // UUID
+}
 
 export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDTO, Promise<Response>> {
 	private backupRequestRepo: IBackupRequestRepo;
@@ -82,7 +89,7 @@ export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDT
 			}
 		}
 
-		const publishResult = await this.eventBus.publish(new BackupRequestAllowed(backupRequest));
+		const publishResult = await this.eventBus.publishEvent(new BackupRequestAllowed(backupRequest));
 		if (publishResult.isErr()) {
 			return err(publishResult.error);
 		}

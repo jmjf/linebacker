@@ -7,7 +7,7 @@ import { logger } from '../../../infrastructure/logging/pinoLogger';
 
 import { Dictionary } from '../../../common/utils/utils';
 
-import { BackupRequestCreated } from '../../domain/BackupRequestCreated';
+import { BackupRequestCreated } from '../../domain/BackupRequestCreated.deb';
 import { CheckRequestAllowedUseCase } from './CheckRequestAllowedUseCase';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);

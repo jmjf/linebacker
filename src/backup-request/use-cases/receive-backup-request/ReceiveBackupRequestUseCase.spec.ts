@@ -1,5 +1,8 @@
 import * as bullMq from 'bullmq';
 jest.mock('bullmq');
+const mockBullMq = jest.mocked(bullMq);
+
+import { bullmqBus as eventBus } from '../../../common/infrastructure/event-bus/BullmqEventBus';
 
 import { ok } from '../../../common/core/Result';
 import {
@@ -15,27 +18,27 @@ import { ReceiveBackupRequestDTO, ReceiveBackupRequestUseCase } from './ReceiveB
 import { RequestTransportType } from '../../domain/RequestTransportType';
 import { TypeormBackupRequest } from '../../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
 import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
-import { BmqEventBus } from '../../adapter/BullMqImpl/BmqEventBus';
-import { bullMqConnection } from '../../../infrastructure/bullmq/bullMqInfra';
 
 describe('ReceiveBackupRequestUseCase', () => {
 	let mockTypeormCtx: MockTypeormContext;
 	let typeormCtx: TypeormContext;
 	let circuitBreaker: CircuitBreakerWithRetry;
 	let abortController: AbortController;
-	const mockBullMq = jest.mocked(bullMq);
+
+	const eventBusPublishSpy = jest.spyOn(eventBus, 'publishEvent');
 
 	beforeEach(() => {
 		mockTypeormCtx = createMockTypeormContext();
 		typeormCtx = mockTypeormCtx as unknown as TypeormContext;
+
+		mockBullMq.Queue.mockClear();
+		eventBusPublishSpy.mockClear();
 
 		const isAlive = () => {
 			return Promise.resolve(ok(true));
 		};
 		abortController = new AbortController();
 		circuitBreaker = getLenientCircuitBreaker('Typeorm', abortController.signal);
-
-		mockBullMq.Queue.mockClear();
 	});
 
 	afterEach(() => {
@@ -60,16 +63,13 @@ describe('ReceiveBackupRequestUseCase', () => {
 			const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 			const brSaveSpy = jest.spyOn(brRepo, 'save');
 
-			const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
-			const bmqAddSpy = jest.spyOn(bmqBus, 'publish');
-
-			const useCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
+			const useCase = new ReceiveBackupRequestUseCase(brRepo, eventBus);
 
 			const result = await useCase.execute({ ...baseDto });
 
 			expect(result.isErr()).toBe(true);
 			expect(brSaveSpy).not.toHaveBeenCalled();
-			expect(bmqAddSpy).not.toHaveBeenCalled();
+			expect(eventBusPublishSpy).not.toHaveBeenCalled();
 			if (result.isErr()) {
 				expect(result.error.name).toEqual('DatabaseError');
 			}
@@ -80,10 +80,7 @@ describe('ReceiveBackupRequestUseCase', () => {
 			const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 			const brSaveSpy = jest.spyOn(brRepo, 'save');
 
-			const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
-			const bmqAddSpy = jest.spyOn(bmqBus, 'publish');
-
-			const useCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
+			const useCase = new ReceiveBackupRequestUseCase(brRepo, eventBus);
 
 			const result = await useCase.execute({
 				...baseDto,
@@ -92,7 +89,7 @@ describe('ReceiveBackupRequestUseCase', () => {
 
 			expect(result.isErr()).toBe(true);
 			expect(brSaveSpy).not.toHaveBeenCalled();
-			expect(bmqAddSpy).not.toHaveBeenCalled();
+			expect(eventBusPublishSpy).not.toHaveBeenCalled();
 			if (result.isErr()) {
 				expect(result.error.name).toEqual('PropsError');
 			}
@@ -106,16 +103,13 @@ describe('ReceiveBackupRequestUseCase', () => {
 			const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 			const brSaveSpy = jest.spyOn(brRepo, 'save');
 
-			const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
-			const bmqAddSpy = jest.spyOn(bmqBus, 'publish');
-
-			const useCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
+			const useCase = new ReceiveBackupRequestUseCase(brRepo, eventBus);
 
 			const result = await useCase.execute({ ...baseDto });
 
 			expect(result.isErr()).toBe(true);
 			expect(brSaveSpy).toHaveBeenCalledTimes(1);
-			expect(bmqAddSpy).not.toHaveBeenCalled();
+			expect(eventBusPublishSpy).not.toHaveBeenCalled();
 			if (result.isErr()) {
 				expect(result.error.name).toEqual('DatabaseError');
 			}
@@ -128,16 +122,14 @@ describe('ReceiveBackupRequestUseCase', () => {
 			const brSaveSpy = jest.spyOn(brRepo, 'save');
 
 			mockBullMq.Queue.prototype.add.mockRejectedValue(new Error('mock event bus error'));
-			const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
-			const bmqAddSpy = jest.spyOn(bmqBus, 'publish');
 
-			const useCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
+			const useCase = new ReceiveBackupRequestUseCase(brRepo, eventBus);
 
 			const result = await useCase.execute({ ...baseDto });
 
 			expect(result.isErr()).toBe(true);
 			expect(brSaveSpy).toHaveBeenCalledTimes(1);
-			expect(bmqAddSpy).toHaveBeenCalledTimes(1);
+			expect(eventBusPublishSpy).toHaveBeenCalledTimes(1);
 			if (result.isErr()) {
 				expect(result.error.name).toEqual('EventBusError');
 				expect((result.error.errorData as any).functionName).toEqual('publish');
@@ -151,16 +143,14 @@ describe('ReceiveBackupRequestUseCase', () => {
 			const brSaveSpy = jest.spyOn(brRepo, 'save');
 
 			mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-			const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
-			const bmqAddSpy = jest.spyOn(bmqBus, 'publish');
 
-			const useCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
+			const useCase = new ReceiveBackupRequestUseCase(brRepo, eventBus);
 
 			const result = await useCase.execute({ ...baseDto });
 
 			expect(result.isOk()).toBe(true);
 			expect(brSaveSpy).toHaveBeenCalledTimes(1);
-			expect(bmqAddSpy).toHaveBeenCalledTimes(1);
+			expect(eventBusPublishSpy).toHaveBeenCalledTimes(1);
 			if (result.isOk()) {
 				expect(result.value.backupRequestId.value).toEqual(baseDto.backupRequestId);
 				expect(result.value.statusTypeCode).toEqual(BackupRequestStatusTypeValues.Received);
@@ -177,16 +167,13 @@ describe('ReceiveBackupRequestUseCase', () => {
 			const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
 			const brSaveSpy = jest.spyOn(brRepo, 'save');
 
-			const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
-			const bmqAddSpy = jest.spyOn(bmqBus, 'publish');
-
-			const useCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
+			const useCase = new ReceiveBackupRequestUseCase(brRepo, eventBus);
 
 			const result = await useCase.execute({ ...baseDto });
 
 			expect(result.isErr()).toBe(true);
 			expect(brSaveSpy).not.toHaveBeenCalled();
-			expect(bmqAddSpy).not.toHaveBeenCalled();
+			expect(eventBusPublishSpy).not.toHaveBeenCalled();
 			if (result.isErr()) {
 				expect(result.error.name).toEqual('PropsError');
 				expect((result.error.errorData as any).statusTypeCode).toBe('INVALID');
@@ -204,16 +191,14 @@ describe('ReceiveBackupRequestUseCase', () => {
 			const brSaveSpy = jest.spyOn(brRepo, 'save');
 
 			mockBullMq.Queue.prototype.add.mockRejectedValue(new Error('mock event bus error'));
-			const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
-			const bmqAddSpy = jest.spyOn(bmqBus, 'publish');
 
-			const useCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
+			const useCase = new ReceiveBackupRequestUseCase(brRepo, eventBus);
 
 			const result = await useCase.execute({ ...baseDto });
 
 			expect(result.isErr()).toBe(true);
 			expect(brSaveSpy).not.toHaveBeenCalled();
-			expect(bmqAddSpy).toHaveBeenCalledTimes(1);
+			expect(eventBusPublishSpy).toHaveBeenCalledTimes(1);
 			if (result.isErr()) {
 				expect(result.error.name).toEqual('EventBusError');
 				expect((result.error.errorData as any).functionName).toEqual('publish');
@@ -230,16 +215,14 @@ describe('ReceiveBackupRequestUseCase', () => {
 			const brSaveSpy = jest.spyOn(brRepo, 'save');
 
 			mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-			const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
-			const bmqAddSpy = jest.spyOn(bmqBus, 'publish');
 
-			const useCase = new ReceiveBackupRequestUseCase(brRepo, bmqBus);
+			const useCase = new ReceiveBackupRequestUseCase(brRepo, eventBus);
 
 			const result = await useCase.execute({ ...baseDto });
 
 			expect(result.isOk()).toBe(true);
 			expect(brSaveSpy).not.toHaveBeenCalled();
-			expect(bmqAddSpy).toHaveBeenCalledTimes(1);
+			expect(eventBusPublishSpy).toHaveBeenCalledTimes(1);
 			if (result.isOk()) {
 				expect(result.value.backupRequestId.value).toEqual(baseDto.backupRequestId);
 				expect(result.value.statusTypeCode).toEqual(BackupRequestStatusTypeValues.Received);

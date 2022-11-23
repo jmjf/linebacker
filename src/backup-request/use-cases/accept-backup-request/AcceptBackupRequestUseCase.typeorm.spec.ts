@@ -1,22 +1,26 @@
 // mock bullmq (event bus)
 jest.mock('bullmq');
-import * as mockBullMq from 'bullmq';
+import * as bullMq from 'bullmq';
+const mockBullMq = jest.mocked(bullMq);
+
+import { bullmqBus as eventBus } from '../../../common/infrastructure/event-bus/BullmqEventBus';
 
 import { AcceptBackupRequestUseCase } from './AcceptBackupRequestUseCase';
 import { AcceptBackupRequestDTO } from './AcceptBackupRequestDTO';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 
-import { BmqEventBus } from '../../adapter/BullMqImpl/BmqEventBus';
-
-import { EventBusError } from '../../../common/adapter/AdapterErrors';
+import { EventBusError } from '../../../common/infrastructure/InfrastructureErrors';
 import { ok } from '../../../common/core/Result';
 import { BackupRequest } from '../../domain/BackupRequest';
 
 import { bullMqConnection } from '../../../infrastructure/bullmq/bullMqInfra';
 
 describe('AcceptBackupRequestUseCase - bullmq', () => {
+	const eventBusPublishSpy = jest.spyOn(eventBus, 'publishEvent');
+
 	beforeEach(() => {
-		//
+		mockBullMq.Queue.mockClear();
+		eventBusPublishSpy.mockClear();
 	});
 
 	afterEach(() => {
@@ -35,8 +39,7 @@ describe('AcceptBackupRequestUseCase - bullmq', () => {
 	test('when executed with an invalid transport type, it returns the expected error', async () => {
 		// Arrange
 		// this test fails before it calls the event bus, so no need to mock add
-		const eventBus = new BmqEventBus(mockBullMq, bullMqConnection);
-		const publishSpy = jest.spyOn(eventBus, 'publish');
+		const eventBusPublishSpy = jest.spyOn(eventBus, 'publishEvent');
 
 		const useCase = new AcceptBackupRequestUseCase(eventBus);
 		const dto = { ...baseDto, transportType: 'BadTransport' };
@@ -46,7 +49,7 @@ describe('AcceptBackupRequestUseCase - bullmq', () => {
 
 		// Assert
 		expect(result.isErr()).toBe(true);
-		expect(publishSpy).not.toHaveBeenCalled();
+		expect(eventBusPublishSpy).not.toHaveBeenCalled();
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.message).toContain('is not one of');
@@ -63,8 +66,6 @@ describe('AcceptBackupRequestUseCase - bullmq', () => {
 	])('when executed with $propName undefined, it returns the expected error', async ({ propName, errPropName }) => {
 		// Arrange
 		// this test fails before it calls the event bus, so no need to mock add
-		const eventBus = new BmqEventBus(mockBullMq, bullMqConnection);
-		const publishSpy = jest.spyOn(eventBus, 'publish');
 
 		const useCase = new AcceptBackupRequestUseCase(eventBus);
 
@@ -76,7 +77,7 @@ describe('AcceptBackupRequestUseCase - bullmq', () => {
 
 		// Assert
 		expect(result.isErr()).toBe(true);
-		expect(publishSpy).not.toHaveBeenCalled();
+		expect(eventBusPublishSpy).not.toHaveBeenCalled();
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.name).toBe('PropsError');
@@ -88,8 +89,6 @@ describe('AcceptBackupRequestUseCase - bullmq', () => {
 	test('when executed with an invalid dataDate, it returns the expected error', async () => {
 		// Arrange
 		// this test fails before it calls the event bus, so no need to mock add
-		const eventBus = new BmqEventBus(mockBullMq, bullMqConnection);
-		const publishSpy = jest.spyOn(eventBus, 'publish');
 
 		const useCase = new AcceptBackupRequestUseCase(eventBus);
 		const dto = { ...baseDto, dataDate: 'invalid date' };
@@ -99,7 +98,7 @@ describe('AcceptBackupRequestUseCase - bullmq', () => {
 
 		// Assert
 		expect(result.isErr()).toBe(true);
-		expect(publishSpy).not.toHaveBeenCalled();
+		expect(eventBusPublishSpy).not.toHaveBeenCalled();
 		if (result.isErr()) {
 			// type guard
 			expect(result.error.message).toContain('not a valid date');
@@ -110,8 +109,6 @@ describe('AcceptBackupRequestUseCase - bullmq', () => {
 	test('when executed with good data and publish fails, it returns an EventBusError', async () => {
 		// Arrange
 		mockBullMq.Queue.prototype.add = jest.fn().mockRejectedValueOnce(new EventBusError('simulated event bus error'));
-		const eventBus = new BmqEventBus(mockBullMq, bullMqConnection);
-		const publishSpy = jest.spyOn(eventBus, 'publish');
 
 		const useCase = new AcceptBackupRequestUseCase(eventBus);
 		const dto = { ...baseDto };
@@ -121,7 +118,7 @@ describe('AcceptBackupRequestUseCase - bullmq', () => {
 
 		// Assert
 		expect(result.isErr()).toBe(true);
-		expect(publishSpy).toHaveBeenCalledTimes(1);
+		expect(eventBusPublishSpy).toHaveBeenCalledTimes(1);
 		if (result.isErr()) {
 			expect(result.error.name).toBe('EventBusError');
 		}
@@ -130,8 +127,6 @@ describe('AcceptBackupRequestUseCase - bullmq', () => {
 	test('when executed with good data, it publishes and returns the backupRequest', async () => {
 		// Arrange
 		mockBullMq.Queue.prototype.add = jest.fn().mockResolvedValueOnce({} as BackupRequest);
-		const eventBus = new BmqEventBus(mockBullMq, bullMqConnection);
-		const publishSpy = jest.spyOn(eventBus, 'publish');
 
 		const useCase = new AcceptBackupRequestUseCase(eventBus);
 		const dto = { ...baseDto };
@@ -141,7 +136,7 @@ describe('AcceptBackupRequestUseCase - bullmq', () => {
 
 		// Assert
 		expect(result.isOk()).toBe(true);
-		expect(publishSpy).toHaveBeenCalledTimes(1);
+		expect(eventBusPublishSpy).toHaveBeenCalledTimes(1);
 		if (result.isOk()) {
 			// type guard so TS knows value is valid
 			expect(result.value.backupJobId.value).toMatch(baseDto.backupJobId);

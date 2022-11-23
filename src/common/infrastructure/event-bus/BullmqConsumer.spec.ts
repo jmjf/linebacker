@@ -2,23 +2,25 @@ jest.mock('bullmq');
 import * as bullMq from 'bullmq';
 const mockBullMq = jest.mocked(bullMq);
 
-import { BmqConsumer } from './BmqConsumer';
-import { TypeormBackupRequestRepo } from '../impl/TypeormBackupRequestRepo';
+import { bullmqBus } from './BullmqEventBus';
+import { BullmqConsumer } from './BullmqConsumer';
+
 import {
 	createMockTypeormContext,
 	MockTypeormContext,
 	TypeormContext,
 } from '../../../infrastructure/typeorm/typeormContext';
 import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
-import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
-import { delay } from '../../../common/utils/utils';
-import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
-import { BmqEventBus } from './BmqEventBus';
-import { bullMqConnection } from '../../../infrastructure/bullmq/bullMqInfra';
-import { CheckRequestAllowedUseCase } from '../../use-cases/check-request-allowed-2/CheckRequestAllowedUseCase';
+
+import { BackupRequestStatusTypeValues } from '../../../backup-request/domain/BackupRequestStatusType';
+import { TypeormBackupRequestRepo } from '../../../backup-request/adapter/impl/TypeormBackupRequestRepo';
+import { CheckRequestAllowedUseCase } from '../../../backup-request/use-cases/check-request-allowed-2/CheckRequestAllowedUseCase';
 import { MockBackupJobServiceAdapter } from '../../../backup-job/adapter/impl/MockBackupJobServiceAdapter';
 import { IBackupJobProps } from '../../../backup-job/domain/BackupJob';
 import { BackupProviderTypeValues } from '../../../backup-job/domain/BackupProviderType';
+
+import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
+import { delay } from '../../utils/utils';
 
 describe('BmqConsumer - runs with CheckRequestAllowedUseCase', () => {
 	let mockTypeormCtx: MockTypeormContext;
@@ -76,16 +78,15 @@ describe('BmqConsumer - runs with CheckRequestAllowedUseCase', () => {
 		const jobSvc = new MockBackupJobServiceAdapter({
 			getByIdResult: { ...backupJobProps },
 		});
-		const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 
-		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bullmqBus);
 
 		const job = {
 			data: {
 				connectFailureCount: 0,
 				retryCount: 0,
 				eventName: 'BackupRequestReceived',
-				domainEvent: { ...queueRequest },
+				event: { ...queueRequest },
 			},
 			attemptsMade: 0,
 			update: async () => {
@@ -93,7 +94,7 @@ describe('BmqConsumer - runs with CheckRequestAllowedUseCase', () => {
 			},
 		} as unknown as bullMq.Job;
 
-		const consumer = new BmqConsumer(useCase, 5);
+		const consumer = new BullmqConsumer(useCase, 5);
 
 		try {
 			const result = await consumer.consume(job);
@@ -113,16 +114,15 @@ describe('BmqConsumer - runs with CheckRequestAllowedUseCase', () => {
 		const jobSvc = new MockBackupJobServiceAdapter({
 			getByIdResult: { ...backupJobProps },
 		});
-		const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 
-		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bullmqBus);
 
 		const job = {
 			data: {
 				connectFailureCount: 0,
 				retryCount: 0,
 				eventName: 'BackupRequestReceived',
-				domainEvent: {
+				event: {
 					...queueRequest,
 					transportTypeCode: 'INVALID', // cause use case to fail
 				},
@@ -133,7 +133,7 @@ describe('BmqConsumer - runs with CheckRequestAllowedUseCase', () => {
 			},
 		} as unknown as bullMq.Job;
 
-		const consumer = new BmqConsumer(useCase, 1);
+		const consumer = new BullmqConsumer(useCase, 1);
 
 		try {
 			const result = await consumer.consume(job);
@@ -150,16 +150,15 @@ describe('BmqConsumer - runs with CheckRequestAllowedUseCase', () => {
 		const jobSvc = new MockBackupJobServiceAdapter({
 			getByIdResult: { ...backupJobProps },
 		});
-		const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 
-		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bullmqBus);
 
 		const job = {
 			data: {
 				connectFailureCount: 0,
 				retryCount: 0,
 				eventName: 'BackupRequestReceived',
-				domainEvent: { ...queueRequest },
+				event: { ...queueRequest },
 			},
 			attemptsMade: 0,
 			update: async () => {
@@ -167,7 +166,7 @@ describe('BmqConsumer - runs with CheckRequestAllowedUseCase', () => {
 			},
 		} as unknown as bullMq.Job;
 
-		const consumer = new BmqConsumer(useCase, 5);
+		const consumer = new BullmqConsumer(useCase, 5);
 
 		try {
 			const result = await consumer.consume(job);
@@ -187,16 +186,15 @@ describe('BmqConsumer - runs with CheckRequestAllowedUseCase', () => {
 			getByIdResult: { ...backupJobProps },
 		});
 		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-		const bmqBus = new BmqEventBus(bullMq, bullMqConnection);
 
-		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bmqBus);
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bullmqBus);
 
 		const job = {
 			data: {
 				connectFailureCount: 0,
 				retryCount: 0,
 				eventName: 'BackupRequestReceived',
-				domainEvent: { ...queueRequest },
+				event: { ...queueRequest },
 			},
 			attemptsMade: 0,
 			update: async () => {
@@ -204,7 +202,7 @@ describe('BmqConsumer - runs with CheckRequestAllowedUseCase', () => {
 			},
 		} as unknown as bullMq.Job;
 
-		const consumer = new BmqConsumer(useCase, 5);
+		const consumer = new BullmqConsumer(useCase, 5);
 
 		const result = await consumer.consume(job);
 

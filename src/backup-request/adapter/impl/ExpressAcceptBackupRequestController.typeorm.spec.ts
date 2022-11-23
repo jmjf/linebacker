@@ -20,7 +20,7 @@ import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/Circ
 import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
 import { delay } from '../../../common/utils/utils';
 import { logger } from '../../../infrastructure/logging/pinoLogger';
-import { EventBusError } from '../../../common/adapter/AdapterErrors';
+import { EventBusError } from '../../../common/infrastructure/InfrastructureErrors';
 
 describe('ExpressAcceptBackupRequestController - typeorm', () => {
 	let mockTypeormCtx: MockTypeormContext;

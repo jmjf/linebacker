@@ -1,10 +1,10 @@
 import { err, ok, Result } from '../../../common/core/Result';
-import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
+import * as InfrastructureErrors from '../../../common/infrastructure/InfrastructureErrors';
+import { IEventBus } from '../../../common/infrastructure/event-bus/IEventBus';
 import * as DomainErrors from '../../../common/domain/DomainErrors';
 import { UseCase } from '../../../common/application/UseCase';
 
 import { AcceptBackupRequestDTO } from './AcceptBackupRequestDTO';
-import { IEventBus } from '../../adapter/IEventBus';
 import { BackupRequest, IBackupRequestProps } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
 import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
@@ -14,7 +14,7 @@ import path from 'node:path';
 const moduleName = path.basename(module.filename);
 
 // add errors when you define them
-type Response = Result<BackupRequest, DomainErrors.PropsError | AdapterErrors.EventBusError>;
+type Response = Result<BackupRequest, DomainErrors.PropsError | InfrastructureErrors.EventBusError>;
 
 export class AcceptBackupRequestUseCase implements UseCase<AcceptBackupRequestDTO, Promise<Response>> {
 	private eventBus: IEventBus;
@@ -43,7 +43,7 @@ export class AcceptBackupRequestUseCase implements UseCase<AcceptBackupRequestDT
 		}
 
 		const acceptedEvent = new BackupRequestAccepted(backupRequestResult.value);
-		const publishResult = await this.eventBus.publish(acceptedEvent);
+		const publishResult = await this.eventBus.publishEvent(acceptedEvent);
 		if (publishResult.isErr()) {
 			return err(publishResult.error);
 		}
