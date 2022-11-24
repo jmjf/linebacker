@@ -19,8 +19,15 @@ export interface IEventBusEvent {
 	incrementRetryCount(): void;
 }
 
+export interface IEventBusSubscriber<IEventBusEvent> {
+	setupSubscriptions(): void;
+}
+
+export type EventBusHandler = (event: IEventBusEvent) => void;
+
 export interface IEventBus {
 	publishEventsBulk(events: IEventBusEvent[]): Promise<Result<IEventBusEvent[], InfrastructureErrors.EventBusError>>;
 	publishEvent(event: IEventBusEvent): Promise<Result<IEventBusEvent, InfrastructureErrors.EventBusError>>;
-	subscribe(eventName: string, handler: (event: IEventBusEvent) => void): void;
+	subscribe(eventName: string, handler: EventBusHandler): void;
+	clearHandlers(): void;
 }

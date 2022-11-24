@@ -2,9 +2,12 @@
 jest.mock('@azure/storage-queue');
 import * as mockQueueSDK from '@azure/storage-queue';
 
+jest.mock('bullmq');
+import * as bullMq from 'bullmq';
+
 import { ReceivedMessageItem } from '@azure/storage-queue';
 
-import { DomainEventBus } from '../../../common/domain/DomainEventBus';
+import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
 import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 
 import { StoreStatusMessage } from '../../domain/StoreStatusReceived';
@@ -42,7 +45,7 @@ describe('AzureStoreStatusMessageHandler', () => {
 	test('when messageText is not valid JSON, it returns err (StatusJsonError)', async () => {
 		// Arrange
 		const msgHandler = new AzureStoreStatusMessageHandler();
-		const publishSpy = jest.spyOn(DomainEventBus, 'publishToSubscribers');
+		const publishSpy = jest.spyOn(eventBus, 'publishEvent');
 
 		// Act
 		const result = await msgHandler.processMessage({ ...okMsgItem, messageText: 'bad json' });
@@ -60,7 +63,7 @@ describe('AzureStoreStatusMessageHandler', () => {
 	test('when messageText is valid JSON, it returns ok', async () => {
 		// Arrange
 		const msgHandler = new AzureStoreStatusMessageHandler();
-		const publishSpy = jest.spyOn(DomainEventBus, 'publishToSubscribers');
+		const publishSpy = jest.spyOn(eventBus, 'publishEvent');
 
 		// Act
 		const result = await msgHandler.processMessage({ ...okMsgItem });

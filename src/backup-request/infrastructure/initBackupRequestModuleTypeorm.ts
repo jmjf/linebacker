@@ -4,7 +4,7 @@ import {
 } from '../../backup-job/adapter/impl/MockBackupJobServiceAdapter';
 import { TypeormContext } from '../../infrastructure/typeorm/typeormContext';
 
-import { bullmqBus } from '../../common/infrastructure/event-bus/BullmqEventBus';
+import { eventBus } from '../../common/infrastructure/event-bus/eventBus';
 
 import { ExpressCreateBackupRequestController } from '../adapter/impl/ExpressCreateBackupRequestController';
 
@@ -31,7 +31,7 @@ export const initBackupRequestModule = (
 	controllerType: 'Fastify' | 'Express',
 	abortSignal: AbortSignal
 ) => {
-	const acceptBackupRequestUseCase = new AcceptBackupRequestUseCase(bullmqBus);
+	const acceptBackupRequestUseCase = new AcceptBackupRequestUseCase(eventBus);
 	const acceptBackupRequestController = new ExpressAcceptBackupRequestController(acceptBackupRequestUseCase);
 
 	const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreakers.dbCircuitBreaker);

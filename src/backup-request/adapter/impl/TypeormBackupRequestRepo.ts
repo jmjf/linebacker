@@ -7,10 +7,10 @@ import {
 } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 
 import { err, ok, Result } from '../../../common/core/Result';
-import { DomainEventBus } from '../../../common/domain/DomainEventBus';
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
-import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
+import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
 import * as DomainErrors from '../../../common/domain/DomainErrors';
+import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 
 import { BackupProviderType } from '../../../backup-job/domain/BackupProviderType';
 
@@ -19,7 +19,6 @@ import { RequestTransportType } from '../../domain/RequestTransportType';
 import { IBackupRequestRepo } from '../IBackupRequestRepo';
 
 import { BackupRequestStatusType, BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
-import { isDate } from 'util/types';
 import { LessThan } from 'typeorm';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
@@ -130,10 +129,10 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 		}
 	}
 
-	public async getRequestIdsByStatusBeforeTimestamp(
+	public async getByStatusBeforeTimestamp(
 		status: BackupRequestStatusType,
 		beforeTimestamp: Date
-	): Promise<Result<string[], AdapterErrors.DatabaseError | AdapterErrors.NotFoundError>> {
+	): Promise<Result<Result<BackupRequest, DomainErrors.PropsError>[], AdapterErrors.DatabaseError | AdapterErrors.NotFoundError>> {
 		const functionName = 'getRequestIdsByStatus';
 
 		if (!this.circuitBreaker.isConnected()) {
@@ -174,7 +173,6 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 
 		try {
 			const data = await this.typeormCtx.manager.find(TypeormBackupRequest, {
-				select: { backupRequestId: true },
 				where: {
 					...whereDateTerm,
 					statusTypeCode: status,
@@ -192,7 +190,7 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 				);
 			}
 
-			return ok(data.map((br) => br.backupRequestId));
+			return ok(data.map((br) => this.mapToDomain(br)));
 		} catch (e) {
 			const { message, ...error } = e as Error;
 			let errorData = { isConnectFailure: false };
@@ -243,7 +241,7 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 		}
 
 		// trigger domain events
-		DomainEventBus.publishEventsForAggregate(backupRequest.id);
+		eventBus.publishEventsBulk(backupRequest.events);
 
 		// The application enforces the business rules, not the database.
 		// Under no circumstances should the database change the data it gets.

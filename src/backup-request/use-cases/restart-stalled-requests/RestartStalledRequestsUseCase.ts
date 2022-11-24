@@ -1,21 +1,22 @@
-import { err, ok, Result } from '../../../common/core/Result';
+import { DelayedEventRunner } from '../../../infrastructure/resilience/DelayedEventRunner';
+
+import { err, Ok, ok, Result } from '../../../common/core/Result';
+import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 import { UseCase } from '../../../common/application/UseCase';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
-
-import { IBackupRequestRepo } from '../../adapter/IBackupRequestRepo';
+import { IEventBusEvent } from '../../../common/infrastructure/event-bus/IEventBus';
 
 import { RestartStalledRequestsDTO } from './RestartStalledRequestsDTO';
-import { IDomainEvent } from '../../../common/domain/DomainEventBus';
+import { BackupRequestAllowed } from '../../domain/BackupRequestAllowed.event';
+import { BackupRequestCreated } from '../../domain/BackupRequestCreated.event';
 import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
-import { BackupRequestAllowed } from '../../domain/BackupRequestAllowed.deb';
-import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
+import { IBackupRequestRepo } from '../../adapter/IBackupRequestRepo';
 import { BackupRequest } from '../../domain/BackupRequest';
-import { BackupRequestCreated } from '../../domain/BackupRequestCreated.deb';
-import { DelayedEventRunner } from '../../../infrastructure/resilience/DelayedEventRunner';
+
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 
-type StatusResult = Result<IDomainEvent[], AdapterErrors.DatabaseError>;
+type StatusResult = Result<IEventBusEvent[], AdapterErrors.DatabaseError>;
 
 type Response = {
 	allowedResult: StatusResult;
@@ -34,26 +35,32 @@ export class RestartStalledRequestsUseCase implements UseCase<RestartStalledRequ
 	public async execute(dto: RestartStalledRequestsDTO): Promise<Response> {
 		const functionName = 'execute';
 
-		let allowedEvents: IDomainEvent[] = [];
-		let receivedEvents: IDomainEvent[] = [];
+		let allowedEvents: IEventBusEvent[] = [];
+		let receivedEvents: IEventBusEvent[] = [];
 
-		const allowedQueryResult = await this.backupRequestRepo.getRequestIdsByStatusBeforeTimestamp(
+		const allowedQueryResult = await this.backupRequestRepo.getByStatusBeforeTimestamp(
 			BackupRequestStatusTypeValues.Allowed,
 			dto.beforeTimestamp
 		);
 		if (allowedQueryResult.isOk()) {
 			// the event wants a "BackupRequest", but only needs the id as a UniqueIdentifier
-			allowedEvents = allowedQueryResult.value.map((id) => new BackupRequestAllowed(new UniqueIdentifier(id)));
+			allowedEvents = allowedQueryResult.value
+				.filter((result) => result.isOk())
+				// TypeScript doesn't realize that everything is ok, so cast it
+				.map((okResult) => new BackupRequestAllowed((okResult as Ok<BackupRequest, never>).value));
 		}
 		// console.log('RSRUC allowedEvents', allowedEvents);
 
-		const receivedQueryResult = await this.backupRequestRepo.getRequestIdsByStatusBeforeTimestamp(
+		const receivedQueryResult = await this.backupRequestRepo.getByStatusBeforeTimestamp(
 			BackupRequestStatusTypeValues.Received,
 			dto.beforeTimestamp
 		);
 		if (receivedQueryResult.isOk()) {
 			// console.log('RSRUC receivedQueryResult', receivedQueryResult);
-			receivedEvents = receivedQueryResult.value.map((id) => new BackupRequestCreated(new UniqueIdentifier(id)));
+			receivedEvents = receivedQueryResult.value
+			.filter((result) => result.isOk())
+			// TypeScript doesn't realize that everything is ok, so cast it
+			.map((okResult) => new BackupRequestAllowed((okResult as Ok<BackupRequest, never>).value));
 		}
 		// console.log('RSRUC receivedEvents', receivedEvents);
 

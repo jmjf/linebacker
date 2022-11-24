@@ -1,6 +1,6 @@
 import { BaseError } from '../../common/core/BaseError';
 import { Result } from '../../common/core/Result';
-import { IDomainEvent } from '../../common/domain/DomainEventBus';
+import { IEventBusEvent } from '../../common/infrastructure/event-bus/IEventBus';
 import { delay } from '../../common/utils/utils';
 import { DelayedEventRunner } from './DelayedEventRunner';
 
@@ -30,7 +30,7 @@ export interface CircuitBreakerOpts {
 export interface ConnectFailureErrorData {
 	isConnectFailure: boolean;
 	isConnected: () => boolean;
-	addRetryEvent: (ev: IDomainEvent) => void;
+	addRetryEvent: (ev: IEventBusEvent) => void;
 	serviceName: string;
 }
 
@@ -174,7 +174,7 @@ export class CircuitBreakerWithRetry {
 		}
 	}
 
-	public addRetryEvent(ev: IDomainEvent) {
+	public addRetryEvent(ev: IEventBusEvent) {
 		// do nothing if halted
 		if (this._state === CircuitBreakerStateValues.Halted) return;
 

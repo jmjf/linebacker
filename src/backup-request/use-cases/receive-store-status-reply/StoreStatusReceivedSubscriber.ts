@@ -1,13 +1,14 @@
 import { BaseError } from '../../../common/core/BaseError';
-import { DomainEventBus, IDomainEventSubscriber } from '../../../common/domain/DomainEventBus';
+import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
+import { IEventBusSubscriber } from '../../../common/infrastructure/event-bus/IEventBus';
 import { logger } from '../../../infrastructure/logging/pinoLogger';
 import { IBackupInterfaceStoreAdapter } from '../../adapter/IBackupInterfaceStoreAdapter';
-import { StoreStatusReceived } from '../../domain/StoreStatusReceived';
+import { StoreStatusReceived } from '../../domain/StoreStatusReceived.event';
 import { ReceiveStoreStatusReplyUseCase } from './ReceiveStoreStatusReplyUseCase';
 import { StoreStatusReplyDTO } from './StoreStatusReplyDTO';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
-export class StoreStatusReceivedSubscriber implements IDomainEventSubscriber<StoreStatusReceived> {
+export class StoreStatusReceivedSubscriber implements IEventBusSubscriber<StoreStatusReceived> {
 	private useCase: ReceiveStoreStatusReplyUseCase;
 	private interfaceAdapter: IBackupInterfaceStoreAdapter;
 
@@ -18,32 +19,32 @@ export class StoreStatusReceivedSubscriber implements IDomainEventSubscriber<Sto
 	}
 
 	setupSubscriptions(): void {
-		DomainEventBus.subscribe(StoreStatusReceived.name, this.onStoreStatusReceived.bind(this));
+		eventBus.subscribe(StoreStatusReceived.name, this.onStoreStatusReceived.bind(this));
 	}
 
 	async onStoreStatusReceived(event: StoreStatusReceived): Promise<void> {
 		// console.log('onStoreStatusReceived', event.messageItem);
-		const messageItem = event.messageItem;
-		const reply = event.messageItem.messageObject;
+		const messageItem = event.eventData.event;
+		const storeStatusMessage = messageItem.messageObject;
 		const eventName = event.constructor.name;
 		const logContext = {
 			moduleName,
 			functionName: 'onStoreStatusReceived',
-			backupRequestId: reply.backupRequestId,
+			backupRequestId: storeStatusMessage.backupRequestId,
 			eventName: eventName,
 		};
 
 		const dto: StoreStatusReplyDTO = {
-			backupRequestId: reply.backupRequestId,
-			storagePathName: reply.storagePathName,
-			resultTypeCode: reply.resultTypeCode,
-			backupByteCount: reply.backupByteCount,
-			copyStartTimestamp: reply.copyStartTimestamp,
-			copyEndTimestamp: reply.copyEndTimestamp,
-			verifyStartTimestamp: reply.verifyStartTimestamp,
-			verifyEndTimestamp: reply.verifyEndTimestamp,
-			verifiedHash: reply.verifiedHash,
-			messageText: reply.messageText,
+			backupRequestId: storeStatusMessage.backupRequestId,
+			storagePathName: storeStatusMessage.storagePathName,
+			resultTypeCode: storeStatusMessage.resultTypeCode,
+			backupByteCount: storeStatusMessage.backupByteCount,
+			copyStartTimestamp: storeStatusMessage.copyStartTimestamp,
+			copyEndTimestamp: storeStatusMessage.copyEndTimestamp,
+			verifyStartTimestamp: storeStatusMessage.verifyStartTimestamp,
+			verifyEndTimestamp: storeStatusMessage.verifyEndTimestamp,
+			verifiedHash: storeStatusMessage.verifiedHash,
+			messageText: storeStatusMessage.messageText,
 		};
 
 		try {

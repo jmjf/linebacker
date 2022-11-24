@@ -1,6 +1,6 @@
-import { DomainEventBus } from '../../common/domain/DomainEventBus';
-import { ApplicationResilienceReady } from './ApplicationResilienceReady';
+import { eventBus } from '../../common/infrastructure/event-bus/eventBus';
+import { ApplicationResilienceReady } from './ApplicationResilienceReady.event';
 
 export function publishApplicationResilienceReady(beforeTimestamp: Date) {
-	DomainEventBus.publishToSubscribers(new ApplicationResilienceReady(beforeTimestamp));
+	eventBus.publishEventsBulk(new ApplicationResilienceReady(beforeTimestamp));
 }

@@ -4,7 +4,8 @@ import { IEventBusEvent } from '../common/infrastructure/event-bus/IEventBus';
 import { BackupRequestAccepted } from '../backup-request/domain/BackupRequestAccepted.event';
 const mockBullMq = jest.mocked(bullMq);
 
-import { bullmqBus } from '../common/infrastructure/event-bus/BullmqEventBus';
+process.env.EVENT_BUS_TYPE = 'bullmq';
+import { eventBus } from '../common/infrastructure/event-bus/eventBus';
 
 describe('BmqInstance', () => {
 	beforeEach(() => {
@@ -21,7 +22,7 @@ describe('BmqInstance', () => {
 
 	test('basic test', async () => {
 		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-		const publishSpy = jest.spyOn(bullmqBus, 'publishEvent');
+		const publishSpy = jest.spyOn(eventBus, 'publishEvent');
 		const testEvent = {
 			topicName: 'topic',
 			key: 'key',
@@ -30,7 +31,7 @@ describe('BmqInstance', () => {
 			},
 		};
 
-		const result = await bullmqBus.publishEvent(testEvent as unknown as IEventBusEvent);
+		const result = await eventBus.publishEvent(testEvent as unknown as IEventBusEvent);
 
 		console.log('result', result);
 

@@ -6,7 +6,7 @@ import { ReceivedMessageItem } from '@azure/storage-queue';
 
 import { ok } from '../../common/core/Result';
 
-import { DomainEventBus } from '../../common/domain/DomainEventBus';
+import { eventBus } from '../../common/infrastructure/event-bus/eventBus';
 
 import { delay } from '../../common/utils/utils';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
@@ -36,7 +36,7 @@ import { ApplicationResilienceReadySubscriber } from '../use-cases/restart-stall
 import { RestartStalledRequestsUseCase } from '../use-cases/restart-stalled-requests/RestartStalledRequestsUseCase';
 
 import { CircuitBreakerWithRetry } from '../../infrastructure/resilience/CircuitBreakerWithRetry';
-import { ApplicationResilienceReady } from '../../infrastructure/resilience/ApplicationResilienceReady';
+import { ApplicationResilienceReady } from '../../infrastructure/resilience/ApplicationResilienceReady.event';
 import {
 	MockTypeormContext,
 	TypeormContext,
@@ -382,7 +382,7 @@ if (TEST_EVENTS) {
 			mockTypeormCtx = createMockTypeormContext();
 			typeormCtx = mockTypeormCtx as unknown as TypeormContext;
 
-			DomainEventBus.clearHandlers();
+			eventBus.clearHandlers();
 
 			const isAlive = () => {
 				return Promise.resolve(ok(true));
@@ -471,7 +471,7 @@ if (TEST_EVENTS) {
 			mockTypeormCtx.manager.find.mockResolvedValueOnce(dbReceivedResults);
 
 			const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
-			const brGetBeforeSpy = jest.spyOn(backupRequestRepo, 'getRequestIdsByStatusBeforeTimestamp');
+			const brGetBeforeSpy = jest.spyOn(backupRequestRepo, 'getByStatusBeforeTimestamp');
 
 			const useCase = new RestartStalledRequestsUseCase(backupRequestRepo, abortController.signal);
 
@@ -481,7 +481,7 @@ if (TEST_EVENTS) {
 			const event = new ApplicationResilienceReady(new Date());
 
 			// Act
-			DomainEventBus.publishToSubscribers(event);
+			eventBus.publishEvent(event);
 
 			await delay(1000);
 

@@ -66,9 +66,9 @@ export class BullmqEventBus implements IEventBus {
 		return ok(events);
 	}
 
-	public async subscribe(eventName: string, handler: (event: IEventBusEvent) => void): Promise<void> {
+	public subscribe(eventName: string, handler: (event: IEventBusEvent) => void): void {
 		return;
 	}
-}
 
-export const bullmqBus = new BullmqEventBus(bullMq, bullMqConnection);
+	public clearHandlers() { return; }
+}

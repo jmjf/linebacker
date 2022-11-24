@@ -6,10 +6,7 @@ import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
 
 import { UseCase } from '../../common/application/UseCase';
 
-import * as AdapterErrors from '../../common/adapter/AdapterErrors';
-
-import { CircuitBreakerStateValues, CircuitBreakerWithRetry, ConnectFailureErrorData } from './CircuitBreakerWithRetry';
-import { delay, Dictionary } from '../../common/utils/utils';
+import { delay } from '../../common/utils/utils';
 import { DelayedEventRunner } from './DelayedEventRunner';
 
 const VERBOSE_LOGS = false; // set true to get verbose console.logs for event tracing
@@ -53,7 +50,7 @@ class TestEvent implements IDomainEvent {
 
 class TestSubscriber implements IDomainEventSubscriber<TestEvent> {
 	private useCase: TestUseCase;
-	private failedServices: Dictionary = {};
+	private failedServices: Record<string, any> = {};
 
 	constructor(useCase: TestUseCase) {
 		this.setupSubscriptions();

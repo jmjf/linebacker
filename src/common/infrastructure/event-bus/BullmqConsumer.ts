@@ -5,7 +5,6 @@ import { logger } from '../../../infrastructure/logging/pinoLogger';
 import * as InfrastructureErrors from '../InfrastructureErrors';
 
 import { SendRequestToInterfaceUseCase } from '../../../backup-request/use-cases/send-request-to-interface/SendRequestToInterfaceUseCase';
-import { IEventBusConsumer } from '../../../backup-request/adapter/IEventBusConsumer';
 import { ReceiveBackupRequestUseCase } from '../../../backup-request/use-cases/receive-backup-request/ReceiveBackupRequestUseCase';
 import { CheckRequestAllowedUseCase } from '../../../backup-request/use-cases/check-request-allowed-2/CheckRequestAllowedUseCase';
 
@@ -13,7 +12,11 @@ const moduleName = path.basename(module.filename);
 
 type BullmqConsumerUseCase = ReceiveBackupRequestUseCase | CheckRequestAllowedUseCase | SendRequestToInterfaceUseCase;
 
-export class BullmqConsumer implements IEventBusConsumer {
+export interface IBullmqEventBusConsumer {
+	consume(job: unknown): unknown | Error;
+}
+
+export class BullmqConsumer implements IBullmqEventBusConsumer {
 	private useCase: BullmqConsumerUseCase;
 	private maxTrueFailures: number;
 
@@ -26,7 +29,7 @@ export class BullmqConsumer implements IEventBusConsumer {
 		const functionName = 'consume';
 		const logContext = { jobName: job.name, jobId: job.id, eventType: '', moduleName, functionName };
 
-		logger.trace({ useCaseName: this.useCase.constructor.name, jobData: job.data, ...logContext }, 'consuming job');
+		logger.trace({ useCaseName: this.useCase.constructor.name, jobData: job.data, ...logContext }, 'Consuming job');
 
 		const attemptsMade = job.attemptsMade;
 		const { event, eventType, connectFailureCount, retryCount } = job.data;
@@ -54,7 +57,7 @@ export class BullmqConsumer implements IEventBusConsumer {
 					throw new InfrastructureErrors.EventBusError('Other error - retry', result.error);
 				}
 
-				throw new UnrecoverableError('Too many failures - fail');
+				throw new UnrecoverableError('Too many attempts - fail');
 			}
 
 			logger.debug({ result: result.value, ...logContext }, 'Use case ok');

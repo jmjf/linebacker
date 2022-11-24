@@ -2,7 +2,7 @@ jest.mock('bullmq');
 import * as bullMq from 'bullmq';
 const mockBullMq = jest.mocked(bullMq);
 
-import { bullmqBus } from './BullmqEventBus';
+import { bullmqEventBus } from './BullmqEventBus';
 import { BullmqConsumer } from './BullmqConsumer';
 
 import {
@@ -79,7 +79,7 @@ describe('BmqConsumer - runs with CheckRequestAllowedUseCase', () => {
 			getByIdResult: { ...backupJobProps },
 		});
 
-		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bullmqBus);
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bullmqEventBus);
 
 		const job = {
 			data: {
@@ -115,7 +115,7 @@ describe('BmqConsumer - runs with CheckRequestAllowedUseCase', () => {
 			getByIdResult: { ...backupJobProps },
 		});
 
-		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bullmqBus);
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bullmqEventBus);
 
 		const job = {
 			data: {
@@ -151,7 +151,7 @@ describe('BmqConsumer - runs with CheckRequestAllowedUseCase', () => {
 			getByIdResult: { ...backupJobProps },
 		});
 
-		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bullmqBus);
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bullmqEventBus);
 
 		const job = {
 			data: {
@@ -187,7 +187,7 @@ describe('BmqConsumer - runs with CheckRequestAllowedUseCase', () => {
 		});
 		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
 
-		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bullmqBus);
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bullmqEventBus);
 
 		const job = {
 			data: {

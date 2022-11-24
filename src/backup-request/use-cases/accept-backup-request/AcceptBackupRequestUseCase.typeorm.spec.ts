@@ -3,17 +3,14 @@ jest.mock('bullmq');
 import * as bullMq from 'bullmq';
 const mockBullMq = jest.mocked(bullMq);
 
-import { bullmqBus as eventBus } from '../../../common/infrastructure/event-bus/BullmqEventBus';
+import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
 
 import { AcceptBackupRequestUseCase } from './AcceptBackupRequestUseCase';
 import { AcceptBackupRequestDTO } from './AcceptBackupRequestDTO';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 
 import { EventBusError } from '../../../common/infrastructure/InfrastructureErrors';
-import { ok } from '../../../common/core/Result';
 import { BackupRequest } from '../../domain/BackupRequest';
-
-import { bullMqConnection } from '../../../infrastructure/bullmq/bullMqInfra';
 
 describe('AcceptBackupRequestUseCase - bullmq', () => {
 	const eventBusPublishSpy = jest.spyOn(eventBus, 'publishEvent');

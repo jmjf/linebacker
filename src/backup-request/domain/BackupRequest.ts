@@ -9,8 +9,8 @@ import * as DomainErrors from '../../common/domain/DomainErrors';
 
 import { BackupProviderType } from '../../backup-job/domain/BackupProviderType';
 
-import { BackupRequestAllowed } from './BackupRequestAllowed.deb';
-import { BackupRequestCreated } from './BackupRequestCreated.deb';
+import { BackupRequestAllowed } from './BackupRequestAllowed.event';
+import { BackupRequestCreated } from './BackupRequestCreated.event';
 import { StoreResultType } from './StoreResultType';
 import { BackupRequestStatusType, BackupRequestStatusTypeValues } from './BackupRequestStatusType';
 import { RequestTransportType, validRequestTransportTypes } from './RequestTransportType';
@@ -178,7 +178,7 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 			: BackupRequestStatusTypeValues.NotAllowed;
 		this.props.checkedTimestamp = new Date();
 		if (isAllowed) {
-			this.addDomainEvent(new BackupRequestAllowed(this.backupRequestId));
+			this.addEvent(new BackupRequestAllowed(this));
 		}
 	}
 
@@ -281,7 +281,7 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 
 		// new requests will have an undefined id parameter from the function call
 		if (!!id === false) {
-			backupRequest.addDomainEvent(new BackupRequestCreated(backupRequest.backupRequestId));
+			backupRequest.addEvent(new BackupRequestCreated(backupRequest));
 		}
 
 		return ok(backupRequest);

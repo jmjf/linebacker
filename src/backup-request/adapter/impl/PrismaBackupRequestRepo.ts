@@ -4,7 +4,7 @@ import {
 	ConnectFailureErrorData,
 } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 
-import { DomainEventBus } from '../../../common/domain/DomainEventBus';
+import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
 
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 import { err, ok, Result } from '../../../common/core/Result';
@@ -133,10 +133,10 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 		}
 	}
 
-	public async getRequestIdsByStatusBeforeTimestamp(
+	public async getByStatusBeforeTimestamp(
 		status: BackupRequestStatusType,
 		beforeTimestamp: Date
-	): Promise<Result<string[], AdapterErrors.DatabaseError | AdapterErrors.NotFoundError>> {
+	): Promise<Result<Result<BackupRequest, DomainErrors.PropsError>[], AdapterErrors.DatabaseError | AdapterErrors.NotFoundError>> {
 		const functionName = 'getRequestIdsByStatus';
 
 		if (!this.circuitBreaker.isConnected()) {
@@ -177,7 +177,6 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 
 		try {
 			const data = await this.prisma.prismaBackupRequest.findMany({
-				select: { backupRequestId: true },
 				where: {
 					...whereDateTerm,
 					statusTypeCode: status,
@@ -195,7 +194,7 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 				);
 			}
 
-			return ok(data.map((br) => br.backupRequestId));
+			return ok(data.map((br) => this.mapToDomain(br)));
 		} catch (e) {
 			const { message, ...error } = e as Error;
 			let errorData = { isConnectFailure: false };
@@ -257,7 +256,7 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 		}
 
 		// trigger domain events
-		DomainEventBus.publishEventsForAggregate(backupRequest.id);
+		eventBus.publishEventsBulk(backupRequest.events);
 
 		// The application enforces the business rules, not the database.
 		// Under no circumstances should the database change the data it gets.

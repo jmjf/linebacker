@@ -2,7 +2,7 @@ jest.mock('bullmq');
 import * as bullMq from 'bullmq';
 const mockBullMq = jest.mocked(bullMq);
 
-import { bullmqBus as eventBus } from '../../../common/infrastructure/event-bus/BullmqEventBus';
+import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 import * as InfrastructureErrors from '../../../common/infrastructure/InfrastructureErrors';
 

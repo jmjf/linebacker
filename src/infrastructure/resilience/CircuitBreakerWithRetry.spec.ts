@@ -1,7 +1,7 @@
 import { Result, ok, err } from '../../common/core/Result';
 import { BaseError } from '../../common/core/BaseError';
 
-import { DomainEventBus, IDomainEvent, IDomainEventSubscriber } from '../../common/domain/DomainEventBus';
+import { eventBus } from '../../common/infrastructure/event-bus/eventBus';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
 
 import { UseCase } from '../../common/application/UseCase';
@@ -10,6 +10,7 @@ import * as AdapterErrors from '../../common/adapter/AdapterErrors';
 
 import { CircuitBreakerStateValues, CircuitBreakerWithRetry, ConnectFailureErrorData } from './CircuitBreakerWithRetry';
 import { delay, Dictionary } from '../../common/utils/utils';
+import { IEventBusEvent } from '../../common/infrastructure/event-bus/IEventBus';
 
 const VERBOSE_LOGS = false; // set true to get verbose console.logs for event tracing
 class TestService {
@@ -91,7 +92,7 @@ class TestUseCase implements UseCase<TestUseCaseDTO, Result<boolean, BaseError>>
 	}
 }
 
-class TestEvent implements IDomainEvent {
+class TestEvent implements IEventBusEvent {
 	public eventTimestamp: Date;
 	public id: UniqueIdentifier;
 	public retryCount: number;

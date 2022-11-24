@@ -4,7 +4,7 @@ import {
 	ConnectFailureErrorData,
 } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 
-import { DomainEventBus } from '../../../common/domain/DomainEventBus';
+import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
 
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 import { err, ok, Result } from '../../../common/core/Result';
@@ -224,7 +224,7 @@ export class PrismaBackupRepo implements IBackupRepo {
 		}
 
 		// trigger domain events
-		DomainEventBus.publishEventsForAggregate(backup.id);
+		eventBus.publishEventsBulk(backup.events);
 
 		// The application enforces the business rules, not the database.
 		// Under no circumstances should the database change the data it gets.

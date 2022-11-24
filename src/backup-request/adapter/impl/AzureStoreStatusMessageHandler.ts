@@ -3,11 +3,11 @@ import { ReceivedMessageItem } from '@azure/storage-queue';
 import { Result, ok, err } from '../../../common/core/Result';
 import { IStoreStatusMessageHandler } from '../IStoreStatusMessageHandler';
 
-import { StoreStatusMessage, StoreStatusMessageItem, StoreStatusReceived } from '../../domain/StoreStatusReceived';
+import { StoreStatusMessage, StoreStatusMessageItem, StoreStatusReceived } from '../../domain/StoreStatusReceived.event';
 
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 import { logger } from '../../../infrastructure/logging/pinoLogger';
-import { DomainEventBus } from '../../../common/domain/DomainEventBus';
+import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 
@@ -57,7 +57,7 @@ export class AzureStoreStatusMessageHandler implements IStoreStatusMessageHandle
 
 		const event = new StoreStatusReceived(eventMessage);
 
-		DomainEventBus.publishToSubscribers(event);
+		eventBus.publishEvent(event);
 
 		logger.info({
 			msg: 'Published StoreStatusReceived event',

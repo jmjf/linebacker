@@ -1,16 +1,17 @@
 import { BaseError } from '../../../common/core/BaseError';
 
-import { DomainEventBus, IDomainEvent, IDomainEventSubscriber } from '../../../common/domain/DomainEventBus';
+import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
+import { IEventBusEvent, IEventBusSubscriber } from '../../../common/infrastructure/event-bus/IEventBus';
 
 import { logger } from '../../../infrastructure/logging/pinoLogger';
 
 import { Dictionary } from '../../../common/utils/utils';
 
 import { RestartStalledRequestsUseCase } from './RestartStalledRequestsUseCase';
-import { ApplicationResilienceReady } from '../../../infrastructure/resilience/ApplicationResilienceReady';
+import { ApplicationResilienceReady } from '../../../infrastructure/resilience/ApplicationResilienceReady.event';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
-export class ApplicationResilienceReadySubscriber implements IDomainEventSubscriber<ApplicationResilienceReady> {
+export class ApplicationResilienceReadySubscriber implements IEventBusSubscriber<ApplicationResilienceReady> {
 	private useCase: RestartStalledRequestsUseCase;
 	private failedServices: Dictionary = {};
 
@@ -20,24 +21,25 @@ export class ApplicationResilienceReadySubscriber implements IDomainEventSubscri
 	}
 
 	setupSubscriptions(): void {
-		DomainEventBus.subscribe(ApplicationResilienceReady.name, this.onApplicationResilienceReady.bind(this));
+		eventBus.subscribe(ApplicationResilienceReady.name, this.onApplicationResilienceReady.bind(this));
 	}
 
 	async onApplicationResilienceReady(event: ApplicationResilienceReady): Promise<void> {
 		const eventName = event.constructor.name;
+		const beforeTimestamp = event.eventData.event.beforeTimestamp;
 		const logContext = {
 			applicationModuleName: 'backup-request',
 			moduleName,
 			functionName: 'onApplicationResilienceReady',
 			eventName: eventName,
-			beforeTimestamp: event.beforeTimestamp.toISOString(),
+			beforeTimestamp: beforeTimestamp.toISOString(),
 		};
 
 		// This subscriber does not support retries on use case errors
 
 		try {
 			logger.debug({ ...logContext }, 'Execute use case');
-			const result = await this.useCase.execute({ beforeTimestamp: event.beforeTimestamp });
+			const result = await this.useCase.execute({ beforeTimestamp });
 
 			if (result.allowedResult.isOk() && result.receivedResult.isOk()) {
 				logger.info(
@@ -77,7 +79,7 @@ export class ApplicationResilienceReadySubscriber implements IDomainEventSubscri
 		}
 	}
 
-	private getEventIds(evArray: IDomainEvent[]): string[] {
-		return evArray.map((ev) => ev.getId().value);
+	private getEventIds(evArray: IEventBusEvent[]): string[] {
+		return evArray.map((ev) => ev.eventKey);
 	}
 }

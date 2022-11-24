@@ -1,11 +1,11 @@
 import { logger } from '../../infrastructure/logging/pinoLogger';
 
 import { Entity } from './Entity';
-import { DomainEventBus, IDomainEvent } from './DomainEventBus';
 import { UniqueIdentifier } from './UniqueIdentifier';
+import { IEventBusEvent } from '../infrastructure/event-bus/IEventBus';
 
 export abstract class AggregateRoot<T> extends Entity<T> {
-	private _domainEvents: IDomainEvent[] = [];
+	private _events: IEventBusEvent[] = [];
 
 	get idValue(): string {
 		return this._id.value;
@@ -14,31 +14,30 @@ export abstract class AggregateRoot<T> extends Entity<T> {
 		return this._id;
 	}
 
-	get domainEvents(): IDomainEvent[] {
-		return this._domainEvents;
+	get events(): IEventBusEvent[] {
+		return this._events;
 	}
 
-	protected addDomainEvent(domainEvent: IDomainEvent): void {
-		this._domainEvents.push(domainEvent);
-		DomainEventBus.markAggregateForPublish(this);
-		this.logDomainEventAdded(domainEvent);
+	protected addEvent(event: IEventBusEvent): void {
+		this._events.push(event);
+		this.logEventAdded(event);
 	}
 
 	public clearEvents(): void {
-		this._domainEvents = [];
+		this._events = [];
 	}
 
-	private logDomainEventAdded(domainEvent: IDomainEvent): void {
+	private logEventAdded(event: IEventBusEvent): void {
 		const aggregateClass = Reflect.getPrototypeOf(this);
 		const aggregateName = aggregateClass ? aggregateClass.constructor.name : 'unknown aggregate';
-		const domainEventClass = Reflect.getPrototypeOf(domainEvent);
-		const domainEventName = domainEventClass ? domainEventClass.constructor.name : 'unknown event';
+		const eventClass = Reflect.getPrototypeOf(event);
+		const eventName = eventClass ? eventClass.constructor.name : 'unknown event';
 
 		logger.trace({
-			eventName: domainEventName,
-			aggregateName: `${aggregateName}`,
-			aggregateId: domainEvent.getId().value,
-			msg: 'added event',
-		});
+			aggregateName,
+			eventName,
+			eventKey: event.eventKey,
+			eventData: event.eventData
+		}, 'Added event');
 	}
 }

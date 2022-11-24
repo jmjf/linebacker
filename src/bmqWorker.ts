@@ -18,6 +18,11 @@ if (!process.env.APP_ENV) {
 logger.info(logContext, `APP_ENV ${process.env.APP_ENV}`);
 dotenv.config({ path: `./env/${process.env.APP_ENV}.env` });
 
+if (process.env.EVENT_BUS_TYPE !== 'bullmq') {
+	logger.error(logContext, 'EVENT_BUS_TYPE is not bullmq');
+	process.exit(1);
+}
+
 import * as bullMq from 'bullmq';
 import path from 'node:path';
 
@@ -28,7 +33,7 @@ import { typeormCtx } from './infrastructure/typeorm/typeormContext';
 import { buildCircuitBreakers, ICircuitBreakers } from './infrastructure/typeorm/buildCircuitBreakers.typeorm';
 import { bullMqConnection } from './infrastructure/bullmq/bullMqInfra';
 
-import { bullmqBus } from './common/infrastructure/event-bus/BullmqEventBus';
+import { eventBus } from './common/infrastructure/event-bus/eventBus';
 import { TypeormBackupRequestRepo } from './backup-request/adapter/impl/TypeormBackupRequestRepo';
 
 import { BullmqConsumer } from './common/infrastructure/event-bus/BullmqConsumer';
@@ -46,7 +51,7 @@ const moduleName = path.basename(module.filename);
 const buildWorker = (circuitBreakers: ICircuitBreakers) => {
 	const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreakers.dbCircuitBreaker);
 
-	const rcvUseCase = new ReceiveBackupRequestUseCase(brRepo, bullmqBus);
+	const rcvUseCase = new ReceiveBackupRequestUseCase(brRepo, eventBus);
 	const acceptedConsumer = new BullmqConsumer(rcvUseCase, 5);
 	const acceptedConsumerConsume = acceptedConsumer.consume.bind(acceptedConsumer);
 
@@ -60,7 +65,7 @@ const buildWorker = (circuitBreakers: ICircuitBreakers) => {
 		},
 	});
 
-	const checkUseCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bullmqBus);
+	const checkUseCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, eventBus);
 	const receivedConsumer = new BullmqConsumer(checkUseCase, 5);
 	const receivedConsumerConsume = receivedConsumer.consume.bind(receivedConsumer);
 
