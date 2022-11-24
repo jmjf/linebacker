@@ -1,4 +1,4 @@
-import { IEventBusEvent, IEventBusEventData } from '../../common/infrastructure/event-bus/IEventBus';
+import { EventBusEvent } from '../../common/infrastructure/event-bus/IEventBus';
 import { BackupRequest } from './BackupRequest';
 
 import { BackupRequestStatusType } from './BackupRequestStatusType';
@@ -18,15 +18,10 @@ export interface BackupRequestAcceptedEventData {
 	};
 }
 
-export class BackupRequestAccepted implements IEventBusEvent {
-	private _eventTimestamp: Date;
-	private _eventData: IEventBusEventData & BackupRequestAcceptedEventData;
-	private _eventKey: string;
-	private _topicName: string;
+export class BackupRequestAccepted extends EventBusEvent<BackupRequestAcceptedEventData> {
 
 	constructor(backupRequest: BackupRequest) {
-		this._eventTimestamp = new Date();
-		this._topicName = 'linebacker';
+		super();
 		this._eventData = {
 			connectFailureCount: 0,
 			retryCount: 0,
@@ -44,41 +39,5 @@ export class BackupRequestAccepted implements IEventBusEvent {
 			},
 		};
 		this._eventKey = this._eventData.event.backupRequestId;
-	}
-
-	get topicName() {
-		return this._topicName;
-	}
-
-	get eventKey() {
-		return this._eventKey;
-	}
-
-	get eventData() {
-		return this._eventData;
-	}
-
-	get event() {
-		return this._eventData.event;
-	}
-
-	get eventDataString() {
-		return JSON.stringify(this._eventData);
-	}
-
-	get eventTimestamp() {
-		return this._eventTimestamp;
-	}
-
-	get retryCount() {
-		return this._eventData.retryCount;
-	}
-
-	get connectFailureCount() {
-		return this._eventData.connectFailureCount;
-	}
-
-	incrementRetryCount() {
-		this._eventData.retryCount++;
 	}
 }

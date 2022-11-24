@@ -1,20 +1,16 @@
-import { Result, ok, err } from '../../common/core/Result';
+import { Result, ok } from '../../common/core/Result';
 import { BaseError } from '../../common/core/BaseError';
-
-import { DomainEventBus, IDomainEvent, IDomainEventSubscriber } from '../../common/domain/DomainEventBus';
+import { EventBusEvent, IEventBusSubscriber } from '../../common/infrastructure/event-bus/IEventBus';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
-
 import { UseCase } from '../../common/application/UseCase';
 
 import { delay } from '../../common/utils/utils';
 import { DelayedEventRunner } from './DelayedEventRunner';
 
-const VERBOSE_LOGS = false; // set true to get verbose console.logs for event tracing
-interface TestUseCaseDTO {
-	id: UniqueIdentifier;
-	retryCount: number;
-}
+import { TestUseCaseDTO, TestEvent } from '../../test-helpers/ResilienceTestTypes';
+import { eventBus } from '../../common/infrastructure/event-bus/eventBus';
 
+const VERBOSE_LOGS = false; // set true to get verbose console.logs for event tracing
 // this test suite isn't concerned about the adapter or service behavior, so only needs to check calls to the use case
 
 class TestUseCase implements UseCase<TestUseCaseDTO, Result<boolean, BaseError>> {
@@ -32,23 +28,8 @@ class TestUseCase implements UseCase<TestUseCaseDTO, Result<boolean, BaseError>>
 	}
 }
 
-class TestEvent implements IDomainEvent {
-	public eventTimestamp: Date;
-	public id: UniqueIdentifier;
-	public retryCount: number;
 
-	constructor(id: UniqueIdentifier) {
-		this.eventTimestamp = new Date();
-		this.id = id;
-		this.retryCount = 0;
-	}
-
-	getId(): UniqueIdentifier {
-		return this.id;
-	}
-}
-
-class TestSubscriber implements IDomainEventSubscriber<TestEvent> {
+class TestSubscriber implements IEventBusSubscriber<TestEvent> {
 	private useCase: TestUseCase;
 	private failedServices: Record<string, any> = {};
 
@@ -58,7 +39,7 @@ class TestSubscriber implements IDomainEventSubscriber<TestEvent> {
 	}
 
 	setupSubscriptions(): void {
-		DomainEventBus.subscribe(TestEvent.name, this.onEvent.bind(this));
+		eventBus.subscribe(TestEvent.name, this.onEvent.bind(this));
 	}
 
 	public get failedServiceNames() {
@@ -66,10 +47,10 @@ class TestSubscriber implements IDomainEventSubscriber<TestEvent> {
 	}
 
 	async onEvent(event: TestEvent): Promise<void> {
-		const id = event.getId();
+		const key = event.eventKey;
 		const eventName = event.constructor.name;
 
-		if (VERBOSE_LOGS) console.log('subscriber event', id.value, event.retryCount, this.failedServiceNames);
+		if (VERBOSE_LOGS) console.log('subscriber event', key, event.retryCount, this.failedServiceNames);
 
 		if (Object.keys(this.failedServices).length > 0) {
 			// have connection checks
@@ -77,12 +58,12 @@ class TestSubscriber implements IDomainEventSubscriber<TestEvent> {
 				if (VERBOSE_LOGS)
 					console.log(
 						'subscriber connection check for',
-						id.value,
+						key,
 						serviceName,
 						this.failedServices[serviceName].isConnected()
 					);
 				if (!this.failedServices[serviceName].isConnected()) {
-					event.retryCount++;
+					event.incrementRetryCount();
 					this.failedServices[serviceName].addRetryEvent(event);
 					return; // something is down so no need to check further
 				}
@@ -92,11 +73,11 @@ class TestSubscriber implements IDomainEventSubscriber<TestEvent> {
 			}
 		}
 		try {
-			const result = await this.useCase.execute({ id, retryCount: event.retryCount });
+			const result = await this.useCase.execute({ id: key, retryCount: event.retryCount });
 
 			if (result.isErr()) {
 				if (VERBOSE_LOGS)
-					console.log('subscriber use case error', event.id.value, event.retryCount, result.error.message);
+					console.log('subscriber use case error', key, event.retryCount, result.error.message);
 				const errorData = result.error.errorData as any;
 				if (errorData.isConnectFailure) {
 					if (errorData.serviceName && errorData.isConnected && !this.failedServices[errorData.serviceName]) {
@@ -105,12 +86,12 @@ class TestSubscriber implements IDomainEventSubscriber<TestEvent> {
 						this.failedServices[errorData.serviceName].addRetryEvent = errorData.addRetryEvent;
 					}
 					if (errorData.addRetryEvent) {
-						event.retryCount++;
+						event.incrementRetryCount();
 						errorData.addRetryEvent(event);
 					}
 				}
 			} else {
-				if (VERBOSE_LOGS) console.log('subscriber use case ok', event.id.value, event.retryCount);
+				if (VERBOSE_LOGS) console.log('subscriber use case ok', key, event.retryCount);
 			}
 		} catch (e) {
 			const { message, ...error } = e as BaseError;
@@ -167,7 +148,7 @@ describe('DelayedEventRunner', () => {
 		expect(useCaseSpy).toBeCalledTimes(0);
 
 		// Cleanup
-		DomainEventBus.clearHandlers();
+		eventBus.clearHandlers();
 		abortController.abort();
 		delay(20);
 	});
@@ -194,7 +175,7 @@ describe('DelayedEventRunner', () => {
 		expect(delayedEventRunner.eventCount).toBe(0);
 
 		// Cleanup
-		DomainEventBus.clearHandlers();
+		eventBus.clearHandlers();
 		abortController.abort();
 		delay(20);
 	});

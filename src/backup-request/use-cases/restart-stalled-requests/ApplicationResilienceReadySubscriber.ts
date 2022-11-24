@@ -1,14 +1,14 @@
 import { BaseError } from '../../../common/core/BaseError';
 
 import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
-import { IEventBusEvent, IEventBusSubscriber } from '../../../common/infrastructure/event-bus/IEventBus';
+import { EventBusEvent, IEventBusSubscriber } from '../../../common/infrastructure/event-bus/IEventBus';
 
 import { logger } from '../../../infrastructure/logging/pinoLogger';
 
 import { Dictionary } from '../../../common/utils/utils';
 
 import { RestartStalledRequestsUseCase } from './RestartStalledRequestsUseCase';
-import { ApplicationResilienceReady } from '../../../infrastructure/resilience/ApplicationResilienceReady.event';
+import { ApplicationResilienceReady, ApplicationResilienceReadyEventData } from '../../../infrastructure/resilience/ApplicationResilienceReady.event';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 export class ApplicationResilienceReadySubscriber implements IEventBusSubscriber<ApplicationResilienceReady> {
@@ -79,7 +79,7 @@ export class ApplicationResilienceReadySubscriber implements IEventBusSubscriber
 		}
 	}
 
-	private getEventIds(evArray: IEventBusEvent[]): string[] {
+	private getEventIds(evArray: EventBusEvent<unknown>[]): string[] {
 		return evArray.map((ev) => ev.eventKey);
 	}
 }

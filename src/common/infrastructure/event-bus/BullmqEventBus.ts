@@ -1,7 +1,7 @@
 import { Result, ok, err } from '../../core/Result';
 import * as InfrastructureErrors from '../InfrastructureErrors';
 
-import { IEventBusEvent } from './IEventBus';
+import { EventBusEvent } from './IEventBus';
 import { bullMq, BullMq, bullMqConnection } from '../../../infrastructure/bullmq/bullMqInfra';
 
 import { IEventBus } from './IEventBus';
@@ -22,8 +22,8 @@ export class BullmqEventBus implements IEventBus {
 
 	// exists(requestId: string): Promise<Result<boolean, InfrastructureErrors.EventBusError>>;
 	public async publishEvent(
-		event: IEventBusEvent
-	): Promise<Result<IEventBusEvent, InfrastructureErrors.EventBusError>> {
+		event: EventBusEvent<unknown>
+	): Promise<Result<EventBusEvent<unknown>, InfrastructureErrors.EventBusError>> {
 		const functionName = 'publish';
 
 		try {
@@ -54,8 +54,8 @@ export class BullmqEventBus implements IEventBus {
 	}
 
 	public async publishEventsBulk(
-		events: IEventBusEvent[]
-	): Promise<Result<IEventBusEvent[], InfrastructureErrors.EventBusError>> {
+		events: EventBusEvent<unknown>[]
+	): Promise<Result<EventBusEvent<unknown>[], InfrastructureErrors.EventBusError>> {
 		for (const ev of events) {
 			const eventResult = await this.publishEvent(ev);
 			if (eventResult.isErr()) {
@@ -66,7 +66,7 @@ export class BullmqEventBus implements IEventBus {
 		return ok(events);
 	}
 
-	public subscribe(eventName: string, handler: (event: IEventBusEvent) => void): void {
+	public subscribe(eventName: string, handler: (event: EventBusEvent<unknown>) => void): void {
 		return;
 	}
 

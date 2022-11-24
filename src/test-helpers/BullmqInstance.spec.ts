@@ -1,6 +1,6 @@
 jest.mock('bullmq');
 import * as bullMq from 'bullmq';
-import { IEventBusEvent } from '../common/infrastructure/event-bus/IEventBus';
+import { EventBusEvent } from '../common/infrastructure/event-bus/IEventBus';
 import { BackupRequestAccepted } from '../backup-request/domain/BackupRequestAccepted.event';
 const mockBullMq = jest.mocked(bullMq);
 
@@ -31,7 +31,7 @@ describe('BmqInstance', () => {
 			},
 		};
 
-		const result = await eventBus.publishEvent(testEvent as unknown as IEventBusEvent);
+		const result = await eventBus.publishEvent(testEvent as unknown as EventBusEvent<unknown>);
 
 		console.log('result', result);
 

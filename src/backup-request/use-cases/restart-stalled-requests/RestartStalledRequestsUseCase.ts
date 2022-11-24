@@ -1,22 +1,22 @@
 import { DelayedEventRunner } from '../../../infrastructure/resilience/DelayedEventRunner';
 
 import { err, Ok, ok, Result } from '../../../common/core/Result';
-import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 import { UseCase } from '../../../common/application/UseCase';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
-import { IEventBusEvent } from '../../../common/infrastructure/event-bus/IEventBus';
+import { EventBusEvent } from '../../../common/infrastructure/event-bus/IEventBus';
 
 import { RestartStalledRequestsDTO } from './RestartStalledRequestsDTO';
 import { BackupRequestAllowed } from '../../domain/BackupRequestAllowed.event';
-import { BackupRequestCreated } from '../../domain/BackupRequestCreated.event';
 import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
-import { IBackupRequestRepo } from '../../adapter/IBackupRequestRepo';
 import { BackupRequest } from '../../domain/BackupRequest';
+import { IBackupRequestRepo } from '../../adapter/IBackupRequestRepo';
+import { ApplicationResilienceReadyEventData } from '../../../infrastructure/resilience/ApplicationResilienceReady.event';
+import { BackupRequestReceived } from '../../domain/BackupRequestReceived.event';
 
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 
-type StatusResult = Result<IEventBusEvent[], AdapterErrors.DatabaseError>;
+type StatusResult = Result<EventBusEvent<unknown>[], AdapterErrors.DatabaseError>;
 
 type Response = {
 	allowedResult: StatusResult;
@@ -35,8 +35,8 @@ export class RestartStalledRequestsUseCase implements UseCase<RestartStalledRequ
 	public async execute(dto: RestartStalledRequestsDTO): Promise<Response> {
 		const functionName = 'execute';
 
-		let allowedEvents: IEventBusEvent[] = [];
-		let receivedEvents: IEventBusEvent[] = [];
+		let allowedEvents: BackupRequestAllowed[] = [];
+		let receivedEvents: BackupRequestReceived[] = [];
 
 		const allowedQueryResult = await this.backupRequestRepo.getByStatusBeforeTimestamp(
 			BackupRequestStatusTypeValues.Allowed,
@@ -60,7 +60,7 @@ export class RestartStalledRequestsUseCase implements UseCase<RestartStalledRequ
 			receivedEvents = receivedQueryResult.value
 			.filter((result) => result.isOk())
 			// TypeScript doesn't realize that everything is ok, so cast it
-			.map((okResult) => new BackupRequestAllowed((okResult as Ok<BackupRequest, never>).value));
+			.map((okResult) => new BackupRequestReceived((okResult as Ok<BackupRequest, never>).value));
 		}
 		// console.log('RSRUC receivedEvents', receivedEvents);
 

@@ -39,7 +39,7 @@ export class BackupRequestCreatedSubscriber implements IEventBusSubscriber<Backu
 			// have connection checks
 			for (const serviceName in this.failedServices) {
 				if (!this.failedServices[serviceName].isConnected()) {
-					event.eventData.retryCount++;
+					event.incrementRetryCount();
 					this.failedServices[serviceName].addRetryEvent(event);
 					return; // something is down so no need to check further
 				}
@@ -86,7 +86,7 @@ export class BackupRequestCreatedSubscriber implements IEventBusSubscriber<Backu
 						this.failedServices[errorData.serviceName].addRetryEvent = errorData.addRetryEvent;
 					}
 					if (errorData.addRetryEvent) {
-						event.eventData.retryCount++;
+						event.incrementRetryCount;
 						errorData.addRetryEvent(event);
 					}
 				}

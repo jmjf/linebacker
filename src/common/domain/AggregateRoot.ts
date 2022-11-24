@@ -2,10 +2,10 @@ import { logger } from '../../infrastructure/logging/pinoLogger';
 
 import { Entity } from './Entity';
 import { UniqueIdentifier } from './UniqueIdentifier';
-import { IEventBusEvent } from '../infrastructure/event-bus/IEventBus';
+import { EventBusEvent } from '../infrastructure/event-bus/IEventBus';
 
 export abstract class AggregateRoot<T> extends Entity<T> {
-	private _events: IEventBusEvent[] = [];
+	private _events: EventBusEvent<unknown>[] = [];
 
 	get idValue(): string {
 		return this._id.value;
@@ -14,11 +14,11 @@ export abstract class AggregateRoot<T> extends Entity<T> {
 		return this._id;
 	}
 
-	get events(): IEventBusEvent[] {
+	get events(): EventBusEvent<unknown>[] {
 		return this._events;
 	}
 
-	protected addEvent(event: IEventBusEvent): void {
+	protected addEvent(event: EventBusEvent<unknown>): void {
 		this._events.push(event);
 		this.logEventAdded(event);
 	}
@@ -27,7 +27,7 @@ export abstract class AggregateRoot<T> extends Entity<T> {
 		this._events = [];
 	}
 
-	private logEventAdded(event: IEventBusEvent): void {
+	private logEventAdded(event: EventBusEvent<unknown>): void {
 		const aggregateClass = Reflect.getPrototypeOf(this);
 		const aggregateName = aggregateClass ? aggregateClass.constructor.name : 'unknown aggregate';
 		const eventClass = Reflect.getPrototypeOf(event);

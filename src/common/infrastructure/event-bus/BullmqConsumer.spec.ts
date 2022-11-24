@@ -2,8 +2,9 @@ jest.mock('bullmq');
 import * as bullMq from 'bullmq';
 const mockBullMq = jest.mocked(bullMq);
 
-import { bullmqEventBus } from './BullmqEventBus';
+import { BullmqEventBus } from './BullmqEventBus';
 import { BullmqConsumer } from './BullmqConsumer';
+import { bullMqConnection } from '../../../infrastructure/bullmq/bullMqInfra';
 
 import {
 	createMockTypeormContext,
@@ -22,6 +23,7 @@ import { BackupProviderTypeValues } from '../../../backup-job/domain/BackupProvi
 import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
 import { delay } from '../../utils/utils';
 
+
 describe('BmqConsumer - runs with CheckRequestAllowedUseCase', () => {
 	let mockTypeormCtx: MockTypeormContext;
 	let typeormCtx: TypeormContext;
@@ -29,11 +31,14 @@ describe('BmqConsumer - runs with CheckRequestAllowedUseCase', () => {
 	let dbCircuitBreaker: CircuitBreakerWithRetry;
 	let abortController: AbortController;
 
+	let bullmqEventBus: BullmqEventBus;
+
 	beforeEach(() => {
 		mockTypeormCtx = createMockTypeormContext();
 		typeormCtx = mockTypeormCtx as unknown as TypeormContext;
 
 		mockBullMq.Queue.mockClear();
+		bullmqEventBus = new BullmqEventBus(bullMq, bullMqConnection);
 
 		abortController = new AbortController();
 		dbCircuitBreaker = getLenientCircuitBreaker('TypeORM', abortController.signal);
