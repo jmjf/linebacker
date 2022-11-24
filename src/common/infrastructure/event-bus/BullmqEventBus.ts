@@ -56,7 +56,14 @@ export class BullmqEventBus implements IEventBus {
 	public async publishEventsBulk(
 		events: IEventBusEvent[]
 	): Promise<Result<IEventBusEvent[], InfrastructureErrors.EventBusError>> {
-		return err(new InfrastructureErrors.EventBusError('not implemented'));
+		for (const ev of events) {
+			const eventResult = await this.publishEvent(ev);
+			if (eventResult.isErr()) {
+				return eventResult;
+			}
+		};
+		// publishEvent returns the event we passed it if ok, so if nothing failed, can just return the events passed
+		return ok(events);
 	}
 
 	public async subscribe(eventName: string, handler: (event: IEventBusEvent) => void): Promise<void> {
