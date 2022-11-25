@@ -11,6 +11,7 @@ import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
 import * as DomainErrors from '../../../common/domain/DomainErrors';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
+import * as InfrastructureErrors from '../../../common/infrastructure/InfrastructureErrors';
 
 import { BackupProviderType } from '../../../backup-job/domain/BackupProviderType';
 
@@ -132,7 +133,12 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 	public async getByStatusBeforeTimestamp(
 		status: BackupRequestStatusType,
 		beforeTimestamp: Date
-	): Promise<Result<Result<BackupRequest, DomainErrors.PropsError>[], AdapterErrors.DatabaseError | AdapterErrors.NotFoundError>> {
+	): Promise<
+		Result<
+			Result<BackupRequest, DomainErrors.PropsError>[],
+			AdapterErrors.DatabaseError | AdapterErrors.NotFoundError
+		>
+	> {
 		const functionName = 'getRequestIdsByStatus';
 
 		if (!this.circuitBreaker.isConnected()) {
@@ -204,7 +210,9 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 		}
 	}
 
-	public async save(backupRequest: BackupRequest): Promise<Result<BackupRequest, AdapterErrors.DatabaseError>> {
+	public async save(
+		backupRequest: BackupRequest
+	): Promise<Result<BackupRequest, AdapterErrors.DatabaseError | InfrastructureErrors.EventBusError>> {
 		const functionName = 'save';
 
 		if (!this.circuitBreaker.isConnected()) {
@@ -241,7 +249,10 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 		}
 
 		// trigger domain events
-		eventBus.publishEventsBulk(backupRequest.events);
+		const publishResult = await eventBus.publishEventsBulk(backupRequest.events);
+		if (publishResult.isErr()) {
+			return publishResult;
+		}
 
 		// The application enforces the business rules, not the database.
 		// Under no circumstances should the database change the data it gets.

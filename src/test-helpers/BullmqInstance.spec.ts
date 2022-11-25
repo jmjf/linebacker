@@ -33,7 +33,7 @@ describe('BmqInstance', () => {
 
 		const result = await eventBus.publishEvent(testEvent as unknown as EventBusEvent<unknown>);
 
-		console.log('result', result);
+		// console.log('result', result);
 
 		expect(result.isOk()).toBe(true);
 	});

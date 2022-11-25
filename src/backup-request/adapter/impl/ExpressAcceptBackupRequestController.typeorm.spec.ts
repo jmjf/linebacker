@@ -1,6 +1,7 @@
 jest.mock('bullmq');
 import * as bullMq from 'bullmq';
-const mockBullMq = jest.mocked(bullMq);
+
+process.env.EVENT_BUS_TYPE = 'bullmq';
 
 import request from 'supertest';
 
@@ -30,6 +31,7 @@ describe('ExpressAcceptBackupRequestController - typeorm', () => {
 	let azureQueueCircuitBreaker: CircuitBreakerWithRetry;
 	let abortController: AbortController;
 	const zpageDependencies = { readyzDependencies: [], healthzDependencies: [] };
+	const mockBullMq = jest.mocked(bullMq);
 
 	beforeEach(() => {
 		mockTypeormCtx = createMockTypeormContext();

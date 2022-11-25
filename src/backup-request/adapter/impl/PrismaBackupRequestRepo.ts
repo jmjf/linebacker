@@ -3,13 +3,14 @@ import {
 	CircuitBreakerWithRetry,
 	ConnectFailureErrorData,
 } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
+import { isPrismaConnectError } from '../../../infrastructure/prisma/isPrismaConnectError';
 
-import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
-
-import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 import { err, ok, Result } from '../../../common/core/Result';
-import * as DomainErrors from '../../../common/domain/DomainErrors';
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
+import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
+import * as DomainErrors from '../../../common/domain/DomainErrors';
+import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
+import * as InfrastructureErrors from '../../../common/infrastructure/InfrastructureErrors';
 
 import { BackupProviderType } from '../../../backup-job/domain/BackupProviderType';
 
@@ -18,7 +19,6 @@ import { RequestTransportType } from '../../domain/RequestTransportType';
 import { IBackupRequestRepo } from '../IBackupRequestRepo';
 import { PrismaBackupRequest } from '@prisma/client';
 import { BackupRequestStatusType, BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
-import { isPrismaConnectError } from '../../../infrastructure/prisma/isPrismaConnectError';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 export class PrismaBackupRequestRepo implements IBackupRequestRepo {
@@ -136,7 +136,12 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 	public async getByStatusBeforeTimestamp(
 		status: BackupRequestStatusType,
 		beforeTimestamp: Date
-	): Promise<Result<Result<BackupRequest, DomainErrors.PropsError>[], AdapterErrors.DatabaseError | AdapterErrors.NotFoundError>> {
+	): Promise<
+		Result<
+			Result<BackupRequest, DomainErrors.PropsError>[],
+			AdapterErrors.DatabaseError | AdapterErrors.NotFoundError
+		>
+	> {
 		const functionName = 'getRequestIdsByStatus';
 
 		if (!this.circuitBreaker.isConnected()) {
@@ -208,7 +213,9 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 		}
 	}
 
-	public async save(backupRequest: BackupRequest): Promise<Result<BackupRequest, AdapterErrors.DatabaseError>> {
+	public async save(
+		backupRequest: BackupRequest
+	): Promise<Result<BackupRequest, AdapterErrors.DatabaseError | InfrastructureErrors.EventBusError>> {
 		const functionName = 'save';
 
 		if (!this.circuitBreaker.isConnected()) {
@@ -256,7 +263,10 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 		}
 
 		// trigger domain events
-		eventBus.publishEventsBulk(backupRequest.events);
+		const publishResult = await eventBus.publishEventsBulk(backupRequest.events);
+		if (publishResult.isErr()) {
+			return publishResult;
+		}
 
 		// The application enforces the business rules, not the database.
 		// Under no circumstances should the database change the data it gets.

@@ -50,7 +50,7 @@ export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDT
 		}
 		const backupRequest = backupRequestResult.value;
 
-		// Already past this state
+		// Already past this state or not allowed
 		if (!backupRequest.isReceived() && !backupRequest.isAllowed()) {
 			return err(
 				new ApplicationErrors.BackupRequestStatusError('Invalid request status', {
@@ -62,6 +62,15 @@ export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDT
 			);
 		}
 
+		// already checked and saved it, but save's publish failed, so publish only
+		if (backupRequest.isAllowed()) {
+			const publishResult = await this.eventBus.publishEvent(new BackupRequestAllowed(backupRequest));
+			if (publishResult.isErr()) {
+				return err(publishResult.error);
+			}
+		}
+
+		// not checked yet
 		if (backupRequest.isReceived()) {
 			// Get backup job data
 			const backupJobResult = await this.backupJobServiceAdapter.getById(
@@ -87,11 +96,6 @@ export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDT
 			if (saveResult.isErr()) {
 				return saveResult;
 			}
-		}
-
-		const publishResult = await this.eventBus.publishEvent(new BackupRequestAllowed(backupRequest));
-		if (publishResult.isErr()) {
-			return err(publishResult.error);
 		}
 
 		return ok(backupRequest as unknown as BackupRequest);

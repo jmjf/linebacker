@@ -1,6 +1,7 @@
 import * as bullMq from 'bullmq';
 jest.mock('bullmq');
-const mockBullMq = jest.mocked(bullMq);
+
+process.env.EVENT_BUS_TYPE = 'bullmq';
 
 import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
 
@@ -25,6 +26,7 @@ describe('ReceiveBackupRequestUseCase', () => {
 	let circuitBreaker: CircuitBreakerWithRetry;
 	let abortController: AbortController;
 
+	const mockBullMq = jest.mocked(bullMq);
 	const eventBusPublishSpy = jest.spyOn(eventBus, 'publishEvent');
 
 	beforeEach(() => {

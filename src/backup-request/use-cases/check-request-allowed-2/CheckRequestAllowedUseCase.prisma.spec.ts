@@ -1,6 +1,7 @@
 jest.mock('bullmq');
 import * as bullMq from 'bullmq';
-const mockBullMq = jest.mocked(bullMq);
+
+process.env.EVENT_BUS_TYPE = 'bullmq';
 
 import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
@@ -32,6 +33,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 	let circuitBreaker: CircuitBreakerWithRetry;
 	let abortController: AbortController;
 
+	const mockBullMq = jest.mocked(bullMq);
 	const eventBusPublishSpy = jest.spyOn(eventBus, 'publishEvent');
 
 	beforeEach(() => {
@@ -267,7 +269,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		mockBullMq.Queue.prototype.add.mockRejectedValue(
 			new InfrastructureErrors.EventBusError('simulated event bus error')
 		);
-		const bmqPublishSpy = jest.spyOn(eventBus, 'publishEvent');
+		const eventBusPublishSpy = jest.spyOn(eventBus, 'publishEvent');
 
 		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, eventBus);
 		const dto = { ...baseDto };
@@ -278,7 +280,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		// Assert
 		expect(result.isErr()).toBe(true);
 		expect(saveSpy).toHaveBeenCalledTimes(1);
-		expect(bmqPublishSpy).toHaveBeenCalledTimes(1);
+		expect(eventBusPublishSpy).toHaveBeenCalledTimes(1);
 		if (result.isErr()) {
 			// type guard makes the rest easier
 			expect(result.error.name).toBe('EventBusError');
@@ -300,7 +302,6 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		});
 
 		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
-		const bmqPublishSpy = jest.spyOn(eventBus, 'publishEvent');
 
 		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, eventBus);
 		const dto = { ...baseDto };
@@ -312,7 +313,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		// Assert
 		expect(result.isOk()).toBe(true);
 		expect(saveSpy).toHaveBeenCalledTimes(1);
-		expect(bmqPublishSpy).toHaveBeenCalledTimes(1);
+		expect(eventBusPublishSpy).toHaveBeenCalledTimes(1);
 		if (result.isOk()) {
 			// type guard makes the rest easier
 			expect(result.value.statusTypeCode).toBe(BackupRequestStatusTypeValues.Allowed);
