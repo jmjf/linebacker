@@ -44,10 +44,18 @@ export function getBackupRequestRouter(
 			// 	response
 			// );
 
-			let result = await (acceptBackupRequestController as ExpressAcceptBackupRequestController).execute(
-				customReq,
-				response
-			);
+			let result;
+			if (process.env.EVENT_BUS_TYPE === 'bullmq') {
+				result = await (acceptBackupRequestController as ExpressAcceptBackupRequestController).execute(
+					customReq,
+					response
+				);
+			} else {
+				result = await (createBackupRequestController as ExpressCreateBackupRequestController).execute(
+					customReq,
+					response
+				);
+			}
 
 			// HTTP status > 399 is an error
 			if (response.statusCode > 399) {

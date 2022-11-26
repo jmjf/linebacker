@@ -56,6 +56,8 @@ export class CheckRequestAllowedUseCase implements UseCase<CheckRequestAllowedDT
 				new ApplicationErrors.BackupRequestStatusError('Invalid request status', {
 					backupRequestId,
 					statusTypeCode: backupRequest.statusTypeCode,
+					receivedTimestamp: backupRequest.receivedTimestamp,
+					checkedTimestamp: backupRequest.checkedTimestamp,
 					moduleName,
 					functionName,
 				})

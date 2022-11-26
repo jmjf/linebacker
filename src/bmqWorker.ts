@@ -83,21 +83,25 @@ const buildWorker = (circuitBreakers: ICircuitBreakers) => {
 	return new bullMq.Worker(
 		'linebacker',
 		async (job: bullMq.Job) => {
-			switch (job.data.eventName) {
+			const functionName = 'workerProcessor';
+			switch (job.data.eventType) {
 				case 'BackupRequestAccepted':
-					acceptedConsumerConsume(job);
+					await acceptedConsumerConsume(job);
 					break;
 				case 'BackupRequestReceived':
-					receivedConsumerConsume(job);
+					await receivedConsumerConsume(job);
 					break;
 				case 'BackupRequestAllowed':
-					azureAllowedConsumerConsume(job);
+					await azureAllowedConsumerConsume(job);
+					break;
+				case 'ApplicationResilienceReady':
+					logger.debug(
+						{ jobName: job.name, jobData: job.data, moduleName, functionName },
+						'Skipping ApplicationResilienceReady'
+					);
 					break;
 				default:
-					logger.error(
-						{ jobName: job.name, jobData: job.data, moduleName, functionName: 'workerProcessor' },
-						'Unknown event name'
-					);
+					logger.error({ jobName: job.name, jobData: job.data, moduleName, functionName }, 'Unknown event name');
 					// throwing fails the job, doesn't halt the worker
 					throw new Error('unknown event');
 			}
@@ -129,6 +133,7 @@ const startWorker = async () => {
 	} catch (e) {
 		logger.error({ error: e, moduleName, functionName }, `Caught error after worker.run()`);
 		appAbortController.abort();
+		await worker.close(); // gracefully shutdown the worker and release job locks
 		await delay(5000);
 		process.exit(1);
 	}

@@ -63,6 +63,7 @@ export class ReceiveBackupRequestUseCase implements UseCase<ReceiveBackupRequest
 						expectedStatusTypeCode: BackupRequestStatusTypeValues.Received,
 						statusTypeCode: backupRequest.statusTypeCode,
 						backupRequestId: backupRequest.backupRequestId.value,
+						receivedTimestamp: backupRequest.receivedTimestamp,
 						moduleName,
 						functionName,
 					})
@@ -92,11 +93,11 @@ export class ReceiveBackupRequestUseCase implements UseCase<ReceiveBackupRequest
 		const backupRequest = createResult.value;
 		backupRequest.setStatusReceived();
 
-		const brSaveResult = await this.backupRequestRepo.save(createResult.value);
+		const brSaveResult = await this.backupRequestRepo.save(backupRequest);
 		if (brSaveResult.isErr()) {
 			return brSaveResult;
 		}
 
-		return ok(createResult.value);
+		return ok(backupRequest);
 	}
 }

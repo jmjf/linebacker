@@ -64,8 +64,14 @@ export class ExpressAcceptBackupRequestController extends ExpressController {
 				requesterId: v.requesterId,
 			};
 			this.logger.info(
-				{ backupRequestId: responseBody.backupRequestId, moduleName, functionName, traceId },
-				'BackupRequest created'
+				{
+					backupRequestId: responseBody.backupRequestId,
+					response: responseBody,
+					moduleName,
+					functionName,
+					traceId,
+				},
+				'BackupRequest accepted'
 			);
 			this.respondAccepted(response, responseBody);
 			return responseBody;

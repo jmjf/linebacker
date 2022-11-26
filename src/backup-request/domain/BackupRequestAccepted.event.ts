@@ -13,13 +13,12 @@ export interface BackupRequestAcceptedEventData {
 		statusTypeCode: BackupRequestStatusType;
 		transportTypeCode: RequestTransportType;
 		getOnStartFlag: boolean;
-		receivedTimestamp: Date;
+		acceptedTimestamp: Date;
 		requesterId: string;
 	};
 }
 
 export class BackupRequestAccepted extends EventBusEvent<BackupRequestAcceptedEventData> {
-
 	constructor(backupRequest: BackupRequest) {
 		super();
 		this._eventData = {
@@ -34,7 +33,7 @@ export class BackupRequestAccepted extends EventBusEvent<BackupRequestAcceptedEv
 				statusTypeCode: backupRequest.statusTypeCode,
 				transportTypeCode: backupRequest.transportTypeCode,
 				getOnStartFlag: backupRequest.getOnStartFlag,
-				receivedTimestamp: backupRequest.receivedTimestamp,
+				acceptedTimestamp: backupRequest.acceptedTimestamp,
 				requesterId: backupRequest.requesterId,
 			},
 		};

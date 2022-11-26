@@ -175,7 +175,7 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 
 	public setStatusReceived(): void {
 		this.props.statusTypeCode = BackupRequestStatusTypeValues.Received;
-		this.props.sentToInterfaceTimestamp = new Date();
+		this.props.receivedTimestamp = new Date();
 		this.addEvent(new BackupRequestReceived(this));
 	}
 
@@ -283,10 +283,11 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 			storagePathName: props.storagePathName ? props.storagePathName : '',
 			requesterId: props.requesterId ? props.requesterId : '',
 			// timestamps below are only set by code, so are not checked for validity
-			receivedTimestamp: props.receivedTimestamp ? props.receivedTimestamp : undefined,
-			checkedTimestamp: props.checkedTimestamp ? props.checkedTimestamp : undefined,
-			sentToInterfaceTimestamp: props.sentToInterfaceTimestamp ? props.sentToInterfaceTimestamp : undefined,
-			replyTimestamp: props.replyTimestamp ? props.replyTimestamp : undefined,
+			acceptedTimestamp: dateOrUndefinedAsDate(props.acceptedTimestamp),
+			receivedTimestamp: dateOrUndefinedAsDate(props.receivedTimestamp),
+			checkedTimestamp: dateOrUndefinedAsDate(props.checkedTimestamp),
+			sentToInterfaceTimestamp: dateOrUndefinedAsDate(props.sentToInterfaceTimestamp),
+			replyTimestamp: dateOrUndefinedAsDate(props.replyTimestamp),
 		};
 
 		const backupRequest = new BackupRequest(defaultValues, id);

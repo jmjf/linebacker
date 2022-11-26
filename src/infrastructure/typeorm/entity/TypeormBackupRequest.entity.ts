@@ -36,10 +36,10 @@ export class TypeormBackupRequest {
 	@Column({ name: 'StatusTypeCode', type: 'varchar', length: 50, nullable: false })
 	statusTypeCode: string;
 
-	@Column({ name: 'ReceivedTimestamp', type: 'datetimeoffset', nullable: true })
+	@Column({ name: 'AcceptedTimestamp', type: 'datetimeoffset', nullable: true })
 	acceptedTimestamp: Date | null | undefined;
 
-	@Column({ name: 'AcceptedTimestamp', type: 'datetimeoffset', nullable: true })
+	@Column({ name: 'ReceivedTimestamp', type: 'datetimeoffset', nullable: true })
 	receivedTimestamp: Date | null | undefined;
 
 	@Column({ name: 'CheckedTimestamp', type: 'datetimeoffset', nullable: true })
