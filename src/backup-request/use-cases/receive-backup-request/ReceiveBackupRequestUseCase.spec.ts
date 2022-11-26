@@ -55,7 +55,7 @@ describe('ReceiveBackupRequestUseCase', () => {
 		getOnStartFlag: true,
 		transportTypeCode: 'HTTP',
 		statusTypeCode: 'Accepted',
-		receivedTimestamp: new Date('2022-05-30T07:08:09.101Z'),
+		acceptedTimestamp: new Date('2022-05-30T07:08:09.101Z'),
 		requesterId: 'requester-id',
 	};
 
@@ -187,6 +187,7 @@ describe('ReceiveBackupRequestUseCase', () => {
 			mockTypeormCtx.manager.findOne.mockResolvedValue({
 				...baseDto,
 				statusTypeCode: BackupRequestStatusTypeValues.Received,
+				receivedTimestamp: new Date(),
 			} as TypeormBackupRequest);
 			mockTypeormCtx.manager.save.mockResolvedValue({});
 			const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
@@ -211,6 +212,7 @@ describe('ReceiveBackupRequestUseCase', () => {
 			mockTypeormCtx.manager.findOne.mockResolvedValue({
 				...baseDto,
 				statusTypeCode: BackupRequestStatusTypeValues.Received,
+				receivedTimestamp: new Date(),
 			} as TypeormBackupRequest);
 			mockTypeormCtx.manager.save.mockResolvedValue({});
 			const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);

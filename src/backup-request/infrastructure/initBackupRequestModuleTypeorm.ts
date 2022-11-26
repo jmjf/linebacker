@@ -22,11 +22,9 @@ import { RestartStalledRequestsUseCase } from '../use-cases/restart-stalled-requ
 import { ApplicationResilienceReadySubscriber } from '../use-cases/restart-stalled-requests/ApplicationResilienceReadySubscriber';
 import { AcceptBackupRequestUseCase } from '../use-cases/accept-backup-request/AcceptBackupRequestUseCase';
 import { ExpressAcceptBackupRequestController } from '../adapter/impl/ExpressAcceptBackupRequestController';
-import { BullMq } from '../../infrastructure/bullmq/bullMqInfra';
 
 export const initBackupRequestModule = (
 	typeormCtx: TypeormContext,
-	bullMq: BullMq,
 	circuitBreakers: ICircuitBreakers,
 	controllerType: 'Fastify' | 'Express',
 	abortSignal: AbortSignal

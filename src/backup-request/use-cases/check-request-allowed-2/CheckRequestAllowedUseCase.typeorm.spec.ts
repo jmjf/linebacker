@@ -79,6 +79,7 @@ describe('CheckRequestAllowedUseCase - typeorm', () => {
 		getOnStartFlag: true,
 		transportTypeCode: RequestTransportTypeValues.HTTP,
 		statusTypeCode: BackupRequestStatusTypeValues.Received,
+		acceptedTimestamp: new Date(),
 		receivedTimestamp: new Date(),
 		requesterId: 'dbRequesterId',
 		backupProviderCode: null,

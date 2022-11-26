@@ -1,8 +1,9 @@
+import * as bullMq from 'bullmq';
+
 import { Result, ok, err } from '../../core/Result';
 import * as InfrastructureErrors from '../InfrastructureErrors';
 
 import { EventBusEvent } from './IEventBus';
-import { bullMq, BullMq, bullMqConnection } from '../../../infrastructure/bullmq/bullMqInfra';
 
 import { IEventBus } from './IEventBus';
 
@@ -10,6 +11,7 @@ import { ConnectionOptions } from 'bullmq';
 import path from 'node:path';
 
 const moduleName = path.basename(module.filename);
+type BullMq = typeof bullMq;
 
 export class BullmqEventBus implements IEventBus {
 	private bullMq: BullMq;
@@ -59,9 +61,9 @@ export class BullmqEventBus implements IEventBus {
 		for (const ev of events) {
 			const eventResult = await this.publishEvent(ev);
 			if (eventResult.isErr()) {
-				return eventResult;
+				return err(eventResult.error);
 			}
-		};
+		}
 		// publishEvent returns the event we passed it if ok, so if nothing failed, can just return the events passed
 		return ok(events);
 	}
@@ -70,5 +72,7 @@ export class BullmqEventBus implements IEventBus {
 		return;
 	}
 
-	public clearHandlers() { return; }
+	public clearHandlers() {
+		return;
+	}
 }

@@ -18,7 +18,7 @@ export class TypeormBackup {
 	@Column({ name: 'BackupJobIdentifier', type: 'varchar', length: 50, nullable: false })
 	backupJobId: string;
 
-	@Column({ name: 'DataDate', type: 'datetime2', nullable: false })
+	@Column({ name: 'DataDate', type: 'datetimeoffset', nullable: false })
 	dataDate: Date;
 
 	@Column({ name: 'StoragePathName', type: 'varchar', length: 250, nullable: false })
@@ -40,24 +40,24 @@ export class TypeormBackup {
 	@Column({ name: 'BackupByteCount', type: 'bigint' })
 	backupByteCount: string;
 
-	@Column({ name: 'CopyStartTimestamp', type: 'datetime2' })
+	@Column({ name: 'CopyStartTimestamp', type: 'datetimeoffset' })
 	copyStartTimestamp: Date;
 
-	@Column({ name: 'CopyEndTimestamp', type: 'datetime2' })
+	@Column({ name: 'CopyEndTimestamp', type: 'datetimeoffset' })
 	copyEndTimestamp: Date;
 
-	@Column({ name: 'VerifyStartTimestamp', type: 'datetime2', nullable: true })
+	@Column({ name: 'VerifyStartTimestamp', type: 'datetimeoffset', nullable: true })
 	verifyStartTimestamp: Date | null | undefined;
 
-	@Column({ name: 'VerifyEndTimestamp', type: 'datetime2', nullable: true })
+	@Column({ name: 'VerifyEndTimestamp', type: 'datetimeoffset', nullable: true })
 	verifyEndTimestamp: Date | null | undefined;
 
 	@Column({ name: 'VerifyHashText', type: 'varchar', length: 250, nullable: true })
 	verifyHashText: string | null | undefined;
 
-	@Column({ name: 'DueToDeleteDate', type: 'datetime2', nullable: true })
+	@Column({ name: 'DueToDeleteDate', type: 'datetimeoffset', nullable: true })
 	dueToDeleteDate: Date | null | undefined;
 
-	@Column({ name: 'DeletedTimestamp', type: 'datetime2', nullable: true })
+	@Column({ name: 'DeletedTimestamp', type: 'datetimeoffset', nullable: true })
 	deletedTimestamp: Date | null | undefined;
 }

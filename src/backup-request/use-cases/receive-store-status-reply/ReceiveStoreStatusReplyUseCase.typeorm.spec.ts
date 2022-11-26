@@ -83,6 +83,7 @@ describe('ReceiveStoreStatusReplyUseCase - TypeORM', () => {
 		getOnStartFlag: true,
 		transportTypeCode: RequestTransportTypeValues.HTTP,
 		statusTypeCode: BackupRequestStatusTypeValues.Sent,
+		acceptedTimestamp: new Date(),
 		receivedTimestamp: new Date(),
 		requesterId: 'dbRequesterId',
 		backupProviderCode: 'CloudA',

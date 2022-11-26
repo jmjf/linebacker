@@ -4,7 +4,6 @@ import { IEventBus } from '../../../common/infrastructure/event-bus/IEventBus';
 import * as DomainErrors from '../../../common/domain/DomainErrors';
 import { UseCase } from '../../../common/application/UseCase';
 
-import { AcceptBackupRequestDTO } from './AcceptBackupRequestDTO';
 import { BackupRequest, IBackupRequestProps } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
 import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
@@ -12,6 +11,15 @@ import { BackupRequestAccepted } from '../../domain/BackupRequestAccepted.event'
 import path from 'node:path';
 
 const moduleName = path.basename(module.filename);
+
+export interface AcceptBackupRequestDTO {
+	backupJobId: string; // UUIDv4
+	dataDate: string; // yyyy-mm-dd
+	backupDataLocation: string;
+	transportType: string; // HTTP or Queue
+	getOnStartFlag: boolean;
+	requesterId?: string;
+}
 
 // add errors when you define them
 type Response = Result<BackupRequest, DomainErrors.PropsError | InfrastructureErrors.EventBusError>;
@@ -32,7 +40,7 @@ export class AcceptBackupRequestUseCase implements UseCase<AcceptBackupRequestDT
 			getOnStartFlag: request.getOnStartFlag,
 			transportTypeCode: request.transportType as RequestTransportType,
 			statusTypeCode: BackupRequestStatusTypeValues.Accepted,
-			receivedTimestamp: new Date(),
+			acceptedTimestamp: new Date(),
 			requesterId: request.requesterId,
 		};
 

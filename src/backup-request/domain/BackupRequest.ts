@@ -14,6 +14,7 @@ import { BackupRequestCreated } from './BackupRequestCreated.event';
 import { StoreResultType } from './StoreResultType';
 import { BackupRequestStatusType, BackupRequestStatusTypeValues } from './BackupRequestStatusType';
 import { RequestTransportType, validRequestTransportTypes } from './RequestTransportType';
+import { BackupRequestReceived } from './BackupRequestReceived.event';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 
@@ -27,7 +28,8 @@ export interface IBackupRequestProps {
 	backupProviderCode?: BackupProviderType;
 	storagePathName?: string;
 	statusTypeCode: BackupRequestStatusType;
-	receivedTimestamp: string | Date;
+	acceptedTimestamp?: string | Date;
+	receivedTimestamp?: string | Date;
 	checkedTimestamp?: string | Date;
 	sentToInterfaceTimestamp?: string | Date;
 	replyTimestamp?: string | Date;
@@ -76,6 +78,10 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 
 	public get statusTypeCode(): BackupRequestStatusType {
 		return this.props.statusTypeCode;
+	}
+
+	public get acceptedTimestamp(): Date {
+		return dateOrUndefinedAsDate(this.props.acceptedTimestamp);
 	}
 
 	public get receivedTimestamp(): Date {
@@ -167,6 +173,12 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 		);
 	}
 
+	public setStatusReceived(): void {
+		this.props.statusTypeCode = BackupRequestStatusTypeValues.Received;
+		this.props.sentToInterfaceTimestamp = new Date();
+		this.addEvent(new BackupRequestReceived(this));
+	}
+
 	public setStatusSent(): void {
 		this.props.statusTypeCode = BackupRequestStatusTypeValues.Sent;
 		this.props.sentToInterfaceTimestamp = new Date();
@@ -217,7 +229,6 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 			{ arg: props.getOnStartFlag, argName: 'getOnStartFlag' },
 			{ arg: props.transportTypeCode, argName: 'transportTypeCode' },
 			{ arg: props.statusTypeCode, argName: 'statusTypeCode' },
-			{ arg: props.receivedTimestamp, argName: 'receivedTimestamp' },
 		];
 
 		const propsGuardResult = Guard.againstNullOrUndefinedBulk(guardArgs);
@@ -272,6 +283,7 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 			storagePathName: props.storagePathName ? props.storagePathName : '',
 			requesterId: props.requesterId ? props.requesterId : '',
 			// timestamps below are only set by code, so are not checked for validity
+			receivedTimestamp: props.receivedTimestamp ? props.receivedTimestamp : undefined,
 			checkedTimestamp: props.checkedTimestamp ? props.checkedTimestamp : undefined,
 			sentToInterfaceTimestamp: props.sentToInterfaceTimestamp ? props.sentToInterfaceTimestamp : undefined,
 			replyTimestamp: props.replyTimestamp ? props.replyTimestamp : undefined,

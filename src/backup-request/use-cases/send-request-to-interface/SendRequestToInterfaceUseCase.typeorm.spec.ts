@@ -59,6 +59,7 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 		getOnStartFlag: true,
 		transportTypeCode: RequestTransportTypeValues.HTTP,
 		statusTypeCode: BackupRequestStatusTypeValues.Allowed,
+		acceptedTimestamp: new Date(),
 		receivedTimestamp: new Date(),
 		requesterId: 'dbRequesterId',
 		backupProviderCode: 'CloudA',

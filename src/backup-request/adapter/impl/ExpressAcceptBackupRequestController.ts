@@ -60,7 +60,7 @@ export class ExpressAcceptBackupRequestController extends ExpressController {
 				dataDate: dt.toISOString().slice(0, 10), // only the date part
 				preparedDataPathName: v.preparedDataPathName,
 				statusTypeCode: v.statusTypeCode,
-				receivedTimestamp: v.receivedTimestamp,
+				acceptedTimestamp: v.acceptedTimestamp,
 				requesterId: v.requesterId,
 			};
 			this.logger.info(

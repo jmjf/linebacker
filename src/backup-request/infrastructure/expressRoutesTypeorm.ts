@@ -12,20 +12,17 @@ import { ICircuitBreakers } from '../../infrastructure/typeorm/buildCircuitBreak
 import { LinebackerRequest } from '../../common/adapter/ExpressController';
 import { logger } from '../../infrastructure/logging/pinoLogger';
 import path from 'node:path';
-import { BullMq } from '../../infrastructure/bullmq/bullMqInfra';
 
 const moduleName = path.basename(module.filename);
 
 export function getBackupRequestRouter(
 	typeormCtx: TypeormContext,
-	bullMq: BullMq,
 	circuitBreakers: ICircuitBreakers,
 	abortSignal: AbortSignal
 ) {
 	const functionName = 'getBackupRequestRouter';
 	const { createBackupRequestController, acceptBackupRequestController } = initBackupRequestModule(
 		typeormCtx,
-		bullMq,
 		circuitBreakers,
 		'Express',
 		abortSignal

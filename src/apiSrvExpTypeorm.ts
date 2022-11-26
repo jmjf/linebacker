@@ -57,7 +57,7 @@ const startServer = async () => {
 			return { depName: cb.serviceName, checkDep: cb.getStatusSync.bind(cb) };
 		}),
 	};
-	const app = buildApp(logger, typeormCtx, bullMq, circuitBreakers, zpageDependencies, appAbortController.signal);
+	const app = buildApp(logger, typeormCtx, circuitBreakers, zpageDependencies, appAbortController.signal);
 	app.disable('x-powered-by');
 
 	logger.info(logContext, 'publishing ApplicationResilienceReady');

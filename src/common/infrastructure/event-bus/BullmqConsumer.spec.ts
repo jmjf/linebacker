@@ -1,10 +1,9 @@
 jest.mock('bullmq');
 import * as bullMq from 'bullmq';
-const mockBullMq = jest.mocked(bullMq);
 
-import { BullmqEventBus } from './BullmqEventBus';
+process.env.EVENT_BUS_TYPE = 'bullmq';
+import { eventBus } from './eventBus';
 import { BullmqConsumer } from './BullmqConsumer';
-import { bullMqConnection } from '../../../infrastructure/bullmq/bullMqInfra';
 
 import {
 	createMockTypeormContext,
@@ -23,7 +22,6 @@ import { BackupProviderTypeValues } from '../../../backup-job/domain/BackupProvi
 import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
 import { delay } from '../../utils/utils';
 
-
 describe('BmqConsumer - runs with CheckRequestAllowedUseCase', () => {
 	let mockTypeormCtx: MockTypeormContext;
 	let typeormCtx: TypeormContext;
@@ -31,14 +29,13 @@ describe('BmqConsumer - runs with CheckRequestAllowedUseCase', () => {
 	let dbCircuitBreaker: CircuitBreakerWithRetry;
 	let abortController: AbortController;
 
-	let bullmqEventBus: BullmqEventBus;
+	const mockBullMq = jest.mocked(bullMq);
 
 	beforeEach(() => {
 		mockTypeormCtx = createMockTypeormContext();
 		typeormCtx = mockTypeormCtx as unknown as TypeormContext;
 
 		mockBullMq.Queue.mockClear();
-		bullmqEventBus = new BullmqEventBus(bullMq, bullMqConnection);
 
 		abortController = new AbortController();
 		dbCircuitBreaker = getLenientCircuitBreaker('TypeORM', abortController.signal);
@@ -84,7 +81,7 @@ describe('BmqConsumer - runs with CheckRequestAllowedUseCase', () => {
 			getByIdResult: { ...backupJobProps },
 		});
 
-		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bullmqEventBus);
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, eventBus);
 
 		const job = {
 			data: {
@@ -120,7 +117,7 @@ describe('BmqConsumer - runs with CheckRequestAllowedUseCase', () => {
 			getByIdResult: { ...backupJobProps },
 		});
 
-		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bullmqEventBus);
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, eventBus);
 
 		const job = {
 			data: {
@@ -156,7 +153,7 @@ describe('BmqConsumer - runs with CheckRequestAllowedUseCase', () => {
 			getByIdResult: { ...backupJobProps },
 		});
 
-		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bullmqEventBus);
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, eventBus);
 
 		const job = {
 			data: {
@@ -192,7 +189,7 @@ describe('BmqConsumer - runs with CheckRequestAllowedUseCase', () => {
 		});
 		mockBullMq.Queue.prototype.add.mockResolvedValue({} as bullMq.Job);
 
-		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, bullmqEventBus);
+		const useCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, eventBus);
 
 		const job = {
 			data: {

@@ -31,7 +31,7 @@ import { delay } from './common/utils/utils';
 import { typeormDataSource } from './infrastructure/typeorm/typeormDataSource';
 import { typeormCtx } from './infrastructure/typeorm/typeormContext';
 import { buildCircuitBreakers, ICircuitBreakers } from './infrastructure/typeorm/buildCircuitBreakers.typeorm';
-import { bullMqConnection } from './infrastructure/bullmq/bullMqInfra';
+import { bullMqConnection } from './common/infrastructure/event-bus/eventBus';
 
 import { eventBus } from './common/infrastructure/event-bus/eventBus';
 import { TypeormBackupRequestRepo } from './backup-request/adapter/impl/TypeormBackupRequestRepo';

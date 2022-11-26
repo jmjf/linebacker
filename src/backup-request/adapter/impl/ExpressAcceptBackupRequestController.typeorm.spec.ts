@@ -64,7 +64,6 @@ describe('ExpressAcceptBackupRequestController - typeorm', () => {
 		const app = buildApp(
 			logger,
 			typeormCtx,
-			mockBullMq,
 			{ dbCircuitBreaker, azureQueueCircuitBreaker },
 			zpageDependencies,
 			abortController.signal
@@ -93,7 +92,6 @@ describe('ExpressAcceptBackupRequestController - typeorm', () => {
 		const app = buildApp(
 			logger,
 			typeormCtx,
-			mockBullMq,
 			{ dbCircuitBreaker, azureQueueCircuitBreaker },
 			zpageDependencies,
 			abortController.signal
@@ -120,7 +118,6 @@ describe('ExpressAcceptBackupRequestController - typeorm', () => {
 		const app = buildApp(
 			logger,
 			typeormCtx,
-			mockBullMq,
 			{ dbCircuitBreaker, azureQueueCircuitBreaker },
 			zpageDependencies,
 			abortController.signal
@@ -151,7 +148,6 @@ describe('ExpressAcceptBackupRequestController - typeorm', () => {
 		const app = buildApp(
 			logger,
 			typeormCtx,
-			bullMq,
 			{ dbCircuitBreaker, azureQueueCircuitBreaker },
 			zpageDependencies,
 			abortController.signal
@@ -172,14 +168,14 @@ describe('ExpressAcceptBackupRequestController - typeorm', () => {
 		expect(bmqAddSpy).toHaveBeenCalledTimes(1);
 		// convert text to an object we can use -- may throw an error if not JSON
 		const payload = JSON.parse(response.text);
-		const receivedTimestamp = new Date(payload.receivedTimestamp);
+		const acceptedTimestamp = new Date(payload.acceptedTimestamp);
 
 		expect(payload.backupRequestId.length).toBe(21); // nanoid isn't "verifiable" like a UUID
 		expect(payload.statusTypeCode).toBe(BackupRequestStatusTypeValues.Accepted);
 		expect(payload.backupJobId).toBe(basePayload.backupJobId);
 		expect(payload.preparedDataPathName).toBe(basePayload.backupDataLocation);
 		expect(payload.dataDate).toBe(basePayload.dataDate);
-		expect(receivedTimestamp.valueOf()).toBeGreaterThanOrEqual(startTime.valueOf());
-		expect(receivedTimestamp.valueOf()).toBeLessThanOrEqual(endTime.valueOf());
+		expect(acceptedTimestamp.valueOf()).toBeGreaterThanOrEqual(startTime.valueOf());
+		expect(acceptedTimestamp.valueOf()).toBeLessThanOrEqual(endTime.valueOf());
 	});
 });

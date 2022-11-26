@@ -6,8 +6,7 @@ process.env.EVENT_BUS_TYPE = 'bullmq';
 
 import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
 
-import { AcceptBackupRequestUseCase } from './AcceptBackupRequestUseCase';
-import { AcceptBackupRequestDTO } from './AcceptBackupRequestDTO';
+import { AcceptBackupRequestDTO, AcceptBackupRequestUseCase } from './AcceptBackupRequestUseCase';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 
 import { EventBusError } from '../../../common/infrastructure/InfrastructureErrors';

@@ -229,6 +229,17 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 		try {
 			await this.typeormCtx.manager.save(TypeormBackupRequest, { ...raw });
 			this.circuitBreaker.onSuccess();
+
+			// trigger domain events
+			const publishResult = await eventBus.publishEventsBulk(backupRequest.events);
+			if (publishResult.isErr()) {
+				return err(publishResult.error);
+			}
+
+			// The application enforces the business rules, not the database.
+			// Under no circumstances should the database change the data it gets.
+			// Returning the backup request allows use cases to return the result of save() if they can't do anything about a DatabaseError.
+			return ok(backupRequest);
 		} catch (e) {
 			const { message, ...error } = e as Error;
 			let errorData = { isConnectFailure: false };
@@ -247,17 +258,6 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 				})
 			);
 		}
-
-		// trigger domain events
-		const publishResult = await eventBus.publishEventsBulk(backupRequest.events);
-		if (publishResult.isErr()) {
-			return publishResult;
-		}
-
-		// The application enforces the business rules, not the database.
-		// Under no circumstances should the database change the data it gets.
-		// Returning the backup request allows use cases to return the result of save() if they can't do anything about a DatabaseError.
-		return ok(backupRequest);
 	}
 
 	// this may belong in a mapper
@@ -273,7 +273,8 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 				backupProviderCode: raw.backupProviderCode as BackupProviderType,
 				storagePathName: raw.storagePathName === null ? undefined : raw.storagePathName,
 				statusTypeCode: raw.statusTypeCode as BackupRequestStatusType,
-				receivedTimestamp: raw.receivedTimestamp,
+				acceptedTimestamp: raw.acceptedTimestamp === null ? undefined : raw.acceptedTimestamp,
+				receivedTimestamp: raw.receivedTimestamp === null ? undefined : raw.receivedTimestamp,
 				checkedTimestamp: raw.checkedTimestamp === null ? undefined : raw.checkedTimestamp,
 				sentToInterfaceTimestamp: raw.sentToInterfaceTimestamp === null ? undefined : raw.sentToInterfaceTimestamp,
 				replyTimestamp: raw.replyTimestamp === null ? undefined : raw.replyTimestamp,
@@ -296,6 +297,7 @@ export class TypeormBackupRequestRepo implements IBackupRequestRepo {
 			backupProviderCode: backupRequest.backupProviderCode,
 			storagePathName: backupRequest.storagePathName,
 			statusTypeCode: backupRequest.statusTypeCode,
+			acceptedTimestamp: backupRequest.acceptedTimestamp,
 			receivedTimestamp: backupRequest.receivedTimestamp,
 			checkedTimestamp: backupRequest.checkedTimestamp,
 			sentToInterfaceTimestamp: backupRequest.sentToInterfaceTimestamp,

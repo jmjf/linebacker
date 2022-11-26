@@ -1,6 +1,5 @@
 jest.mock('bullmq');
 import * as bullMq from 'bullmq';
-const mockBullMq = jest.mocked(bullMq);
 
 import request from 'supertest';
 
@@ -32,6 +31,8 @@ describe('Zpages - typeorm', () => {
 
 	const errDependency = { depName: 'errDep', checkDep: () => false };
 
+	const mockBullMq = jest.mocked(bullMq);
+
 	beforeEach(() => {
 		mockTypeormCtx = createMockTypeormContext();
 		typeormCtx = mockTypeormCtx as unknown as TypeormContext;
@@ -54,7 +55,6 @@ describe('Zpages - typeorm', () => {
 		const app = buildApp(
 			logger,
 			typeormCtx,
-			bullMq,
 			{ dbCircuitBreaker, azureQueueCircuitBreaker },
 			deps,
 			abortController.signal
@@ -77,7 +77,6 @@ describe('Zpages - typeorm', () => {
 		const app = buildApp(
 			logger,
 			typeormCtx,
-			bullMq,
 			{ dbCircuitBreaker, azureQueueCircuitBreaker },
 			deps,
 			abortController.signal
@@ -97,7 +96,6 @@ describe('Zpages - typeorm', () => {
 		const app = buildApp(
 			logger,
 			typeormCtx,
-			bullMq,
 			{ dbCircuitBreaker, azureQueueCircuitBreaker },
 			deps,
 			abortController.signal
@@ -118,7 +116,6 @@ describe('Zpages - typeorm', () => {
 		const app = buildApp(
 			logger,
 			typeormCtx,
-			bullMq,
 			{ dbCircuitBreaker, azureQueueCircuitBreaker },
 			deps,
 			abortController.signal
@@ -147,7 +144,6 @@ describe('Zpages - typeorm', () => {
 		const app = buildApp(
 			logger,
 			typeormCtx,
-			bullMq,
 			{ dbCircuitBreaker, azureQueueCircuitBreaker },
 			deps,
 			abortController.signal

@@ -23,7 +23,7 @@ export interface ReceiveBackupRequestDTO {
 	getOnStartFlag: boolean;
 	transportTypeCode: RequestTransportType;
 	statusTypeCode: BackupRequestStatusType;
-	receivedTimestamp: Date;
+	acceptedTimestamp: Date;
 	requesterId: string;
 }
 
@@ -48,18 +48,16 @@ export class ReceiveBackupRequestUseCase implements UseCase<ReceiveBackupRequest
 	async execute(acceptedEvent: ReceiveBackupRequestDTO): Promise<Response> {
 		const functionName = 'execute';
 
-		let backupRequest: BackupRequest;
-
 		const getRequestResult = await this.backupRequestRepo.getById(acceptedEvent.backupRequestId);
 		if (getRequestResult.isErr() && getRequestResult.error.name !== 'NotFoundError') {
 			return getRequestResult;
 		}
 
 		if (getRequestResult.isOk()) {
-			backupRequest = getRequestResult.value;
+			const backupRequest = getRequestResult.value;
 
-			// existing request must be in Received status
-			if (backupRequest.statusTypeCode !== BackupRequestStatusTypeValues.Received) {
+			// backup result was found, so if not Received, past this step.
+			if (!backupRequest.isReceived()) {
 				return err(
 					new DomainErrors.PropsError('invalid request status', {
 						expectedStatusTypeCode: BackupRequestStatusTypeValues.Received,
@@ -70,33 +68,35 @@ export class ReceiveBackupRequestUseCase implements UseCase<ReceiveBackupRequest
 					})
 				);
 			}
-		} else {
-			// not found -> create and save
-			const { backupRequestId, ...props } = acceptedEvent;
-			const createResult = BackupRequest.create(
-				{
-					...props,
-					backupJobId: new UniqueIdentifier(props.backupJobId),
-					statusTypeCode: BackupRequestStatusTypeValues.Received,
-				},
-				new UniqueIdentifier(backupRequestId)
-			);
-			if (createResult.isErr()) {
-				return createResult;
-			}
-			backupRequest = createResult.value;
 
-			const brSaveResult = await this.backupRequestRepo.save(backupRequest);
-			if (brSaveResult.isErr()) {
-				return brSaveResult;
+			// found and in received status, publish only (no save)
+			const publishResult = await this.eventBus.publishEvent(new BackupRequestReceived(backupRequest));
+			if (publishResult.isErr()) {
+				return err(publishResult.error);
 			}
+			return ok(backupRequest);
 		}
 
-		const publishResult = await this.eventBus.publishEvent(new BackupRequestReceived(backupRequest));
-		if (publishResult.isErr()) {
-			return err(publishResult.error);
+		// not found -> create and save
+		const { backupRequestId, ...props } = acceptedEvent;
+		const createResult = BackupRequest.create(
+			{
+				...props,
+				backupJobId: new UniqueIdentifier(props.backupJobId),
+			},
+			new UniqueIdentifier(backupRequestId)
+		);
+		if (createResult.isErr()) {
+			return createResult;
+		}
+		const backupRequest = createResult.value;
+		backupRequest.setStatusReceived();
+
+		const brSaveResult = await this.backupRequestRepo.save(createResult.value);
+		if (brSaveResult.isErr()) {
+			return brSaveResult;
 		}
 
-		return ok(backupRequest as unknown as BackupRequest);
+		return ok(createResult.value);
 	}
 }
