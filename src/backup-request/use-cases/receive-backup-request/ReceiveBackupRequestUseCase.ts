@@ -12,6 +12,7 @@ import { RequestTransportType } from '../../domain/RequestTransportType';
 import { BackupRequestStatusType, BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
 import path from 'node:path';
 import { BackupRequestReceived } from '../../domain/BackupRequestReceived.event';
+import { Guard } from '../../../common/core/Guard';
 
 const moduleName = path.basename(module.filename);
 
@@ -47,6 +48,13 @@ export class ReceiveBackupRequestUseCase implements UseCase<ReceiveBackupRequest
 
 	async execute(acceptedEvent: ReceiveBackupRequestDTO): Promise<Response> {
 		const functionName = 'execute';
+
+		const guardResult = Guard.againstNullOrUndefined(acceptedEvent.backupRequestId, 'backupRequestId');
+		if (guardResult.isErr()) {
+			return err(
+				new DomainErrors.PropsError(guardResult.error.message, { event: acceptedEvent, moduleName, functionName })
+			);
+		}
 
 		const getRequestResult = await this.backupRequestRepo.getById(acceptedEvent.backupRequestId);
 		if (getRequestResult.isErr() && getRequestResult.error.name !== 'NotFoundError') {

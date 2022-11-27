@@ -77,6 +77,26 @@ describe('ReceiveBackupRequestUseCase', () => {
 			}
 		});
 
+		test('when the request id is undefined, it returns a PropsError', async () => {
+			mockTypeormCtx.manager.findOne.mockResolvedValue(null);
+			const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
+			const brGetSpy = jest.spyOn(brRepo, 'getById');
+
+			const useCase = new ReceiveBackupRequestUseCase(brRepo, eventBus);
+
+			const result = await useCase.execute({
+				...baseDto,
+				backupRequestId: undefined as unknown as string,
+			});
+
+			expect(result.isErr()).toBe(true);
+			expect(brGetSpy).not.toHaveBeenCalled();
+			expect(eventBusPublishSpy).not.toHaveBeenCalled();
+			if (result.isErr()) {
+				expect(result.error.name).toEqual('PropsError');
+			}
+		});
+
 		test(`when the request doesn't exist and data is bad, it returns a PropsError`, async () => {
 			mockTypeormCtx.manager.findOne.mockResolvedValue(null);
 			const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreaker);
