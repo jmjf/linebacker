@@ -27,21 +27,22 @@ export function initQueueWatcher(
 
 	const queueName = 'store-statuses';
 
-	const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreakers.dbCircuitBreaker);
-	const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...mockBackupJobProps } });
-	const backupRepo = new TypeormBackupRepo(typeormCtx, circuitBreakers.dbCircuitBreaker);
-
-	const receiveStatusUseCase = new ReceiveStoreStatusReplyUseCase({
-		backupRequestRepo,
-		backupJobServiceAdapter,
-		backupRepo,
-	});
-
 	const queueAdapter = new AzureBackupInterfaceStoreAdapter(queueName, circuitBreakers.azureQueueCircuitBreaker);
 
-	new StoreStatusReceivedSubscriber(receiveStatusUseCase, queueAdapter);
+	if (process.env.MESSAGE_BUS_TYPE !== 'bullmq') {
+		const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreakers.dbCircuitBreaker);
+		const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...mockBackupJobProps } });
+		const backupRepo = new TypeormBackupRepo(typeormCtx, circuitBreakers.dbCircuitBreaker);
 
-	const messageHandler = new AzureStoreStatusMessageHandler();
+		const receiveStatusUseCase = new ReceiveStoreStatusReplyUseCase({
+			backupRequestRepo,
+			backupJobServiceAdapter,
+			backupRepo,
+		});
+
+		new StoreStatusReceivedSubscriber(receiveStatusUseCase, queueAdapter);
+	}
+	const messageHandler = new AzureStoreStatusMessageHandler(queueAdapter);
 
 	const queueWatcher = new AzureQueueWatcher({
 		messageHandler,

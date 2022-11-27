@@ -3,12 +3,12 @@ import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
 import { IEventBusSubscriber } from '../../../common/infrastructure/event-bus/IEventBus';
 import { logger } from '../../../infrastructure/logging/pinoLogger';
 import { IBackupInterfaceStoreAdapter } from '../../adapter/IBackupInterfaceStoreAdapter';
-import { StoreStatusReceived } from '../../domain/StoreStatusReceived.event';
+import { StoreStatusReceived_MEM } from '../../domain/StoreStatusReceived.mem';
 import { ReceiveStoreStatusReplyUseCase } from './ReceiveStoreStatusReplyUseCase';
 import { StoreStatusReplyDTO } from './StoreStatusReplyDTO';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
-export class StoreStatusReceivedSubscriber implements IEventBusSubscriber<StoreStatusReceived> {
+export class StoreStatusReceivedSubscriber implements IEventBusSubscriber<StoreStatusReceived_MEM> {
 	private useCase: ReceiveStoreStatusReplyUseCase;
 	private interfaceAdapter: IBackupInterfaceStoreAdapter;
 
@@ -19,10 +19,10 @@ export class StoreStatusReceivedSubscriber implements IEventBusSubscriber<StoreS
 	}
 
 	setupSubscriptions(): void {
-		eventBus.subscribe(StoreStatusReceived.name, this.onStoreStatusReceived.bind(this));
+		eventBus.subscribe(StoreStatusReceived_MEM.name, this.onStoreStatusReceived.bind(this));
 	}
 
-	async onStoreStatusReceived(event: StoreStatusReceived): Promise<void> {
+	async onStoreStatusReceived(event: StoreStatusReceived_MEM): Promise<void> {
 		// console.log('onStoreStatusReceived', event.messageItem);
 		const messageItem = event.eventData.event;
 		const storeStatusMessage = messageItem.messageObject;

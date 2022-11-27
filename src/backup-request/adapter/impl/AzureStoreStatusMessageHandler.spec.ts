@@ -10,7 +10,7 @@ import { ReceivedMessageItem } from '@azure/storage-queue';
 import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
 import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 
-import { StoreStatusMessage } from '../../domain/StoreStatusReceived';
+import { StoreStatusMessage } from '../../domain/StoreStatusReceived.common';
 import { AzureBackupInterfaceStoreAdapter } from './AzureBackupInterfaceStoreAdapter';
 
 import { AzureStoreStatusMessageHandler } from './AzureStoreStatusMessageHandler';
@@ -22,6 +22,29 @@ const now = new Date();
 const offsetMs = 15 * 60 * 1000;
 
 describe('AzureStoreStatusMessageHandler', () => {
+	let azureQueueCircuitBreaker: CircuitBreakerWithRetry;
+	let abortController: AbortController;
+
+	beforeEach(() => {
+		// mockTypeormCtx = createMockTypeormContext();
+		// typeormCtx = mockTypeormCtx as unknown as TypeormContext;
+
+		abortController = new AbortController();
+		// dbCircuitBreaker = getLenientCircuitBreaker('TypeORM', abortController.signal);
+		azureQueueCircuitBreaker = getLenientCircuitBreaker('AzureQueue', abortController.signal);
+	});
+
+	afterEach(() => {
+		abortController.abort();
+		delay(250);
+	});
+
+	// env for AzureQueue
+	process.env.AUTH_METHOD = 'SASK';
+	process.env.SASK_ACCOUNT_NAME = 'accountName';
+	process.env.SASK_ACCOUNT_KEY = 'accountKey';
+	process.env.AZURE_QUEUE_ACCOUNT_URI = 'test-uri'; // not checked for SASK because SASK is local only
+
 	const msgObject: StoreStatusMessage = {
 		apiVersion: '2022-08-15',
 		backupRequestId: 'msg-backup-request-id',
@@ -44,7 +67,8 @@ describe('AzureStoreStatusMessageHandler', () => {
 
 	test('when messageText is not valid JSON, it returns err (StatusJsonError)', async () => {
 		// Arrange
-		const msgHandler = new AzureStoreStatusMessageHandler();
+		const interfaceAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker, false);
+		const msgHandler = new AzureStoreStatusMessageHandler(interfaceAdapter);
 		const publishSpy = jest.spyOn(eventBus, 'publishEvent');
 
 		// Act
@@ -62,7 +86,8 @@ describe('AzureStoreStatusMessageHandler', () => {
 
 	test('when messageText is valid JSON, it returns ok', async () => {
 		// Arrange
-		const msgHandler = new AzureStoreStatusMessageHandler();
+		const interfaceAdapter = new AzureBackupInterfaceStoreAdapter('test-queue', azureQueueCircuitBreaker, false);
+		const msgHandler = new AzureStoreStatusMessageHandler(interfaceAdapter);
 		const publishSpy = jest.spyOn(eventBus, 'publishEvent');
 
 		// Act

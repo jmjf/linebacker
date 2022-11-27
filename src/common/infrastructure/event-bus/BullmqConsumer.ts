@@ -7,10 +7,15 @@ import * as InfrastructureErrors from '../InfrastructureErrors';
 import { SendRequestToInterfaceUseCase } from '../../../backup-request/use-cases/send-request-to-interface/SendRequestToInterfaceUseCase';
 import { ReceiveBackupRequestUseCase } from '../../../backup-request/use-cases/receive-backup-request/ReceiveBackupRequestUseCase';
 import { CheckRequestAllowedUseCase } from '../../../backup-request/use-cases/check-request-allowed-2/CheckRequestAllowedUseCase';
+import { ReceiveStoreStatusReplyUseCase } from '../../../backup-request/use-cases/receive-store-status-reply/ReceiveStoreStatusReplyUseCase';
 
 const moduleName = path.basename(module.filename);
 
-type BullmqConsumerUseCase = ReceiveBackupRequestUseCase | CheckRequestAllowedUseCase | SendRequestToInterfaceUseCase;
+type BullmqConsumerUseCase =
+	| ReceiveBackupRequestUseCase
+	| CheckRequestAllowedUseCase
+	| SendRequestToInterfaceUseCase
+	| ReceiveStoreStatusReplyUseCase;
 
 export interface IBullmqEventBusConsumer {
 	consume(job: unknown): unknown | Error;

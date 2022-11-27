@@ -3,7 +3,7 @@ import * as bullMq from 'bullmq';
 import { BullmqEventBus } from './BullmqEventBus';
 import { MemoryEventBus } from './MemoryEventBus';
 
-const eventBusType = (process.env.EVENT_BUS_TYPE || 'memory').toLowerCase();
+export const eventBusType = (process.env.EVENT_BUS_TYPE || 'memory').toLowerCase();
 
 export const bullMqConnection = {
 	host: 'localhost',

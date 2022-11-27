@@ -350,7 +350,7 @@ if (TEST_EVENTS) {
 			new StoreStatusReceivedSubscriber(rcvUseCase, abisa);
 
 			//** Queue poller simulation requirement **//
-			const msgHandler = new AzureStoreStatusMessageHandler();
+			const msgHandler = new AzureStoreStatusMessageHandler(abisa);
 
 			// Act
 			// The queue poller will loop and call abisa.receive()

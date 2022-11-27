@@ -44,7 +44,9 @@ import { BackupProviderTypeValues } from './backup-job/domain/BackupProviderType
 import { ReceiveBackupRequestUseCase } from './backup-request/use-cases/receive-backup-request/ReceiveBackupRequestUseCase';
 import { CheckRequestAllowedUseCase } from './backup-request/use-cases/check-request-allowed-2/CheckRequestAllowedUseCase';
 import { SendRequestToInterfaceUseCase } from './backup-request/use-cases/send-request-to-interface/SendRequestToInterfaceUseCase';
+import { ReceiveStoreStatusReplyUseCase } from './backup-request/use-cases/receive-store-status-reply/ReceiveStoreStatusReplyUseCase';
 import { AzureBackupInterfaceStoreAdapter } from './backup-request/adapter/impl/AzureBackupInterfaceStoreAdapter';
+import { TypeormBackupRepo } from './backup/adapter/impl/TypeormBackupRepo';
 
 const moduleName = path.basename(module.filename);
 
@@ -53,7 +55,7 @@ const buildWorker = (circuitBreakers: ICircuitBreakers) => {
 
 	const rcvUseCase = new ReceiveBackupRequestUseCase(brRepo, eventBus);
 	const acceptedConsumer = new BullmqConsumer(rcvUseCase, 5);
-	const acceptedConsumerConsume = acceptedConsumer.consume.bind(acceptedConsumer);
+	const consumeAccepted = acceptedConsumer.consume.bind(acceptedConsumer);
 
 	const jobSvc = new MockBackupJobServiceAdapter({
 		getByIdResult: {
@@ -67,7 +69,7 @@ const buildWorker = (circuitBreakers: ICircuitBreakers) => {
 
 	const checkUseCase = new CheckRequestAllowedUseCase(brRepo, jobSvc, eventBus);
 	const receivedConsumer = new BullmqConsumer(checkUseCase, 5);
-	const receivedConsumerConsume = receivedConsumer.consume.bind(receivedConsumer);
+	const consumeReceived = receivedConsumer.consume.bind(receivedConsumer);
 
 	const azureInterfaceAdapter = new AzureBackupInterfaceStoreAdapter(
 		'allowed-backup-requests',
@@ -78,7 +80,16 @@ const buildWorker = (circuitBreakers: ICircuitBreakers) => {
 		interfaceStoreAdapter: azureInterfaceAdapter,
 	});
 	const azureAllowedConsumer = new BullmqConsumer(azureSendUseCase, 5);
-	const azureAllowedConsumerConsume = azureAllowedConsumer.consume.bind(azureAllowedConsumer);
+	const consumeAllowed = azureAllowedConsumer.consume.bind(azureAllowedConsumer);
+
+	const backupRepo = new TypeormBackupRepo(typeormCtx, circuitBreakers.dbCircuitBreaker);
+	const receiveStoreStatusReplyUseCase = new ReceiveStoreStatusReplyUseCase({
+		backupRequestRepo: brRepo,
+		backupRepo,
+		backupJobServiceAdapter: jobSvc,
+	});
+	const receiveStoreStatusReplyConsumer = new BullmqConsumer(receiveStoreStatusReplyUseCase, 5);
+	const consumeReceiveStoreStatusReply = receiveStoreStatusReplyConsumer.consume.bind(receiveStoreStatusReplyConsumer);
 
 	return new bullMq.Worker(
 		'linebacker',
@@ -86,13 +97,16 @@ const buildWorker = (circuitBreakers: ICircuitBreakers) => {
 			const functionName = 'workerProcessor';
 			switch (job.data.eventType) {
 				case 'BackupRequestAccepted':
-					await acceptedConsumerConsume(job);
+					await consumeAccepted(job);
 					break;
 				case 'BackupRequestReceived':
-					await receivedConsumerConsume(job);
+					await consumeReceived(job);
 					break;
 				case 'BackupRequestAllowed':
-					await azureAllowedConsumerConsume(job);
+					await consumeAllowed(job);
+					break;
+				case 'StoreStatusReceived_BMQ':
+					await consumeReceiveStoreStatusReply(job);
 					break;
 				case 'ApplicationResilienceReady':
 					logger.debug(
