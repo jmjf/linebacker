@@ -3,29 +3,23 @@ import path from 'node:path';
 
 import { logger } from '../../../infrastructure/logging/pinoLogger';
 import * as InfrastructureErrors from '../InfrastructureErrors';
-
-import { SendRequestToInterfaceUseCase } from '../../../backup-request/use-cases/send-request-to-interface/SendRequestToInterfaceUseCase';
-import { ReceiveBackupRequestUseCase } from '../../../backup-request/use-cases/receive-backup-request/ReceiveBackupRequestUseCase';
-import { CheckRequestAllowedUseCase } from '../../../backup-request/use-cases/check-request-allowed-2/CheckRequestAllowedUseCase';
-import { ReceiveStoreStatusReplyUseCase } from '../../../backup-request/use-cases/receive-store-status-reply/ReceiveStoreStatusReplyUseCase';
+import { Result } from '../../core/Result';
+import { BaseError } from '../../core/BaseError';
+import { UseCase } from '../../application/UseCase';
 
 const moduleName = path.basename(module.filename);
-
-type BullmqConsumerUseCase =
-	| ReceiveBackupRequestUseCase
-	| CheckRequestAllowedUseCase
-	| SendRequestToInterfaceUseCase
-	| ReceiveStoreStatusReplyUseCase;
 
 export interface IBullmqEventBusConsumer {
 	consume(job: unknown): unknown | Error;
 }
 
-export class BullmqConsumer implements IBullmqEventBusConsumer {
-	private useCase: BullmqConsumerUseCase;
+type GenericUseCase = UseCase<unknown, Promise<Result<unknown, BaseError>>>;
+
+export class BullmqConsumer<UseCaseType extends GenericUseCase> implements IBullmqEventBusConsumer {
+	private useCase: UseCaseType;
 	private maxTrueFailures: number;
 
-	constructor(useCase: BullmqConsumerUseCase, maxTrueFailures: number) {
+	constructor(useCase: UseCaseType, maxTrueFailures: number) {
 		this.useCase = useCase;
 		this.maxTrueFailures = maxTrueFailures;
 	}
