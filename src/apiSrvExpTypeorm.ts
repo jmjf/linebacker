@@ -18,6 +18,7 @@ if (!process.env.APP_ENV) {
 logger.info(logContext, `APP_ENV ${process.env.APP_ENV}`);
 dotenv.config({ path: `./env/${process.env.APP_ENV}.env` });
 
+import * as bullMq from 'bullmq';
 import { typeormDataSource } from './infrastructure/typeorm/typeormDataSource';
 import { typeormCtx } from './infrastructure/typeorm/typeormContext';
 import { buildCircuitBreakers } from './infrastructure/typeorm/buildCircuitBreakers.typeorm';
@@ -25,7 +26,6 @@ import { buildCircuitBreakers } from './infrastructure/typeorm/buildCircuitBreak
 import { buildApp } from './apiAppExpTypeorm';
 import { publishApplicationResilienceReady } from './infrastructure/resilience/publishApplicationResilienceReady';
 import { delay } from './common/utils/utils';
-import { isTypeormConnected } from './infrastructure/typeorm/isTypeormConnected';
 
 const startServer = async () => {
 	const startTimestamp = new Date();

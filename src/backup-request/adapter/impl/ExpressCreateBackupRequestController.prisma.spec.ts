@@ -14,7 +14,7 @@ import {
 } from '../../../infrastructure/prisma/prismaContext';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
 
-import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
 
 import { delay } from '../../../common/utils/utils';
 import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
@@ -142,7 +142,7 @@ describe('ExpressCreateBackupRequestController - prisma', () => {
 		const receivedTimestamp = new Date(payload.receivedTimestamp);
 
 		expect(payload.backupRequestId.length).toBe(21); // can't validate nanoid like a UUID
-		expect(payload.statusTypeCode).toBe(RequestStatusTypeValues.Received);
+		expect(payload.statusTypeCode).toBe(BackupRequestStatusTypeValues.Received);
 		expect(payload.backupJobId).toBe(basePayload.backupJobId);
 		expect(payload.preparedDataPathName).toBe(basePayload.backupDataLocation);
 		expect(payload.dataDate).toBe(basePayload.dataDate);

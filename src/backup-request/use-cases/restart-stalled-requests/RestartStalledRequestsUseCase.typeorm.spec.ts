@@ -11,7 +11,7 @@ import {
 import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
 
 import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
-import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 
 import { RestartStalledRequestsUseCase } from './RestartStalledRequestsUseCase';
@@ -45,7 +45,8 @@ describe('RestartStalledRequestsUseCase - typeorm', () => {
 			preparedDataPathName: 'path',
 			getOnStartFlag: true,
 			transportTypeCode: RequestTransportTypeValues.HTTP,
-			statusTypeCode: RequestStatusTypeValues.Allowed,
+			statusTypeCode: BackupRequestStatusTypeValues.Allowed,
+			acceptedTimestamp: new Date(),
 			receivedTimestamp: new Date(),
 			requesterId: 'dbRequesterId',
 			backupProviderCode: 'CloudA',
@@ -62,7 +63,8 @@ describe('RestartStalledRequestsUseCase - typeorm', () => {
 			preparedDataPathName: 'path',
 			getOnStartFlag: true,
 			transportTypeCode: RequestTransportTypeValues.HTTP,
-			statusTypeCode: RequestStatusTypeValues.Allowed,
+			statusTypeCode: BackupRequestStatusTypeValues.Allowed,
+			acceptedTimestamp: new Date(),
 			receivedTimestamp: new Date(),
 			requesterId: 'dbRequesterId',
 			backupProviderCode: 'CloudA',
@@ -82,7 +84,8 @@ describe('RestartStalledRequestsUseCase - typeorm', () => {
 			preparedDataPathName: 'path',
 			getOnStartFlag: true,
 			transportTypeCode: RequestTransportTypeValues.HTTP,
-			statusTypeCode: RequestStatusTypeValues.Received,
+			statusTypeCode: BackupRequestStatusTypeValues.Received,
+			acceptedTimestamp: new Date(),
 			receivedTimestamp: new Date(),
 			requesterId: 'dbRequesterId',
 			backupProviderCode: 'CloudA',
@@ -99,7 +102,8 @@ describe('RestartStalledRequestsUseCase - typeorm', () => {
 			preparedDataPathName: 'path',
 			getOnStartFlag: true,
 			transportTypeCode: RequestTransportTypeValues.HTTP,
-			statusTypeCode: RequestStatusTypeValues.Received,
+			statusTypeCode: BackupRequestStatusTypeValues.Received,
+			acceptedTimestamp: new Date(),
 			receivedTimestamp: new Date(),
 			requesterId: 'dbRequesterId',
 			backupProviderCode: 'CloudA',
@@ -128,7 +132,7 @@ describe('RestartStalledRequestsUseCase - typeorm', () => {
 		expect(result.receivedResult.isOk()).toBe(true);
 		if (result.receivedResult.isOk()) {
 			expect(result.receivedResult.value.length).toBe(2);
-			expect(result.receivedResult.value[0].getId().value).toBe(dbReceivedResults[0].backupRequestId);
+			expect(result.receivedResult.value[0].eventKey).toBe(dbReceivedResults[0].backupRequestId);
 		}
 	});
 
@@ -152,7 +156,7 @@ describe('RestartStalledRequestsUseCase - typeorm', () => {
 		}
 		if (result.receivedResult.isOk()) {
 			expect(result.receivedResult.value.length).toBe(2);
-			expect(result.receivedResult.value[0].getId().value).toBe(dbReceivedResults[0].backupRequestId);
+			expect(result.receivedResult.value[0].eventKey).toBe(dbReceivedResults[0].backupRequestId);
 		}
 	});
 
@@ -173,7 +177,7 @@ describe('RestartStalledRequestsUseCase - typeorm', () => {
 		expect(result.receivedResult.isErr()).toBe(true);
 		if (result.allowedResult.isOk()) {
 			expect(result.allowedResult.value.length).toBe(2);
-			expect(result.allowedResult.value[0].getId().value).toBe(dbAllowedResults[0].backupRequestId);
+			expect(result.allowedResult.value[0].eventKey).toBe(dbAllowedResults[0].backupRequestId);
 		}
 	});
 
@@ -197,7 +201,7 @@ describe('RestartStalledRequestsUseCase - typeorm', () => {
 		}
 		if (result.allowedResult.isOk()) {
 			expect(result.allowedResult.value.length).toBe(2);
-			expect(result.allowedResult.value[0].getId().value).toBe(dbAllowedResults[0].backupRequestId);
+			expect(result.allowedResult.value[0].eventKey).toBe(dbAllowedResults[0].backupRequestId);
 		}
 	});
 
@@ -218,11 +222,11 @@ describe('RestartStalledRequestsUseCase - typeorm', () => {
 		expect(result.receivedResult.isOk()).toBe(true);
 		if (result.allowedResult.isOk()) {
 			expect(result.allowedResult.value.length).toBe(2);
-			expect(result.allowedResult.value[0].getId().value).toBe(dbAllowedResults[0].backupRequestId);
+			expect(result.allowedResult.value[0].eventKey).toBe(dbAllowedResults[0].backupRequestId);
 		}
 		if (result.receivedResult.isOk()) {
 			expect(result.receivedResult.value.length).toBe(2);
-			expect(result.receivedResult.value[0].getId().value).toBe(dbReceivedResults[0].backupRequestId);
+			expect(result.receivedResult.value[0].eventKey).toBe(dbReceivedResults[0].backupRequestId);
 		}
 	});
 });

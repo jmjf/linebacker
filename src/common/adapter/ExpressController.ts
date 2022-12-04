@@ -1,6 +1,9 @@
 import { Response } from 'express';
 import { CustomRequest } from '../../infrastructure/middleware';
 import { logger } from '../../infrastructure/logging/pinoLogger';
+import path from 'path';
+
+const moduleName = path.basename(module.filename);
 
 export const responseTypes = {
 	json: 'application/json',
@@ -15,10 +18,11 @@ export abstract class ExpressController {
 	protected abstract execImpl(request: LinebackerRequest, response: Response): Promise<void | unknown>;
 
 	public async execute(request: LinebackerRequest, response: Response): Promise<void | unknown> {
+		const functionName = 'execute';
 		try {
 			return await this.execImpl(request, response);
 		} catch (e) {
-			console.log('ExpressController.execute', e);
+			logger.error({ error: e, moduleName, functionName }, 'Controller error');
 			return e;
 		}
 	}

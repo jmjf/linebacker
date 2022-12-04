@@ -9,11 +9,12 @@ import * as DomainErrors from '../../common/domain/DomainErrors';
 
 import { BackupProviderType } from '../../backup-job/domain/BackupProviderType';
 
-import { BackupRequestAllowed } from './BackupRequestAllowed';
-import { BackupRequestCreated } from './BackupRequestCreated';
+import { BackupRequestAllowed } from './BackupRequestAllowed.event';
+import { BackupRequestCreated } from './BackupRequestCreated.event';
 import { StoreResultType } from './StoreResultType';
-import { RequestStatusType, RequestStatusTypeValues } from './RequestStatusType';
+import { BackupRequestStatusType, BackupRequestStatusTypeValues } from './BackupRequestStatusType';
 import { RequestTransportType, validRequestTransportTypes } from './RequestTransportType';
+import { BackupRequestReceived } from './BackupRequestReceived.event';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 
@@ -26,8 +27,9 @@ export interface IBackupRequestProps {
 	transportTypeCode: RequestTransportType;
 	backupProviderCode?: BackupProviderType;
 	storagePathName?: string;
-	statusTypeCode: RequestStatusType;
-	receivedTimestamp: string | Date;
+	statusTypeCode: BackupRequestStatusType;
+	acceptedTimestamp?: string | Date;
+	receivedTimestamp?: string | Date;
 	checkedTimestamp?: string | Date;
 	sentToInterfaceTimestamp?: string | Date;
 	replyTimestamp?: string | Date;
@@ -74,8 +76,12 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 		this.props.storagePathName = path;
 	}
 
-	public get statusTypeCode(): RequestStatusType {
+	public get statusTypeCode(): BackupRequestStatusType {
 		return this.props.statusTypeCode;
+	}
+
+	public get acceptedTimestamp(): Date {
+		return dateOrUndefinedAsDate(this.props.acceptedTimestamp);
 	}
 
 	public get receivedTimestamp(): Date {
@@ -113,8 +119,8 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 	public isChecked(): boolean {
 		return (
 			this.statusTypeCode &&
-			(this.statusTypeCode === RequestStatusTypeValues.Allowed ||
-				this.statusTypeCode === RequestStatusTypeValues.NotAllowed) &&
+			(this.statusTypeCode === BackupRequestStatusTypeValues.Allowed ||
+				this.statusTypeCode === BackupRequestStatusTypeValues.NotAllowed) &&
 			isDate(this.checkedTimestamp)
 		);
 	}
@@ -130,7 +136,7 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 	public isSentToInterface(): boolean {
 		return (
 			this.statusTypeCode &&
-			this.statusTypeCode === RequestStatusTypeValues.Sent &&
+			this.statusTypeCode === BackupRequestStatusTypeValues.Sent &&
 			isDate(this.sentToInterfaceTimestamp)
 		);
 	}
@@ -149,7 +155,9 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 	 */
 	public isFailed(): boolean {
 		return (
-			this.statusTypeCode && this.statusTypeCode === RequestStatusTypeValues.Failed && isDate(this.replyTimestamp)
+			this.statusTypeCode &&
+			this.statusTypeCode === BackupRequestStatusTypeValues.Failed &&
+			isDate(this.replyTimestamp)
 		);
 	}
 
@@ -159,20 +167,30 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 	 */
 	public isSucceeded(): boolean {
 		return (
-			this.statusTypeCode && this.statusTypeCode === RequestStatusTypeValues.Succeeded && isDate(this.replyTimestamp)
+			this.statusTypeCode &&
+			this.statusTypeCode === BackupRequestStatusTypeValues.Succeeded &&
+			isDate(this.replyTimestamp)
 		);
 	}
 
+	public setStatusReceived(): void {
+		this.props.statusTypeCode = BackupRequestStatusTypeValues.Received;
+		this.props.receivedTimestamp = new Date();
+		this.addEvent(new BackupRequestReceived(this));
+	}
+
 	public setStatusSent(): void {
-		this.props.statusTypeCode = RequestStatusTypeValues.Sent;
+		this.props.statusTypeCode = BackupRequestStatusTypeValues.Sent;
 		this.props.sentToInterfaceTimestamp = new Date();
 	}
 
 	public setStatusChecked(isAllowed: boolean): void {
-		this.props.statusTypeCode = isAllowed ? RequestStatusTypeValues.Allowed : RequestStatusTypeValues.NotAllowed;
+		this.props.statusTypeCode = isAllowed
+			? BackupRequestStatusTypeValues.Allowed
+			: BackupRequestStatusTypeValues.NotAllowed;
 		this.props.checkedTimestamp = new Date();
 		if (isAllowed) {
-			this.addDomainEvent(new BackupRequestAllowed(this.backupRequestId));
+			this.addEvent(new BackupRequestAllowed(this));
 		}
 	}
 
@@ -211,7 +229,6 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 			{ arg: props.getOnStartFlag, argName: 'getOnStartFlag' },
 			{ arg: props.transportTypeCode, argName: 'transportTypeCode' },
 			{ arg: props.statusTypeCode, argName: 'statusTypeCode' },
-			{ arg: props.receivedTimestamp, argName: 'receivedTimestamp' },
 		];
 
 		const propsGuardResult = Guard.againstNullOrUndefinedBulk(guardArgs);
@@ -224,10 +241,6 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 				})
 			);
 		}
-
-		// ensure backupJobIdentifier is a UniqueIdentifier
-		props.backupJobId =
-			typeof props.backupJobId === 'string' ? new UniqueIdentifier(props.backupJobId) : props.backupJobId;
 
 		// ensure transport type is valid
 		const transportGuardResult = Guard.isOneOf(props.transportTypeCode, validRequestTransportTypes, 'transportType');
@@ -256,7 +269,11 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 				})
 			);
 		}
+
 		const dataDateAsDate = new Date(props.dataDate);
+		// ensure backupJobIdentifier is a UniqueIdentifier
+		props.backupJobId =
+			typeof props.backupJobId === 'string' ? new UniqueIdentifier(props.backupJobId) : props.backupJobId;
 
 		// initialize props data
 		const defaultValues: IBackupRequestProps = {
@@ -266,16 +283,18 @@ export class BackupRequest extends AggregateRoot<IBackupRequestProps> {
 			storagePathName: props.storagePathName ? props.storagePathName : '',
 			requesterId: props.requesterId ? props.requesterId : '',
 			// timestamps below are only set by code, so are not checked for validity
-			checkedTimestamp: props.checkedTimestamp ? props.checkedTimestamp : undefined,
-			sentToInterfaceTimestamp: props.sentToInterfaceTimestamp ? props.sentToInterfaceTimestamp : undefined,
-			replyTimestamp: props.replyTimestamp ? props.replyTimestamp : undefined,
+			acceptedTimestamp: dateOrUndefinedAsDate(props.acceptedTimestamp),
+			receivedTimestamp: dateOrUndefinedAsDate(props.receivedTimestamp),
+			checkedTimestamp: dateOrUndefinedAsDate(props.checkedTimestamp),
+			sentToInterfaceTimestamp: dateOrUndefinedAsDate(props.sentToInterfaceTimestamp),
+			replyTimestamp: dateOrUndefinedAsDate(props.replyTimestamp),
 		};
 
 		const backupRequest = new BackupRequest(defaultValues, id);
 
 		// new requests will have an undefined id parameter from the function call
 		if (!!id === false) {
-			backupRequest.addDomainEvent(new BackupRequestCreated(backupRequest.backupRequestId));
+			backupRequest.addEvent(new BackupRequestCreated(backupRequest));
 		}
 
 		return ok(backupRequest);

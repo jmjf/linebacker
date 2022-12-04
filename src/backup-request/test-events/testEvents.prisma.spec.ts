@@ -8,7 +8,7 @@ import { delay } from '../../common/utils/utils';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
 
 import { RequestTransportTypeValues } from '../domain/RequestTransportType';
-import { RequestStatusTypeValues } from '../domain/RequestStatusType';
+import { BackupRequestStatusTypeValues } from '../domain/BackupRequestStatusType';
 
 import { BackupJob, IBackupJobProps } from '../../backup-job/domain/BackupJob';
 import { MockBackupJobServiceAdapter } from '../../backup-job/adapter/impl/MockBackupJobServiceAdapter';
@@ -52,7 +52,7 @@ if (TEST_EVENTS) {
 			preparedDataPathName: 'db/prepared/data/path/name',
 			getOnStartFlag: true,
 			transportTypeCode: RequestTransportTypeValues.HTTP,
-			statusTypeCode: RequestStatusTypeValues.Received,
+			statusTypeCode: BackupRequestStatusTypeValues.Received,
 			receivedTimestamp: new Date(),
 			requesterId: 'dbRequesterId',
 			backupProviderCode: null,
@@ -122,7 +122,7 @@ if (TEST_EVENTS) {
 			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValueOnce({ ...dbBackupRequest }); // first response -- for check allowed
 			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValueOnce({
 				...dbBackupRequest,
-				statusTypeCode: RequestStatusTypeValues.Allowed,
+				statusTypeCode: BackupRequestStatusTypeValues.Allowed,
 				checkedTimestamp: new Date(),
 			}); // second reponse -- for send to interface
 
@@ -252,7 +252,7 @@ if (TEST_EVENTS) {
 			preparedDataPathName: 'db/prepared/data/path/name',
 			getOnStartFlag: true,
 			transportTypeCode: RequestTransportTypeValues.HTTP,
-			statusTypeCode: RequestStatusTypeValues.Sent,
+			statusTypeCode: BackupRequestStatusTypeValues.Sent,
 			receivedTimestamp: new Date(now.valueOf() - offset * 2),
 			requesterId: 'dbRequesterId',
 			backupProviderCode: null,
@@ -323,7 +323,7 @@ if (TEST_EVENTS) {
 			new StoreStatusReceivedSubscriber(rcvUseCase, abisa);
 
 			//** Queue poller simulation requirement **//
-			const msgHandler = new AzureStoreStatusMessageHandler();
+			const msgHandler = new AzureStoreStatusMessageHandler(abisa);
 
 			// Act
 			// The queue poller will loop and call abisa.receive()

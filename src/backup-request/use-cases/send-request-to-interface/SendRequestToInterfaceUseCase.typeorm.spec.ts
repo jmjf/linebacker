@@ -6,7 +6,7 @@ import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/Circ
 import { ok } from '../../../common/core/Result';
 
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
-import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
 
 import { AzureBackupInterfaceStoreAdapter } from '../../adapter/impl/AzureBackupInterfaceStoreAdapter';
 
@@ -58,7 +58,8 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 		preparedDataPathName: 'path',
 		getOnStartFlag: true,
 		transportTypeCode: RequestTransportTypeValues.HTTP,
-		statusTypeCode: RequestStatusTypeValues.Allowed,
+		statusTypeCode: BackupRequestStatusTypeValues.Allowed,
+		acceptedTimestamp: new Date(),
 		receivedTimestamp: new Date(),
 		requesterId: 'dbRequesterId',
 		backupProviderCode: 'CloudA',
@@ -110,9 +111,9 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 	process.env.AZURE_QUEUE_ACCOUNT_URI = 'uri';
 
 	test.each([
-		{ status: RequestStatusTypeValues.Sent, timestampName: 'sentToInterfaceTimestamp' },
-		{ status: RequestStatusTypeValues.Failed, timestampName: 'replyTimestamp' },
-		{ status: RequestStatusTypeValues.Succeeded, timestampName: 'replyTimestamp' },
+		{ status: BackupRequestStatusTypeValues.Sent, timestampName: 'sentToInterfaceTimestamp' },
+		{ status: BackupRequestStatusTypeValues.Failed, timestampName: 'replyTimestamp' },
+		{ status: BackupRequestStatusTypeValues.Succeeded, timestampName: 'replyTimestamp' },
 	])('when request is $status, it returns err (BackupRequestStatusError)', async ({ status, timestampName }) => {
 		// Arrange
 		const resultBackupRequest: Dictionary = {
@@ -287,7 +288,7 @@ describe('SendRequestToInterfaceUseCase - typeorm', () => {
 		expect(sendSpy).toBeCalledTimes(1);
 		if (result.isOk()) {
 			// type guard makes the rest easier
-			expect(result.value.statusTypeCode).toBe(RequestStatusTypeValues.Sent);
+			expect(result.value.statusTypeCode).toBe(BackupRequestStatusTypeValues.Sent);
 			expect(result.value.sentToInterfaceTimestamp.valueOf()).toBeGreaterThanOrEqual(startTimestamp.valueOf());
 			// The use case doesn't check Base64 because it's tested in the adapter and the use case doesn't return bodyAsText to check
 		}

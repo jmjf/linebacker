@@ -1,18 +1,19 @@
 import { BaseError } from '../../../common/core/BaseError';
 
-import { DomainEventBus, IDomainEventSubscriber } from '../../../common/domain/DomainEventBus';
+import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
+import { IEventBusSubscriber } from '../../../common/infrastructure/event-bus/IEventBus';
 
 import { ConnectFailureErrorData } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 import { logger } from '../../../infrastructure/logging/pinoLogger';
 
 import { Dictionary } from '../../../common/utils/utils';
 
-import { BackupRequestAllowed } from '../../domain/BackupRequestAllowed';
+import { BackupRequestAllowed } from '../../domain/BackupRequestAllowed.event';
 import { SendRequestToInterfaceUseCase } from './SendRequestToInterfaceUseCase';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 
-export class BackupRequestAllowedSubscriber implements IDomainEventSubscriber<BackupRequestAllowed> {
+export class BackupRequestAllowedSubscriber implements IEventBusSubscriber<BackupRequestAllowed> {
 	private useCase: SendRequestToInterfaceUseCase;
 	private failedServices: Dictionary = {};
 
@@ -22,23 +23,23 @@ export class BackupRequestAllowedSubscriber implements IDomainEventSubscriber<Ba
 	}
 
 	setupSubscriptions(): void {
-		DomainEventBus.subscribe(BackupRequestAllowed.name, this.onBackupRequestAllowed.bind(this));
+		eventBus.subscribe(BackupRequestAllowed.name, this.onBackupRequestAllowed.bind(this));
 	}
 
 	async onBackupRequestAllowed(event: BackupRequestAllowed): Promise<void> {
-		const backupRequestId = event.getId();
+		const eventKey = event.eventKey;
 		const logContext = {
 			moduleName,
 			functionName: 'onBackupRequestAllowed',
-			backupRequestId: backupRequestId.value,
-			eventName: event.constructor.name,
+			eventKey,
+			eventType: event.constructor.name,
 		};
 
 		if (Object.keys(this.failedServices).length > 0) {
 			// have connection checks
 			for (const serviceName in this.failedServices) {
 				if (!this.failedServices[serviceName].isConnected()) {
-					event.retryCount++;
+					event.eventData.retryCount++;
 					this.failedServices[serviceName].addRetryEvent(event);
 					return; // something is down so no need to check further
 				}
@@ -51,7 +52,7 @@ export class BackupRequestAllowedSubscriber implements IDomainEventSubscriber<Ba
 		try {
 			logger.debug({ ...logContext, msg: 'execute use case' });
 			const result = await this.useCase.execute({
-				backupRequestId: backupRequestId.value,
+				backupRequestId: eventKey,
 			});
 			if (result.isOk()) {
 				logger.info(
@@ -90,7 +91,7 @@ export class BackupRequestAllowedSubscriber implements IDomainEventSubscriber<Ba
 						this.failedServices[errorData.serviceName].addRetryEvent = errorData.addRetryEvent;
 					}
 					if (errorData.addRetryEvent) {
-						event.retryCount++;
+						event.eventData.retryCount++;
 						// console.log('BRAS add retry event', event);
 						errorData.addRetryEvent(event);
 					}

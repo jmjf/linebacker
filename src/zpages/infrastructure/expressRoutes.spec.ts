@@ -1,3 +1,6 @@
+jest.mock('bullmq');
+import * as bullMq from 'bullmq';
+
 import request from 'supertest';
 
 import { getLenientCircuitBreaker } from '../../test-helpers/circuitBreakerHelpers';
@@ -27,6 +30,8 @@ describe('Zpages - typeorm', () => {
 	];
 
 	const errDependency = { depName: 'errDep', checkDep: () => false };
+
+	const mockBullMq = jest.mocked(bullMq);
 
 	beforeEach(() => {
 		mockTypeormCtx = createMockTypeormContext();

@@ -6,7 +6,7 @@ import { ICreateBackupRequestBody } from './FastifyCreateBackupRequestController
 
 import { ok } from '../../../common/core/Result';
 
-import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
 import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 import {
 	MockPrismaContext,
@@ -142,7 +142,7 @@ describe('FastifyCreateBackupRequestController', () => {
 		const receivedTimestamp = new Date(payload.receivedTimestamp);
 
 		expect(payload.backupRequestId.length).toBe(21);
-		expect(payload.statusTypeCode).toBe(RequestStatusTypeValues.Received);
+		expect(payload.statusTypeCode).toBe(BackupRequestStatusTypeValues.Received);
 		expect(payload.backupJobId).toBe(basePayload.backupJobId);
 		expect(payload.preparedDataPathName).toBe(basePayload.backupDataLocation);
 		expect(payload.dataDate).toBe(basePayload.dataDate);

@@ -2,9 +2,9 @@ import { Response } from 'express';
 import { InvalidApiVersionError } from '../../../common/adapter/AdapterErrors';
 import { ExpressController, LinebackerRequest } from '../../../common/adapter/ExpressController';
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
-import { EnqueueBackupRequestUseCase } from '../../use-cases/enqueue-backup-request/EnqueueBackupRequestUseCase';
+import { AcceptBackupRequestUseCase } from '../../use-cases/accept-backup-request/AcceptBackupRequestUseCase';
 
-export interface IEnqueueBackupRequestBody {
+export interface IAcceptBackupRequestBody {
 	apiVersion: string;
 	backupJobId: string;
 	dataDate: string;
@@ -12,17 +12,17 @@ export interface IEnqueueBackupRequestBody {
 }
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
-export class ExpressEnqueueBackupRequestController extends ExpressController {
-	private useCase: EnqueueBackupRequestUseCase;
+export class ExpressAcceptBackupRequestController extends ExpressController {
+	private useCase: AcceptBackupRequestUseCase;
 
-	constructor(useCase: EnqueueBackupRequestUseCase) {
+	constructor(useCase: AcceptBackupRequestUseCase) {
 		super();
 		this.useCase = useCase;
 	}
 
 	protected async execImpl(request: LinebackerRequest, response: Response): Promise<unknown> {
 		const functionName = 'execImpl';
-		const body = request.body as IEnqueueBackupRequestBody;
+		const body = request.body as IAcceptBackupRequestBody;
 		const traceId = request.tracerizerTraceId;
 
 		// TODO: create a different error for missing body
@@ -60,12 +60,18 @@ export class ExpressEnqueueBackupRequestController extends ExpressController {
 				dataDate: dt.toISOString().slice(0, 10), // only the date part
 				preparedDataPathName: v.preparedDataPathName,
 				statusTypeCode: v.statusTypeCode,
-				receivedTimestamp: v.receivedTimestamp,
+				acceptedTimestamp: v.acceptedTimestamp,
 				requesterId: v.requesterId,
 			};
 			this.logger.info(
-				{ backupRequestId: responseBody.backupRequestId, moduleName, functionName, traceId },
-				'BackupRequest created'
+				{
+					backupRequestId: responseBody.backupRequestId,
+					response: responseBody,
+					moduleName,
+					functionName,
+					traceId,
+				},
+				'BackupRequest accepted'
 			);
 			this.respondAccepted(response, responseBody);
 			return responseBody;

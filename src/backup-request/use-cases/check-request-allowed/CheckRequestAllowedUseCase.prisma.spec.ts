@@ -2,7 +2,7 @@ import { IBackupJobProps } from '../../../backup-job/domain/BackupJob';
 import { BackupProviderTypeValues } from '../../../backup-job/domain/BackupProviderType';
 import { MockBackupJobServiceAdapter } from '../../../backup-job/adapter/impl/MockBackupJobServiceAdapter';
 
-import { RequestStatusType, RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { BackupRequestStatusType, BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 
 import { CheckRequestAllowedDTO } from './CheckRequestAllowedDTO';
@@ -71,7 +71,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		preparedDataPathName: 'path',
 		getOnStartFlag: true,
 		transportTypeCode: RequestTransportTypeValues.HTTP,
-		statusTypeCode: RequestStatusTypeValues.Received,
+		statusTypeCode: BackupRequestStatusTypeValues.Received,
 		receivedTimestamp: new Date(),
 		requesterId: 'dbRequesterId',
 		backupProviderCode: null,
@@ -108,7 +108,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 		expect(result.isOk()).toBe(true);
 		if (result.isOk()) {
 			// type guard makes the rest easier
-			expect(result.value.statusTypeCode).toBe(RequestStatusTypeValues.Allowed);
+			expect(result.value.statusTypeCode).toBe(BackupRequestStatusTypeValues.Allowed);
 			expect(result.value.checkedTimestamp.valueOf()).toBeGreaterThanOrEqual(startTimestamp.valueOf());
 		}
 	});
@@ -211,22 +211,22 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 	// I had to coerce several types to get the test to behave, but now this one block of code tests all the cases
 	const statusTestCases = [
 		{
-			status: RequestStatusTypeValues.Allowed,
+			status: BackupRequestStatusTypeValues.Allowed,
 			timestamp: 'checkedTimestamp',
 		},
 		{
-			status: RequestStatusTypeValues.NotAllowed,
+			status: BackupRequestStatusTypeValues.NotAllowed,
 			timestamp: 'checkedTimestamp',
 		},
 		{
-			status: RequestStatusTypeValues.Sent,
+			status: BackupRequestStatusTypeValues.Sent,
 			timestamp: 'sentToInterfaceTimestamp',
 		},
 		{
-			status: RequestStatusTypeValues.Succeeded,
+			status: BackupRequestStatusTypeValues.Succeeded,
 			timestamp: 'replyTimestamp',
 		},
-		{ status: RequestStatusTypeValues.Failed, timestamp: 'replyTimestamp' },
+		{ status: BackupRequestStatusTypeValues.Failed, timestamp: 'replyTimestamp' },
 	];
 	test.each(statusTestCases)(
 		'when backup request is in $status status, it returns an err (must be Received)',
@@ -235,7 +235,7 @@ describe('CheckRequestAllowedUseCase - Prisma', () => {
 			// timestamp that matters is defined in inputs, so need to add it after setting up base props
 			const resultBackupRequest: Dictionary = {
 				...dbBackupRequest,
-				statusTypeCode: status as RequestStatusType,
+				statusTypeCode: status as BackupRequestStatusType,
 			};
 			resultBackupRequest[timestamp] = new Date();
 

@@ -1,182 +1,15 @@
-import { Result, ok, err } from '../../common/core/Result';
-import { BaseError } from '../../common/core/BaseError';
+import { ok } from '../../common/core/Result';
 
-import { DomainEventBus, IDomainEvent, IDomainEventSubscriber } from '../../common/domain/DomainEventBus';
+import { eventBus } from '../../common/infrastructure/event-bus/eventBus';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
 
-import { UseCase } from '../../common/application/UseCase';
+import { CircuitBreakerStateValues, CircuitBreakerWithRetry } from './CircuitBreakerWithRetry';
+import { delay } from '../../common/utils/utils';
 
-import * as AdapterErrors from '../../common/adapter/AdapterErrors';
-
-import { CircuitBreakerStateValues, CircuitBreakerWithRetry, ConnectFailureErrorData } from './CircuitBreakerWithRetry';
-import { delay, Dictionary } from '../../common/utils/utils';
+import { TestEvent, TestAdapter, TestUseCase, TestService, TestSubscriber } from '../../test-helpers/ResilienceTestTypes';
 
 const VERBOSE_LOGS = false; // set true to get verbose console.logs for event tracing
-class TestService {
-	private liveness: boolean;
-	private testResult: boolean;
 
-	constructor() {
-		this.liveness = true;
-		this.testResult = true;
-	}
-
-	public async setLiveness(value: boolean) {
-		this.liveness = value;
-	}
-
-	public setTestResult(value: boolean) {
-		this.testResult = value;
-	}
-
-	public async test(): Promise<Result<boolean, BaseError>> {
-		return this.testResult
-			? Promise.resolve(ok(true))
-			: Promise.resolve(err(new AdapterErrors.BackupJobServiceError('test failed')));
-	}
-
-	public async isAlive(): Promise<Result<boolean, BaseError>> {
-		return this.liveness
-			? Promise.resolve(ok(true))
-			: Promise.resolve(err(new AdapterErrors.BackupJobServiceError('isAlive false')));
-	}
-}
-
-class TestAdapter {
-	private service: TestService;
-	private circuitBreaker: CircuitBreakerWithRetry;
-	private connectFailureErrorData: ConnectFailureErrorData;
-
-	constructor(service: TestService, circuitBreaker: CircuitBreakerWithRetry) {
-		this.service = service;
-		this.circuitBreaker = circuitBreaker;
-		this.connectFailureErrorData = {
-			isConnectFailure: true,
-			isConnected: this.circuitBreaker.isConnected.bind(this.circuitBreaker),
-			addRetryEvent: this.circuitBreaker.addRetryEvent.bind(this.circuitBreaker),
-			serviceName: this.service.constructor.name,
-		};
-	}
-
-	async test(): Promise<Result<boolean, BaseError>> {
-		if (!this.circuitBreaker.isConnected()) {
-			return err(new AdapterErrors.BackupJobServiceError('fast fail', this.connectFailureErrorData));
-		}
-		const result = await this.service.test();
-		if (result.isOk()) {
-			this.circuitBreaker.onSuccess();
-			return ok(result.value);
-		}
-		// else error
-		this.circuitBreaker.onFailure();
-		return err(new AdapterErrors.BackupJobServiceError('connect failure', this.connectFailureErrorData));
-	}
-}
-
-interface TestUseCaseDTO {
-	id: UniqueIdentifier;
-	retryCount: number;
-}
-
-class TestUseCase implements UseCase<TestUseCaseDTO, Result<boolean, BaseError>> {
-	private testAdapter: TestAdapter;
-
-	constructor(testAdapter: TestAdapter) {
-		this.testAdapter = testAdapter;
-	}
-
-	public async execute(request: TestUseCaseDTO): Promise<Result<boolean, BaseError>> {
-		if (VERBOSE_LOGS) console.log('TestUseCase request', request);
-		return await this.testAdapter.test();
-	}
-}
-
-class TestEvent implements IDomainEvent {
-	public eventTimestamp: Date;
-	public id: UniqueIdentifier;
-	public retryCount: number;
-
-	constructor(id: UniqueIdentifier) {
-		this.eventTimestamp = new Date();
-		this.id = id;
-		this.retryCount = 0;
-	}
-
-	getId(): UniqueIdentifier {
-		return this.id;
-	}
-}
-
-class TestSubscriber implements IDomainEventSubscriber<TestEvent> {
-	private useCase: TestUseCase;
-	private failedServices: Dictionary = {};
-
-	constructor(useCase: TestUseCase) {
-		this.setupSubscriptions();
-		this.useCase = useCase;
-	}
-
-	setupSubscriptions(): void {
-		DomainEventBus.subscribe(TestEvent.name, this.onEvent.bind(this));
-	}
-
-	public get failedServiceNames() {
-		return Object.keys(this.failedServices);
-	}
-
-	async onEvent(event: TestEvent): Promise<void> {
-		const id = event.getId();
-		const eventName = event.constructor.name;
-
-		if (VERBOSE_LOGS) console.log('subscriber event', id.value, event.retryCount, this.failedServiceNames);
-
-		if (Object.keys(this.failedServices).length > 0) {
-			// have connection checks
-			for (const serviceName in this.failedServices) {
-				if (VERBOSE_LOGS)
-					console.log(
-						'subscriber connection check for',
-						id.value,
-						serviceName,
-						this.failedServices[serviceName].isConnected()
-					);
-				if (!this.failedServices[serviceName].isConnected()) {
-					event.retryCount++;
-					this.failedServices[serviceName].addRetryEvent(event);
-					return; // something is down so no need to check further
-				}
-
-				// if it doesn't fail, don't need to check again
-				delete this.failedServices[serviceName];
-			}
-		}
-		try {
-			const result = await this.useCase.execute({ id, retryCount: event.retryCount });
-
-			if (result.isErr()) {
-				if (VERBOSE_LOGS)
-					console.log('subscriber use case error', event.id.value, event.retryCount, result.error.message);
-				const errorData = result.error.errorData as any;
-				if (errorData.isConnectFailure) {
-					if (errorData.serviceName && errorData.isConnected && !this.failedServices[errorData.serviceName]) {
-						this.failedServices[errorData.serviceName] = { isConnected: undefined, addRetryEvent: undefined };
-						this.failedServices[errorData.serviceName].isConnected = errorData.isConnected;
-						this.failedServices[errorData.serviceName].addRetryEvent = errorData.addRetryEvent;
-					}
-					if (errorData.addRetryEvent) {
-						event.retryCount++;
-						errorData.addRetryEvent(event);
-					}
-				}
-			} else {
-				if (VERBOSE_LOGS) console.log('subscriber use case ok', event.id.value, event.retryCount);
-			}
-		} catch (e) {
-			const { message, ...error } = e as BaseError;
-			console.log('subscriber error', message, error);
-		}
-	}
-}
 
 function getEvent(id: string) {
 	return new TestEvent(new UniqueIdentifier(id));
@@ -468,7 +301,7 @@ describe('CircuitBreakerWithRetry', () => {
 
 		// Act
 		// First call, subscriber doesn't know service is down, so calls use case
-		DomainEventBus.publishToSubscribers(getEvent('subscriber fast fail-Event-1'));
+		eventBus.publishEvent(getEvent('subscriber fast fail-Event-1'));
 		await delay(100); // give event time to run
 
 		// Assert
@@ -479,7 +312,7 @@ describe('CircuitBreakerWithRetry', () => {
 
 		// Act
 		// Second call, subscriber learned service is down, so will fail fast if liveness check fails
-		DomainEventBus.publishToSubscribers(getEvent('subscriber fast fail-Event-2'));
+		eventBus.publishEvent(getEvent('subscriber fast fail-Event-2'));
 		await delay(50); // give it time to run
 
 		// Assert
@@ -487,7 +320,7 @@ describe('CircuitBreakerWithRetry', () => {
 		expect(subscriber.failedServiceNames.length).toBe(1);
 
 		// Cleanup
-		DomainEventBus.clearHandlers();
+		eventBus.clearHandlers();
 
 		circuitBreaker.halt();
 		abortController.abort();
@@ -523,12 +356,12 @@ describe('CircuitBreakerWithRetry', () => {
 		const useCaseSpy = jest.spyOn(useCase, 'execute');
 
 		const subscriber = new TestSubscriber(useCase);
-		// The subscriber is never unsubscribed on DomainEventBus because DEB is static.
+		// The subscriber is never unsubscribed on eventBus because DEB is static.
 		// The second subscribe does nothing. I can't reset the failed services, so this test will
 		// run a check for isConnected()
 
 		// ensure the subscriber knows the circuit is Open by running an event that will fail
-		DomainEventBus.publishToSubscribers(getEvent('Open adds retry-Event-1'));
+		eventBus.publishEvent(getEvent('Open adds retry-Event-1'));
 		await delay(100); // give it time to run
 
 		expect(subscriber.failedServiceNames.length).toBe(1);
@@ -536,9 +369,9 @@ describe('CircuitBreakerWithRetry', () => {
 		jest.clearAllMocks(); // reset counters on mocks so they don't affect the test
 
 		// Act
-		DomainEventBus.publishToSubscribers(getEvent('Open adds retry-Event-2'));
-		DomainEventBus.publishToSubscribers(getEvent('Open adds retry-Event-3'));
-		DomainEventBus.publishToSubscribers(getEvent('Open adds retry-Event-4'));
+		eventBus.publishEvent(getEvent('Open adds retry-Event-2'));
+		eventBus.publishEvent(getEvent('Open adds retry-Event-3'));
+		eventBus.publishEvent(getEvent('Open adds retry-Event-4'));
 		await delay(250); // give it time to run
 
 		// Assert
@@ -548,7 +381,7 @@ describe('CircuitBreakerWithRetry', () => {
 		expect(subscriber.failedServiceNames.length).toBe(1);
 
 		// Cleanup
-		DomainEventBus.clearHandlers();
+		eventBus.clearHandlers();
 
 		circuitBreaker.halt();
 		abortController.abort();
@@ -585,7 +418,7 @@ describe('CircuitBreakerWithRetry', () => {
 		const subscriber = new TestSubscriber(useCase);
 
 		// ensure the subscriber knows the circuit is Open by running an event that will fail
-		DomainEventBus.publishToSubscribers(getEvent('Exit open runs events-Event-1'));
+		eventBus.publishEvent(getEvent('Exit open runs events-Event-1'));
 		await delay(100); // give it time to run
 
 		expect(subscriber.failedServiceNames.length).toBe(1);
@@ -612,7 +445,7 @@ describe('CircuitBreakerWithRetry', () => {
 		expect(subscriber.failedServiceNames.length).toBe(0);
 
 		// Cleanup
-		DomainEventBus.clearHandlers();
+		eventBus.clearHandlers();
 		circuitBreaker.halt();
 		abortController.abort();
 		await delay(100);
@@ -648,7 +481,7 @@ describe('CircuitBreakerWithRetry', () => {
 		const subscriber = new TestSubscriber(useCase);
 
 		// ensure the subscriber knows the circuit is Open by running an event that will fail
-		DomainEventBus.publishToSubscribers(getEvent('Return to open stops retries-Event-1'));
+		eventBus.publishEvent(getEvent('Return to open stops retries-Event-1'));
 		await delay(250); // give it time to run
 
 		expect(subscriber.failedServiceNames.length).toBe(1);
@@ -678,16 +511,13 @@ describe('CircuitBreakerWithRetry', () => {
 		expect(useCaseSpy).toHaveBeenCalledTimes(3); // 2 ok, 1 failure
 		expect(circuitBreaker.retryEventCount).toBe(2);
 		const retrySum = (
-			(await circuitBreaker.getStatusAsync()).retryEvents as unknown as [
-				{ id: string; retryCount: number; eventTimestamp: Date }
-			]
-		).reduce((prev, curr) => prev + curr.retryCount, 0);
+			(await circuitBreaker.getStatusAsync()).retryEvents).reduce((prev, curr) => prev + curr.retryCount , 0);
 		expect(retrySum).toBeLessThanOrEqual(2); // proves retries stopped
 
 		if (VERBOSE_LOGS) console.log('Return to open stops retries', await circuitBreaker.getStatusAsync());
 
 		// Cleanup
-		DomainEventBus.clearHandlers();
+		eventBus.clearHandlers();
 		circuitBreaker.halt();
 		abortController.abort();
 		await delay(100);
@@ -741,7 +571,7 @@ describe('CircuitBreakerWithRetry', () => {
 		expect(circuitBreaker.retryEventCount).toBe(0);
 
 		// Cleanup
-		DomainEventBus.clearHandlers();
+		eventBus.clearHandlers();
 		circuitBreaker.halt();
 		abortController.abort();
 		await delay(100);

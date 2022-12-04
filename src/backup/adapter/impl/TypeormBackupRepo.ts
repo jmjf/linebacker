@@ -5,7 +5,7 @@ import {
 } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 
 import { err, ok, Result } from '../../../common/core/Result';
-import { DomainEventBus } from '../../../common/domain/DomainEventBus';
+import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
 import * as DomainErrors from '../../../common/domain/DomainErrors';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
@@ -217,15 +217,14 @@ export class TypeormBackupRepo implements IBackupRepo {
 		}
 
 		// trigger domain events
-		DomainEventBus.publishEventsForAggregate(backup.id);
+		eventBus.publishEventsBulk(backup.events);
 
 		// The application enforces the business rules, not the database.
 		// Under no circumstances should the database change the data it gets.
 		// Returning the backup request allows use cases to return the result of save() if they can't do anything about a DatabaseError.
 		return ok(backup);
 	}
-
-	// this may belong in a mapper
+				
 	private mapToDomain(raw: TypeormBackup): Result<Backup, DomainErrors.PropsError> {
 		const backupId = new UniqueIdentifier(raw.backupId);
 		const backupResult = Backup.create(

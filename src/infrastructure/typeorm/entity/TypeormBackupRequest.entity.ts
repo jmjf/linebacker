@@ -15,7 +15,7 @@ export class TypeormBackupRequest {
 	@Column({ name: 'BackupJobIdentifier', type: 'varchar', length: 50, nullable: false })
 	backupJobId: string;
 
-	@Column({ name: 'DataDate', type: 'datetime2', nullable: false })
+	@Column({ name: 'DataDate', type: 'datetimeoffset', nullable: false })
 	dataDate: Date;
 
 	@Column({ name: 'PreparedDataPathName', type: 'varchar', length: 250, nullable: false })
@@ -36,16 +36,19 @@ export class TypeormBackupRequest {
 	@Column({ name: 'StatusTypeCode', type: 'varchar', length: 50, nullable: false })
 	statusTypeCode: string;
 
-	@Column({ name: 'ReceivedTimestamp', type: 'datetime2', nullable: false })
-	receivedTimestamp: Date;
+	@Column({ name: 'AcceptedTimestamp', type: 'datetimeoffset', nullable: true })
+	acceptedTimestamp: Date | null | undefined;
 
-	@Column({ name: 'CheckedTimestamp', type: 'datetime2', nullable: true })
+	@Column({ name: 'ReceivedTimestamp', type: 'datetimeoffset', nullable: true })
+	receivedTimestamp: Date | null | undefined;
+
+	@Column({ name: 'CheckedTimestamp', type: 'datetimeoffset', nullable: true })
 	checkedTimestamp: Date | null | undefined;
 
-	@Column({ name: 'SentToInterfaceTimestamp', type: 'datetime2', nullable: true })
+	@Column({ name: 'SentToInterfaceTimestamp', type: 'datetimeoffset', nullable: true })
 	sentToInterfaceTimestamp: Date | null | undefined;
 
-	@Column({ name: 'ReplyTimestamp', type: 'datetime2', nullable: true })
+	@Column({ name: 'ReplyTimestamp', type: 'datetimeoffset', nullable: true })
 	replyTimestamp: Date | null | undefined;
 
 	@Column({ name: 'RequesterIdentifier', type: 'varchar', length: 50, nullable: true })

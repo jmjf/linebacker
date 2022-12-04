@@ -3,13 +3,14 @@ import {
 	CircuitBreakerWithRetry,
 	ConnectFailureErrorData,
 } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
+import { isPrismaConnectError } from '../../../infrastructure/prisma/isPrismaConnectError';
 
-import { DomainEventBus } from '../../../common/domain/DomainEventBus';
-
-import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 import { err, ok, Result } from '../../../common/core/Result';
-import * as DomainErrors from '../../../common/domain/DomainErrors';
 import { UniqueIdentifier } from '../../../common/domain/UniqueIdentifier';
+import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
+import * as DomainErrors from '../../../common/domain/DomainErrors';
+import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
+import * as InfrastructureErrors from '../../../common/infrastructure/InfrastructureErrors';
 
 import { BackupProviderType } from '../../../backup-job/domain/BackupProviderType';
 
@@ -17,8 +18,7 @@ import { BackupRequest } from '../../domain/BackupRequest';
 import { RequestTransportType } from '../../domain/RequestTransportType';
 import { IBackupRequestRepo } from '../IBackupRequestRepo';
 import { PrismaBackupRequest } from '@prisma/client';
-import { RequestStatusType, RequestStatusTypeValues } from '../../domain/RequestStatusType';
-import { isPrismaConnectError } from '../../../infrastructure/prisma/isPrismaConnectError';
+import { BackupRequestStatusType, BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 export class PrismaBackupRequestRepo implements IBackupRequestRepo {
@@ -133,10 +133,15 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 		}
 	}
 
-	public async getRequestIdsByStatusBeforeTimestamp(
-		status: RequestStatusType,
+	public async getByStatusBeforeTimestamp(
+		status: BackupRequestStatusType,
 		beforeTimestamp: Date
-	): Promise<Result<string[], AdapterErrors.DatabaseError | AdapterErrors.NotFoundError>> {
+	): Promise<
+		Result<
+			Result<BackupRequest, DomainErrors.PropsError>[],
+			AdapterErrors.DatabaseError | AdapterErrors.NotFoundError
+		>
+	> {
 		const functionName = 'getRequestIdsByStatus';
 
 		if (!this.circuitBreaker.isConnected()) {
@@ -151,24 +156,24 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 
 		let whereDateTerm = {};
 		switch (status) {
-			case RequestStatusTypeValues.Received:
+			case BackupRequestStatusTypeValues.Received:
 				whereDateTerm = {
 					receivedTimestamp: { lt: beforeTimestamp },
 				};
 				break;
-			case RequestStatusTypeValues.Allowed:
-			case RequestStatusTypeValues.NotAllowed:
+			case BackupRequestStatusTypeValues.Allowed:
+			case BackupRequestStatusTypeValues.NotAllowed:
 				whereDateTerm = {
 					checkedTimestamp: { lt: beforeTimestamp },
 				};
 				break;
-			case RequestStatusTypeValues.Sent:
+			case BackupRequestStatusTypeValues.Sent:
 				whereDateTerm = {
 					sentToInterfaceTimestamp: { lt: beforeTimestamp },
 				};
 				break;
-			case RequestStatusTypeValues.Succeeded:
-			case RequestStatusTypeValues.Failed:
+			case BackupRequestStatusTypeValues.Succeeded:
+			case BackupRequestStatusTypeValues.Failed:
 				whereDateTerm = {
 					replyTimestamp: { lt: beforeTimestamp },
 				};
@@ -177,7 +182,6 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 
 		try {
 			const data = await this.prisma.prismaBackupRequest.findMany({
-				select: { backupRequestId: true },
 				where: {
 					...whereDateTerm,
 					statusTypeCode: status,
@@ -195,7 +199,7 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 				);
 			}
 
-			return ok(data.map((br) => br.backupRequestId));
+			return ok(data.map((br) => this.mapToDomain(br)));
 		} catch (e) {
 			const { message, ...error } = e as Error;
 			let errorData = { isConnectFailure: false };
@@ -209,7 +213,9 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 		}
 	}
 
-	public async save(backupRequest: BackupRequest): Promise<Result<BackupRequest, AdapterErrors.DatabaseError>> {
+	public async save(
+		backupRequest: BackupRequest
+	): Promise<Result<BackupRequest, AdapterErrors.DatabaseError | InfrastructureErrors.EventBusError>> {
 		const functionName = 'save';
 
 		if (!this.circuitBreaker.isConnected()) {
@@ -257,7 +263,10 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 		}
 
 		// trigger domain events
-		DomainEventBus.publishEventsForAggregate(backupRequest.id);
+		const publishResult = await eventBus.publishEventsBulk(backupRequest.events);
+		if (publishResult.isErr()) {
+			return publishResult;
+		}
 
 		// The application enforces the business rules, not the database.
 		// Under no circumstances should the database change the data it gets.
@@ -277,7 +286,7 @@ export class PrismaBackupRequestRepo implements IBackupRequestRepo {
 				transportTypeCode: raw.transportTypeCode as RequestTransportType,
 				backupProviderCode: raw.backupProviderCode as BackupProviderType,
 				storagePathName: raw.storagePathName === null ? undefined : raw.storagePathName,
-				statusTypeCode: raw.statusTypeCode as RequestStatusType,
+				statusTypeCode: raw.statusTypeCode as BackupRequestStatusType,
 				receivedTimestamp: raw.receivedTimestamp,
 				checkedTimestamp: raw.checkedTimestamp === null ? undefined : raw.checkedTimestamp,
 				sentToInterfaceTimestamp: raw.sentToInterfaceTimestamp === null ? undefined : raw.sentToInterfaceTimestamp,

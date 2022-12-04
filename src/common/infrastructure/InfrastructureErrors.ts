@@ -23,3 +23,11 @@ export class SDKError extends BaseError {
 		this.name = 'SDKError';
 	}
 }
+
+// Errors related to event bus methods
+export class EventBusError extends BaseError {
+	constructor(messageOrErrorData: string | object, errorData?: object) {
+		super(messageOrErrorData, errorData);
+		this.name = 'EventBusError';
+	}
+}

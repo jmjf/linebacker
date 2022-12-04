@@ -3,6 +3,7 @@ import pm2 from 'pm2';
 import tx2 from 'tx2';
 import { Request, Response, Router } from 'express';
 import { getRequestStats } from '.';
+import { logger } from '../../infrastructure/logging/pinoLogger';
 
 const moduleName = path.basename(module.filename);
 
@@ -142,7 +143,7 @@ export function getZpagesRouter(dependencies: ZpageDependencies) {
 					.sort((itemA, itemB) => itemA.process.pm_id - itemB.process.pm_id)
 			);
 		} catch (e) {
-			console.log('all-healthz err', e);
+			logger.error({ error: e, moduleName, functionName, path: request.path }, 'Route handler error');
 			response.status(500).send(e);
 		}
 	});
@@ -192,6 +193,7 @@ export function getZpagesRouter(dependencies: ZpageDependencies) {
 				})
 			);
 		} catch (e) {
+			logger.error({ error: e, moduleName, functionName, path: request.path }, 'Route handler error');
 			response.status(500).send({ message: `pm2 ${errorFrom} error`, error: e });
 		}
 	});

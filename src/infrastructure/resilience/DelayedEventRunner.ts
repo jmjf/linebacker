@@ -1,4 +1,5 @@
-import { DomainEventBus, IDomainEvent } from '../../common/domain/DomainEventBus';
+import { eventBus } from '../../common/infrastructure/event-bus/eventBus';
+import { EventBusEvent } from '../../common/infrastructure/event-bus/IEventBus';
 import { delay } from '../../common/utils/utils';
 
 const DelayedEventRunnerStateValues = {
@@ -10,7 +11,7 @@ const DelayedEventRunnerStateValues = {
 type DelayedEventRunnerStateType = typeof DelayedEventRunnerStateValues[keyof typeof DelayedEventRunnerStateValues];
 
 export class DelayedEventRunner {
-	private _events: IDomainEvent[] = [];
+	private _events: EventBusEvent<any>[] = [];
 	private _state: DelayedEventRunnerStateType = DelayedEventRunnerStateValues.Stop;
 	private _delayMs: number;
 	private _abortSignal: AbortSignal;
@@ -21,12 +22,12 @@ export class DelayedEventRunner {
 	}
 
 	public get eventIds() {
-		return this._events.map((ev) => ev.getId().value);
+		return this._events.map((ev) => ev.eventKey);
 	}
 
 	public get events() {
 		return this._events.map((ev) => {
-			return { ...ev };
+			return ev;
 		});
 	}
 
@@ -62,7 +63,7 @@ export class DelayedEventRunner {
 		this._state = DelayedEventRunnerStateValues.Stop;
 	}
 
-	public addEvent(ev: IDomainEvent): void {
+	public addEvent(ev: EventBusEvent<unknown>): void {
 		if (this.isStateHalt()) return;
 
 		// only add when ev doesn't already exist in event array
@@ -71,7 +72,7 @@ export class DelayedEventRunner {
 			this._events.find(
 				(arrEvent) =>
 					arrEvent.constructor.name === ev.constructor.name &&
-					(ev.getId() === undefined || arrEvent.getId().equals(ev.getId()))
+					(ev.eventKey === undefined || arrEvent.eventKey === ev.eventKey)
 			) === undefined
 		) {
 			// console.log('DER adding', ev);
@@ -90,12 +91,12 @@ export class DelayedEventRunner {
 		// console.log('DER run events', this.events);
 		this.setStateRun();
 
-		let ev: IDomainEvent | undefined;
+		let ev: EventBusEvent<unknown> | undefined;
 		// Array.prototype.shift() removes the first element from the array and returns it or undefined if none
 		// order of this condition is important to ensure we don't shift events off the array if we're stopping
 		while (this.isStateRun() && typeof (ev = this._events.shift()) !== 'undefined') {
 			// console.log('DER publish', ev, this.events);
-			DomainEventBus.publishToSubscribers(ev);
+			eventBus.publishEvent(ev);
 
 			if ((await delay(this._delayMs, this._abortSignal)) === 'AbortError') {
 				this.setStateHalt();

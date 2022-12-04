@@ -1,17 +1,18 @@
 import { BaseError } from '../../../common/core/BaseError';
 
-import { DomainEventBus, IDomainEventSubscriber } from '../../../common/domain/DomainEventBus';
+import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
+import { IEventBusSubscriber } from '../../../common/infrastructure/event-bus/IEventBus';
 
 import { ConnectFailureErrorData } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 import { logger } from '../../../infrastructure/logging/pinoLogger';
 
 import { Dictionary } from '../../../common/utils/utils';
 
-import { BackupRequestCreated } from '../../domain/BackupRequestCreated';
+import { BackupRequestCreated } from '../../domain/BackupRequestCreated.event';
 import { CheckRequestAllowedUseCase } from './CheckRequestAllowedUseCase';
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
-export class BackupRequestCreatedSubscriber implements IDomainEventSubscriber<BackupRequestCreated> {
+export class BackupRequestCreatedSubscriber implements IEventBusSubscriber<BackupRequestCreated> {
 	private useCase: CheckRequestAllowedUseCase;
 	private failedServices: Dictionary = {};
 
@@ -21,24 +22,24 @@ export class BackupRequestCreatedSubscriber implements IDomainEventSubscriber<Ba
 	}
 
 	setupSubscriptions(): void {
-		DomainEventBus.subscribe(BackupRequestCreated.name, this.onBackupRequestCreated.bind(this));
+		eventBus.subscribe(BackupRequestCreated.name, this.onBackupRequestCreated.bind(this));
 	}
 
 	async onBackupRequestCreated(event: BackupRequestCreated): Promise<void> {
-		const backupRequestId = event.getId();
+		const backupRequestId = event.eventData.event.backupRequestId;
 		const eventName = event.constructor.name;
 		const logContext = {
 			moduleName,
 			functionName: 'onBackupRequestCreated',
-			backupRequestId: backupRequestId.value,
-			eventName: eventName,
+			backupRequestId,
+			eventName,
 		};
 
 		if (Object.keys(this.failedServices).length > 0) {
 			// have connection checks
 			for (const serviceName in this.failedServices) {
 				if (!this.failedServices[serviceName].isConnected()) {
-					event.retryCount++;
+					event.incrementRetryCount();
 					this.failedServices[serviceName].addRetryEvent(event);
 					return; // something is down so no need to check further
 				}
@@ -51,7 +52,7 @@ export class BackupRequestCreatedSubscriber implements IDomainEventSubscriber<Ba
 		try {
 			logger.debug({ ...logContext }, 'Execute use case');
 			const result = await this.useCase.execute({
-				backupRequestId: backupRequestId.value,
+				backupRequestId,
 			});
 
 			if (result.isOk()) {
@@ -85,7 +86,7 @@ export class BackupRequestCreatedSubscriber implements IDomainEventSubscriber<Ba
 						this.failedServices[errorData.serviceName].addRetryEvent = errorData.addRetryEvent;
 					}
 					if (errorData.addRetryEvent) {
-						event.retryCount++;
+						event.incrementRetryCount;
 						errorData.addRetryEvent(event);
 					}
 				}

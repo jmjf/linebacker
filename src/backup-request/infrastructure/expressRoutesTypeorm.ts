@@ -5,7 +5,7 @@ import { BaseError } from '../../common/core/BaseError';
 import { DatabaseError } from '../../common/adapter/AdapterErrors';
 
 import { ExpressCreateBackupRequestController } from '../adapter/impl/ExpressCreateBackupRequestController';
-import { ExpressEnqueueBackupRequestController } from '../adapter/impl/ExpressEnqueueBackupRequestController';
+import { ExpressAcceptBackupRequestController } from '../adapter/impl/ExpressAcceptBackupRequestController';
 
 import { initBackupRequestModule } from './initBackupRequestModuleTypeorm';
 import { ICircuitBreakers } from '../../infrastructure/typeorm/buildCircuitBreakers.typeorm';
@@ -21,7 +21,7 @@ export function getBackupRequestRouter(
 	abortSignal: AbortSignal
 ) {
 	const functionName = 'getBackupRequestRouter';
-	const { createBackupRequestController, enqueueBackupRequestController } = initBackupRequestModule(
+	const { createBackupRequestController, acceptBackupRequestController } = initBackupRequestModule(
 		typeormCtx,
 		circuitBreakers,
 		'Express',
@@ -33,6 +33,7 @@ export function getBackupRequestRouter(
 	router.post('/', async (request: Request, response: Response) => {
 		const customReq = request as LinebackerRequest;
 		const clientScopes = customReq.clientScopes || [];
+
 		if (clientScopes.includes('post-backup-request')) {
 			// choose either
 			// create controller -> direct to db
@@ -43,10 +44,18 @@ export function getBackupRequestRouter(
 			// 	response
 			// );
 
-			let result = await (enqueueBackupRequestController as ExpressEnqueueBackupRequestController).execute(
-				customReq,
-				response
-			);
+			let result;
+			if (process.env.EVENT_BUS_TYPE === 'bullmq') {
+				result = await (acceptBackupRequestController as ExpressAcceptBackupRequestController).execute(
+					customReq,
+					response
+				);
+			} else {
+				result = await (createBackupRequestController as ExpressCreateBackupRequestController).execute(
+					customReq,
+					response
+				);
+			}
 
 			// HTTP status > 399 is an error
 			if (response.statusCode > 399) {

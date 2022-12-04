@@ -1,3 +1,7 @@
+jest.mock('bullmq');
+import * as bullMq from 'bullmq';
+const mockBullMq = jest.mocked(bullMq);
+
 import request from 'supertest';
 
 import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
@@ -13,7 +17,7 @@ import {
 } from '../../../infrastructure/typeorm/typeormContext';
 import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 
-import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
+import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
 import { TypeORMError } from 'typeorm';
 import { delay } from '../../../common/utils/utils';
 import { logger } from '../../../infrastructure/logging/pinoLogger';
@@ -55,6 +59,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 		const app = buildApp(
 			logger,
 			typeormCtx,
+			bullMq,
 			{ dbCircuitBreaker, azureQueueCircuitBreaker },
 			zpageDependencies,
 			abortController.signal
@@ -83,6 +88,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 		const app = buildApp(
 			logger,
 			typeormCtx,
+			bullMq,
 			{ dbCircuitBreaker, azureQueueCircuitBreaker },
 			zpageDependencies,
 			abortController.signal
@@ -109,6 +115,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 		const app = buildApp(
 			logger,
 			typeormCtx,
+			bullMq,
 			{ dbCircuitBreaker, azureQueueCircuitBreaker },
 			zpageDependencies,
 			abortController.signal
@@ -136,6 +143,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 		const app = buildApp(
 			logger,
 			typeormCtx,
+			bullMq,
 			{ dbCircuitBreaker, azureQueueCircuitBreaker },
 			zpageDependencies,
 			abortController.signal
@@ -158,7 +166,7 @@ describe('ExpressCreateBackupRequestController - typeorm', () => {
 		const receivedTimestamp = new Date(payload.receivedTimestamp);
 
 		expect(payload.backupRequestId.length).toBe(21); // nanoid isn't "verifiable" like a UUID
-		expect(payload.statusTypeCode).toBe(RequestStatusTypeValues.Received);
+		expect(payload.statusTypeCode).toBe(BackupRequestStatusTypeValues.Received);
 		expect(payload.backupJobId).toBe(basePayload.backupJobId);
 		expect(payload.preparedDataPathName).toBe(basePayload.backupDataLocation);
 		expect(payload.dataDate).toBe(basePayload.dataDate);

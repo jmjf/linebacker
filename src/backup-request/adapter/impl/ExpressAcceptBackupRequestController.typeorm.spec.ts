@@ -1,6 +1,7 @@
-// mock bullmq (event bus)
 jest.mock('bullmq');
-import * as mockBullMq from 'bullmq';
+import * as bullMq from 'bullmq';
+
+process.env.EVENT_BUS_TYPE = 'bullmq';
 
 import request from 'supertest';
 
@@ -17,32 +18,35 @@ import {
 } from '../../../infrastructure/typeorm/typeormContext';
 import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 
-import { RequestStatusTypeValues } from '../../domain/RequestStatusType';
-import { TypeORMError } from 'typeorm';
+import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
 import { delay } from '../../../common/utils/utils';
 import { logger } from '../../../infrastructure/logging/pinoLogger';
-import { EventBusError } from '../../../common/adapter/AdapterErrors';
+import { EventBusError } from '../../../common/infrastructure/InfrastructureErrors';
 
-describe('ExpressEnqueueBackupRequestController - typeorm', () => {
+describe('ExpressAcceptBackupRequestController - typeorm', () => {
 	let mockTypeormCtx: MockTypeormContext;
 	let typeormCtx: TypeormContext;
+
 	let dbCircuitBreaker: CircuitBreakerWithRetry;
 	let azureQueueCircuitBreaker: CircuitBreakerWithRetry;
 	let abortController: AbortController;
 	const zpageDependencies = { readyzDependencies: [], healthzDependencies: [] };
+	const mockBullMq = jest.mocked(bullMq);
 
 	beforeEach(() => {
 		mockTypeormCtx = createMockTypeormContext();
 		typeormCtx = mockTypeormCtx as unknown as TypeormContext;
+
+		mockBullMq.Queue.mockClear();
 
 		abortController = new AbortController();
 		dbCircuitBreaker = getLenientCircuitBreaker('TypeORM', abortController.signal);
 		azureQueueCircuitBreaker = getLenientCircuitBreaker('AzureQueue', abortController.signal);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
 		abortController.abort();
-		delay(250);
+		await delay(250);
 	});
 
 	const testUrl = '/api/backup-requests';
@@ -138,7 +142,9 @@ describe('ExpressEnqueueBackupRequestController - typeorm', () => {
 
 	test('when request data is good, the controller returns Accepted and a result payload', async () => {
 		// Arrange
-		mockBullMq.Queue.prototype.add = jest.fn().mockResolvedValueOnce({});
+		mockBullMq.Queue.prototype.add = jest.fn().mockResolvedValue({} as unknown as bullMq.Job);
+		const bmqAddSpy = mockBullMq.Queue.prototype.add;
+
 		const app = buildApp(
 			logger,
 			typeormCtx,
@@ -159,16 +165,17 @@ describe('ExpressEnqueueBackupRequestController - typeorm', () => {
 
 		// Assert
 		expect(response.statusCode).toBe(202);
+		expect(bmqAddSpy).toHaveBeenCalledTimes(1);
 		// convert text to an object we can use -- may throw an error if not JSON
 		const payload = JSON.parse(response.text);
-		const receivedTimestamp = new Date(payload.receivedTimestamp);
+		const acceptedTimestamp = new Date(payload.acceptedTimestamp);
 
 		expect(payload.backupRequestId.length).toBe(21); // nanoid isn't "verifiable" like a UUID
-		expect(payload.statusTypeCode).toBe(RequestStatusTypeValues.Received);
+		expect(payload.statusTypeCode).toBe(BackupRequestStatusTypeValues.Accepted);
 		expect(payload.backupJobId).toBe(basePayload.backupJobId);
 		expect(payload.preparedDataPathName).toBe(basePayload.backupDataLocation);
 		expect(payload.dataDate).toBe(basePayload.dataDate);
-		expect(receivedTimestamp.valueOf()).toBeGreaterThanOrEqual(startTime.valueOf());
-		expect(receivedTimestamp.valueOf()).toBeLessThanOrEqual(endTime.valueOf());
+		expect(acceptedTimestamp.valueOf()).toBeGreaterThanOrEqual(startTime.valueOf());
+		expect(acceptedTimestamp.valueOf()).toBeLessThanOrEqual(endTime.valueOf());
 	});
 });
