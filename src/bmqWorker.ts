@@ -51,6 +51,12 @@ import { TypeormBackupRepo } from './backup/adapter/impl/TypeormBackupRepo';
 const moduleName = path.basename(module.filename);
 
 const buildWorker = (circuitBreakers: ICircuitBreakers) => {
+	const ensureNumber = (str: string | undefined, alt: number) => {
+		return str && !isNaN(parseInt(str)) ? parseInt(str) : alt;
+	};
+	const startDelayMs = Math.max(1, ensureNumber(process.env.EVENT_BUS_START_DELAY_MS, 1000));
+	const maxDelayMs = Math.max(1, ensureNumber(process.env.EVENT_BUS_MAX_DELAY_MS, 60000));
+
 	const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreakers.dbCircuitBreaker);
 
 	const rcvUseCase = new ReceiveBackupRequestUseCase(brRepo, eventBus);
@@ -124,6 +130,16 @@ const buildWorker = (circuitBreakers: ICircuitBreakers) => {
 			autorun: false,
 			connection: bullMqConnection,
 			lockDuration: 30000,
+			settings: {
+				backoffStrategy: (attemptsMade = 1, type, err, job) => {
+					const delayMs = Math.min(startDelayMs * 3 ** attemptsMade, maxDelayMs);
+					logger.trace(
+						{ eventType: job?.data.eventType, jobName: job?.name, attemptsMade, delayMs },
+						'Backoff delay'
+					);
+					return delayMs;
+				},
+			},
 		}
 	);
 };
