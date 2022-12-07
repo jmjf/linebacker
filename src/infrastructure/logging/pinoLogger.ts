@@ -1,9 +1,9 @@
 import pino from 'pino';
-import { isDev, isTest } from '../../common/utils/utils';
+import { isTest } from '../../common/utils/utils';
 
 const pinoOptions = {
 	name: 'linebacker',
-	level: 'info',
+	level: process.env.LOG_LEVEL || 'info',
 	timestamp: pino.stdTimeFunctions.isoTime,
 	// formatters: {
 	// 	level(label: string, number: number) {
@@ -12,7 +12,6 @@ const pinoOptions = {
 	// },
 };
 
-if (isDev()) pinoOptions.level = 'debug';
 if (isTest()) pinoOptions.level = 'fatal';
 
 export const logger = pino(pinoOptions);

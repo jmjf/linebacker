@@ -17,6 +17,7 @@ import { isTest } from './common/utils/utils';
 import { buildFakeAuthNZ } from './test-helpers/index';
 import { TypeormClientAuthorization } from './infrastructure/typeorm/entity/TypeormClientAuthorization';
 import { buildTrackRequestStats } from './zpages/infrastructure';
+import { appState } from './infrastructure/app-state/appState';
 
 export function buildApp(
 	logger: Logger,
@@ -60,7 +61,7 @@ export function buildApp(
 		logger.warn('Detected test environment; using fake authentication/authorization');
 		app.use(buildFakeAuthNZ());
 	} else {
-		const allowedIssuers = [process.env.AUTH_ISSUER as string];
+		const allowedIssuers = appState.auth_issuers;
 		const getJwks = buildGetJwks({
 			allowedDomains: allowedIssuers,
 			ttl: 600 * 1000,

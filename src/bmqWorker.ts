@@ -1,41 +1,16 @@
-import dotenv from 'dotenv';
-import { logger } from './infrastructure/logging/pinoLogger';
-logger.setBindings({
-	service: 'accepted-consumer',
-	feature: 'store',
-	pm2ProcessId: process.env.pm_id,
-	pm2InstanceId: process.env.PM2_INSTANCE_ID,
-});
-
-const logContext = { location: 'BullMQ Worker', functionName: 'pre-start' };
-
-logger.info(logContext, 'getting environment');
-if (!process.env.APP_ENV) {
-	logger.error(logContext, 'APP_ENV is falsey');
-	process.exit(1);
-}
-
-logger.info(logContext, `APP_ENV ${process.env.APP_ENV}`);
-dotenv.config({ path: `./env/${process.env.APP_ENV}.env` });
-
-if (process.env.EVENT_BUS_TYPE !== 'bullmq') {
-	logger.error(logContext, 'EVENT_BUS_TYPE is not bullmq');
-	process.exit(1);
-}
-
-import * as bullMq from 'bullmq';
 import path from 'node:path';
+import * as bullMq from 'bullmq';
 
-import { delay } from './common/utils/utils';
+import { appState, isAppStateUsable } from './infrastructure/app-state/appState';
+import { logger } from './infrastructure/logging/pinoLogger';
 
 import { typeormDataSource } from './infrastructure/typeorm/typeormDataSource';
 import { typeormCtx } from './infrastructure/typeorm/typeormContext';
 import { buildCircuitBreakers, ICircuitBreakers } from './infrastructure/typeorm/buildCircuitBreakers.typeorm';
+
+import { delay } from './common/utils/utils';
 import { bullMqConnection } from './common/infrastructure/event-bus/eventBus';
-
 import { eventBus } from './common/infrastructure/event-bus/eventBus';
-import { TypeormBackupRequestRepo } from './backup-request/adapter/impl/TypeormBackupRequestRepo';
-
 import { BullmqConsumer } from './common/infrastructure/event-bus/BullmqConsumer';
 
 import { MockBackupJobServiceAdapter } from './backup-job/adapter/impl/MockBackupJobServiceAdapter';
@@ -46,16 +21,16 @@ import { CheckRequestAllowedUseCase } from './backup-request/use-cases/check-req
 import { SendRequestToInterfaceUseCase } from './backup-request/use-cases/send-request-to-interface/SendRequestToInterfaceUseCase';
 import { ReceiveStoreStatusReplyUseCase } from './backup-request/use-cases/receive-store-status-reply/ReceiveStoreStatusReplyUseCase';
 import { AzureBackupInterfaceStoreAdapter } from './backup-request/adapter/impl/AzureBackupInterfaceStoreAdapter';
+import { TypeormBackupRequestRepo } from './backup-request/adapter/impl/TypeormBackupRequestRepo';
+
 import { TypeormBackupRepo } from './backup/adapter/impl/TypeormBackupRepo';
 
 const moduleName = path.basename(module.filename);
+const serviceName = 'accepted-consumer';
+const featureName = 'store';
 
 const buildWorker = (circuitBreakers: ICircuitBreakers) => {
-	const ensureNumber = (str: string | undefined, alt: number) => {
-		return str && !isNaN(parseInt(str)) ? parseInt(str) : alt;
-	};
-	const startDelayMs = Math.max(1, ensureNumber(process.env.EVENT_BUS_START_DELAY_MS, 1000));
-	const maxDelayMs = Math.max(1, ensureNumber(process.env.EVENT_BUS_MAX_DELAY_MS, 60000));
+	const logContext = { moduleName, functionName: 'buildWorker' };
 
 	const brRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreakers.dbCircuitBreaker);
 
@@ -132,7 +107,10 @@ const buildWorker = (circuitBreakers: ICircuitBreakers) => {
 			lockDuration: 30000,
 			settings: {
 				backoffStrategy: (attemptsMade = 1, type, err, job) => {
-					const delayMs = Math.min(startDelayMs * 3 ** attemptsMade, maxDelayMs);
+					const delayMs = Math.min(
+						appState.eventBus_bmqRetryDelayStartMs * 3 ** attemptsMade,
+						appState.eventBus_bmqRetryDelayMaxMs
+					);
 					logger.trace(
 						{ eventType: job?.data.eventType, jobName: job?.name, attemptsMade, delayMs },
 						'Backoff delay'
@@ -145,8 +123,45 @@ const buildWorker = (circuitBreakers: ICircuitBreakers) => {
 };
 
 const startWorker = async () => {
-	const functionName = 'startWorker';
-	const logContext = { location: 'BullMQ Worker', functionName };
+	const logContext = { moduleName, functionName: 'startWorker' };
+
+	logger.setBindings({
+		serviceName,
+		featureName,
+		pm2ProcessId: process.env.pm_id,
+		pm2InstanceId: process.env.PM2_INSTANCE_ID,
+	});
+
+	const requiredStateMembers = [
+		'eventBus_bmqRetryDelayStartMs',
+		'eventBus_bmqRetryDelayMaxMs',
+		'mssql_host',
+		'mssql_port',
+		'mssql_user',
+		'mssql_password',
+		'mssql_dbName',
+		// no API so no auth checks needed
+		'azureQueue_authMethod',
+		'azureQueue_queueAccountUri',
+		'eventBus_type',
+	];
+	if (
+		!isAppStateUsable(requiredStateMembers) ||
+		// sask additional
+		(appState.azureQueue_authMethod.toLowerCase() === 'sask' &&
+			!isAppStateUsable(['azureQueue_saskAccountName', 'azureQueue_saskAccountKey'])) ||
+		// app registration additional
+		(appState.azureQueue_authMethod.toLowerCase() === 'adcc' &&
+			!isAppStateUsable(['azureQueue_tenantId', 'azureQueue_clientId', 'azureQueue_clientSecret']))
+	) {
+		logger.fatal(logContext, 'Required environment variables missing or invalid');
+		process.exit(1);
+	}
+
+	// Worker requires BullMQ event bus type
+	if (appState.eventBus_type.toLowerCase() !== 'bullmq') {
+		logger.fatal({ ...logContext, eventBusType: appState.eventBus_type }, 'Event bus type is not BullMQ');
+	}
 
 	logger.info(logContext, 'initializing TypeORM data source');
 	await typeormDataSource.initialize();
@@ -161,7 +176,7 @@ const startWorker = async () => {
 	try {
 		worker.run();
 	} catch (e) {
-		logger.error({ error: e, moduleName, functionName }, `Caught error after worker.run()`);
+		logger.error({ error: e, ...logContext }, `Caught error after worker.run()`);
 		appAbortController.abort();
 		await worker.close(); // gracefully shutdown the worker and release job locks
 		await delay(5000);

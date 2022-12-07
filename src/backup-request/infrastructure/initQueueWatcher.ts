@@ -15,6 +15,7 @@ import { StoreStatusReceivedSubscriber } from '../use-cases/receive-store-status
 import { AzureBackupInterfaceStoreAdapter } from '../adapter/impl/AzureBackupInterfaceStoreAdapter';
 import { AzureStoreStatusMessageHandler } from '../adapter/impl/AzureStoreStatusMessageHandler';
 import { AzureQueueWatcher } from '../../infrastructure/azure-queue/AzureQueueWatcher';
+import { appState } from '../../infrastructure/app-state/appState';
 
 const moduleName = path.basename(module.filename);
 
@@ -29,7 +30,7 @@ export function initQueueWatcher(
 
 	const queueAdapter = new AzureBackupInterfaceStoreAdapter(queueName, circuitBreakers.azureQueueCircuitBreaker);
 
-	if (process.env.MESSAGE_BUS_TYPE !== 'bullmq') {
+	if (appState.eventBus_type.toLowerCase() !== 'bullmq') {
 		const backupRequestRepo = new TypeormBackupRequestRepo(typeormCtx, circuitBreakers.dbCircuitBreaker);
 		const backupJobServiceAdapter = new MockBackupJobServiceAdapter({ getByIdResult: { ...mockBackupJobProps } });
 		const backupRepo = new TypeormBackupRepo(typeormCtx, circuitBreakers.dbCircuitBreaker);
@@ -55,12 +56,9 @@ export function initQueueWatcher(
 		queueName,
 	});
 
-	setTimeout(
-		() => {
-			queueWatcher.startWatcher();
-		},
-		process.env.BRQW_START_DELAY_MS ? parseInt(process.env.BRQW_START_DELAY_MS) : 5000
-	);
+	setTimeout(() => {
+		queueWatcher.startWatcher();
+	}, appState.brQueueWatcher_startDelayMs);
 
 	return queueWatcher;
 }

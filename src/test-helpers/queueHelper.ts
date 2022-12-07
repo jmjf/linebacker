@@ -1,38 +1,17 @@
+import path from 'node:path';
 import express, { Response, Router } from 'express';
-import * as dotenv from 'dotenv';
-import { logger } from '../infrastructure/logging/pinoLogger';
 import { QueueClient, QueueServiceClient, ReceivedMessageItem, StorageSharedKeyCredential } from '@azure/storage-queue';
 
-const logContext = { location: 'Queue helper', function: 'pre-start' };
+import { appState, isAppStateUsable } from '../infrastructure/app-state/appState';
+import { logger } from '../infrastructure/logging/pinoLogger';
 
-logger.info(logContext, 'getting environment');
-if (!process.env.APP_ENV) {
-	logger.error(logContext, 'APP_ENV is falsey');
-	process.exit(1);
-}
-
-logger.info(logContext, `APP_ENV ${process.env.APP_ENV}`);
-dotenv.config({ path: `./env/${process.env.APP_ENV}.env` });
-
-if (!process.env.LINEBACKER_API_PORT || process.env.LINEBACKER_API_PORT.length === 0) {
-	logger.error(logContext, 'LINEBACKER_API_PORT is falsey or empty');
-	process.exit(1);
-}
-const apiPort = parseInt(process.env.LINEBACKER_API_PORT) + 55;
-logger.info(logContext, `apiPort ${apiPort}`);
+const moduleName = path.basename(module.filename);
+const serviceName = 'queue-helper';
+const featureName = 'api';
 
 async function getQueueServiceClient(): Promise<QueueServiceClient> {
-	const accountName = (process.env.SASK_ACCOUNT_NAME || '').trim();
-	const accountKey = (process.env.SASK_ACCOUNT_KEY || '').trim();
-
-	if (accountName.length < 1 || accountKey.length < 1) {
-		const err = new Error('sharedkey authentication environment variables missing or empty');
-		logger.error(err, err.message);
-		throw err;
-	}
-
-	const cred = new StorageSharedKeyCredential(accountName, accountKey);
-	return new QueueServiceClient(`${process.env.AZURE_QUEUE_ACCOUNT_URI}`, cred);
+	const cred = new StorageSharedKeyCredential(appState.azureQueue_saskAccountName, appState.azureQueue_saskAccountKey);
+	return new QueueServiceClient(appState.azureQueue_queueAccountUri, cred);
 }
 
 async function getQueueClient(queueName: string): Promise<QueueClient> {
@@ -186,8 +165,31 @@ router.delete('/messages', async (req, res) => {
 
 // start the server
 
+const logContext = { moduleName, functionName: 'startServer' };
+
+logger.setBindings({
+	serviceName,
+	featureName,
+	pm2ProcessId: appState.pm2_processId,
+	pm2InstanceId: appState.pm2_instanceId,
+});
+
+const requiredStateMembers = ['linebackerApi_port', 'azureQueue_authMethod', 'azureQueue_queueAccountUri'];
+if (
+	!isAppStateUsable(requiredStateMembers) ||
+	// sask additional
+	(appState.azureQueue_authMethod.toLowerCase() === 'sask' &&
+		!isAppStateUsable(['azureQueue_saskAccountName', 'azureQueue_saskAccountKey'])) ||
+	// app registration additional
+	(appState.azureQueue_authMethod.toLowerCase() === 'adcc' &&
+		!isAppStateUsable(['azureQueue_tenantId', 'azureQueue_clientId', 'azureQueue_clientSecret']))
+) {
+	logger.fatal(logContext, 'Required environment variables missing or invalid');
+	process.exit(1);
+}
+
 const app = express();
 app.use(express.json());
 app.use('/api', router);
-app.listen(apiPort);
-logger.info(logContext, `Listening on ${apiPort}`);
+app.listen(appState.linebackerApi_port + 55);
+logger.info(logContext, `Listening on ${appState.linebackerApi_port + 55}`);

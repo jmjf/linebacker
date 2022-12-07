@@ -1,22 +1,7 @@
-import dotenv from 'dotenv';
+import path from 'node:path';
+
+import { appState, isAppStateUsable } from './infrastructure/app-state/appState';
 import { logger } from './infrastructure/logging/pinoLogger';
-logger.setBindings({
-	service: 'queue-watcher',
-	feature: 'store',
-	pm2ProcessId: process.env.pm_id,
-	pm2InstanceId: process.env.PM2_INSTANCE_ID,
-});
-
-const logContext = { location: 'Express+TypeORM Receive', function: 'pre-start' };
-
-logger.info(logContext, 'getting environment');
-if (!process.env.APP_ENV) {
-	logger.error(logContext, 'APP_ENV is falsey');
-	process.exit(1);
-}
-
-logger.info(logContext, `APP_ENV ${process.env.APP_ENV}`);
-dotenv.config({ path: `./env/${process.env.APP_ENV}.env` });
 
 import { typeormDataSource } from './infrastructure/typeorm/typeormDataSource';
 import { typeormCtx } from './infrastructure/typeorm/typeormContext';
@@ -25,15 +10,47 @@ import { buildCircuitBreakers } from './infrastructure/typeorm/buildCircuitBreak
 import { buildApp } from './rcvAppExpTypeorm';
 import { delay } from './common/utils/utils';
 
-const startServer = async () => {
-	const logContext = { location: 'Express+TypeORM Receive', function: 'startServer' };
+const moduleName = path.basename(module.filename);
+const serviceName = 'queue-watcher';
+const featureName = 'store';
 
-	if (!process.env.BRQW_ZPAGES_PORT || process.env.BRQW_ZPAGES_PORT.length === 0) {
-		logger.error(logContext, 'BRQW_ZPAGES_PORT is falsey or empty');
+const startServer = async () => {
+	const logContext = { moduleName, functionName: 'startServer' };
+
+	logger.setBindings({
+		serviceName,
+		featureName,
+		pm2ProcessId: appState.pm2_processId,
+		pm2InstanceId: appState.pm2_instanceId,
+	});
+
+	const requiredStateMembers = [
+		'brQueueWatcher_port',
+		'mssql_host',
+		'mssql_port',
+		'mssql_user',
+		'mssql_password',
+		'mssql_dbName',
+		'auth_issuers',
+		'auth_audience',
+		'auth_kid',
+		'azureQueue_authMethod',
+		'azureQueue_queueAccountUri',
+		'eventBus_type',
+	];
+
+	if (
+		!isAppStateUsable(requiredStateMembers) ||
+		// sask additional
+		(appState.azureQueue_authMethod.toLowerCase() === 'sask' &&
+			!isAppStateUsable(['azureQueue_saskAccountName', 'azureQueue_saskAccountKey'])) ||
+		// app registration additional
+		(appState.azureQueue_authMethod.toLowerCase() === 'adcc' &&
+			!isAppStateUsable(['azureQueue_tenantId', 'azureQueue_clientId', 'azureQueue_clientSecret']))
+	) {
+		logger.fatal(logContext, 'Required environment variables missing or invalid');
 		process.exit(1);
 	}
-	const zpagesPort = parseInt(process.env.BRQW_ZPAGES_PORT);
-	logger.info(logContext, `zpagesPort ${zpagesPort}`);
 
 	logger.info(logContext, 'initializing TypeORM data source');
 	await typeormDataSource.initialize();
@@ -59,8 +76,8 @@ const startServer = async () => {
 
 	logger.info(logContext, 'starting server');
 	try {
-		app.listen({ port: zpagesPort });
-		logger.info(logContext, `Server is running on port ${zpagesPort}`);
+		app.listen({ port: appState.brQueueWatcher_port });
+		logger.info(logContext, `Server is running on port ${appState.brQueueWatcher_port}`);
 	} catch (err) {
 		logger.error(logContext, `${err}`);
 		appAbortController.abort();

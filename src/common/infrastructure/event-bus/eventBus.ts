@@ -1,9 +1,11 @@
 import * as bullMq from 'bullmq';
 
+import { appState } from '../../../infrastructure/app-state/appState';
+
 import { BullmqEventBus } from './BullmqEventBus';
 import { MemoryEventBus } from './MemoryEventBus';
 
-export const eventBusType = (process.env.EVENT_BUS_TYPE || 'memory').toLowerCase();
+export const eventBusType = (appState.eventBus_type || 'memory').toLowerCase();
 
 export const bullMqConnection = {
 	host: 'localhost',

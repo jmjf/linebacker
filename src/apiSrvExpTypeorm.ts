@@ -1,24 +1,8 @@
-import dotenv from 'dotenv';
+import path from 'node:path';
+
+import { appState, isAppStateUsable } from './infrastructure/app-state/appState';
 import { logger } from './infrastructure/logging/pinoLogger';
-logger.setBindings({
-	service: 'api',
-	feature: 'store',
-	pm2ProcessId: process.env.pm_id,
-	pm2InstanceId: process.env.PM2_INSTANCE_ID,
-});
 
-const logContext = { location: 'Express+TypeORM', function: 'pre-start' };
-
-logger.info(logContext, 'getting environment');
-if (!process.env.APP_ENV) {
-	logger.error(logContext, 'APP_ENV is falsey');
-	process.exit(1);
-}
-
-logger.info(logContext, `APP_ENV ${process.env.APP_ENV}`);
-dotenv.config({ path: `./env/${process.env.APP_ENV}.env` });
-
-import * as bullMq from 'bullmq';
 import { typeormDataSource } from './infrastructure/typeorm/typeormDataSource';
 import { typeormCtx } from './infrastructure/typeorm/typeormContext';
 import { buildCircuitBreakers } from './infrastructure/typeorm/buildCircuitBreakers.typeorm';
@@ -27,16 +11,49 @@ import { buildApp } from './apiAppExpTypeorm';
 import { publishApplicationResilienceReady } from './infrastructure/resilience/publishApplicationResilienceReady';
 import { delay } from './common/utils/utils';
 
+const moduleName = path.basename(module.filename);
+const serviceName = 'queue-watcher';
+const featureName = 'store';
+
 const startServer = async () => {
 	const startTimestamp = new Date();
-	const logContext = { location: 'Express+TypeORM', function: 'startServer' };
 
-	if (!process.env.LINEBACKER_API_PORT || process.env.LINEBACKER_API_PORT.length === 0) {
-		logger.error(logContext, 'LINEBACKER_API_PORT is falsey or empty');
+	const logContext = { moduleName, functionName: 'startServer' };
+
+	logger.setBindings({
+		serviceName,
+		featureName,
+		pm2ProcessId: appState.pm2_processId,
+		pm2InstanceId: appState.pm2_instanceId,
+	});
+
+	const requiredStateMembers = [
+		'linebackerApi_port',
+		'mssql_host',
+		'mssql_port',
+		'mssql_user',
+		'mssql_password',
+		'mssql_dbName',
+		'auth_issuers',
+		'auth_audience',
+		'auth_kid',
+		'azureQueue_authMethod',
+		'azureQueue_queueAccountUri',
+		'eventBus_type',
+	];
+
+	if (
+		!isAppStateUsable(requiredStateMembers) ||
+		// sask additional
+		(appState.azureQueue_authMethod.toLowerCase() === 'sask' &&
+			!isAppStateUsable(['azureQueue_saskAccountName', 'azureQueue_saskAccountKey'])) ||
+		// app registration additional
+		(appState.azureQueue_authMethod.toLowerCase() === 'client-secret' &&
+			!isAppStateUsable(['azureQueue_tenantId', 'azureQueue_clientId', 'azureQueue_clientSecret']))
+	) {
+		logger.fatal(logContext, 'Required environment variables missing or invalid');
 		process.exit(1);
 	}
-	const apiPort = parseInt(process.env.LINEBACKER_API_PORT);
-	logger.info(logContext, `apiPort ${apiPort}`);
 
 	logger.info(logContext, 'initializing TypeORM data source');
 	await typeormDataSource.initialize();
@@ -66,8 +83,8 @@ const startServer = async () => {
 
 	logger.info(logContext, 'starting server');
 	try {
-		app.listen({ port: apiPort });
-		logger.info(logContext, `Server is running on port ${apiPort}`);
+		app.listen({ port: appState.linebackerApi_port });
+		logger.info(logContext, `Server is running on port ${appState.linebackerApi_port}`);
 	} catch (err) {
 		logger.error(logContext, `${err}`);
 		appAbortController.abort();

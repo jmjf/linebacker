@@ -12,6 +12,7 @@ import { ICircuitBreakers } from '../../infrastructure/typeorm/buildCircuitBreak
 import { LinebackerRequest } from '../../common/adapter/ExpressController';
 import { logger } from '../../infrastructure/logging/pinoLogger';
 import path from 'node:path';
+import { appState } from '../../infrastructure/app-state/appState';
 
 const moduleName = path.basename(module.filename);
 
@@ -45,7 +46,7 @@ export function getBackupRequestRouter(
 			// );
 
 			let result;
-			if (process.env.EVENT_BUS_TYPE === 'bullmq') {
+			if (appState.eventBus_type.toLowerCase() === 'bullmq') {
 				result = await (acceptBackupRequestController as ExpressAcceptBackupRequestController).execute(
 					customReq,
 					response

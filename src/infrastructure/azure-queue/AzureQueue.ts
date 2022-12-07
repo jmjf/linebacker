@@ -1,4 +1,4 @@
-import { DefaultAzureCredential } from '@azure/identity';
+import { ClientSecretCredential } from '@azure/identity';
 import {
 	QueueClient,
 	QueueDeleteMessageResponse,
@@ -7,14 +7,12 @@ import {
 	RestError,
 	StorageSharedKeyCredential,
 } from '@azure/storage-queue';
+
 import { fromBase64, toBase64 } from '../../common/utils/utils';
-import { BaseError } from '../../common/core/BaseError';
 import { err, ok, Result } from '../../common/core/Result';
 import * as InfrastructureErrors from '../../common/infrastructure/InfrastructureErrors';
 
-export type CredentialType = 'ADCC' | 'SASK';
-// ADCC -> AD Client Credentials
-// SASK -> Storage Account Shared Key
+import { appState } from '../app-state/appState';
 
 export interface AQSendResponse extends QueueSendMessageResponse {
 	isSent: boolean;
@@ -53,54 +51,38 @@ export class AzureQueue {
 	}
 
 	private static getCredential(): Result<
-		DefaultAzureCredential | StorageSharedKeyCredential,
+		ClientSecretCredential | StorageSharedKeyCredential,
 		InfrastructureErrors.EnvironmentError | Error
 	> {
 		const functionName = 'getCredential';
-		const adccEnv = ['AZURE_TENANT_ID', 'AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET_ID'];
 		const saskEnv = ['SASK_ACCOUNT_NAME', 'SASK_ACCOUNT_KEY'];
 
-		const credentialType = process.env.AUTH_METHOD as CredentialType;
-		if (credentialType !== 'ADCC' && credentialType !== 'SASK')
+		const credentialType = appState.azureQueue_authMethod.toLowerCase();
+		if (credentialType !== 'client-secret' && credentialType !== 'sask')
 			return err(
-				new InfrastructureErrors.EnvironmentError('Invalid environment value', {
-					env: 'AUTH_METHOD',
-					value: credentialType,
+				new InfrastructureErrors.EnvironmentError('Invalid auth method', {
+					authMethod: appState.azureQueue_authMethod,
 					moduleName,
 					functionName,
 				})
 			);
 
-		if (credentialType.toUpperCase() === 'ADCC') {
-			for (const envName of adccEnv) {
-				if (!this.isValidString(process.env[envName]))
-					return err(
-						new InfrastructureErrors.EnvironmentError('Invalid environment value', {
-							env: envName,
-							credentialType: 'ADCC',
-							moduleName,
-							functionName,
-						})
-					);
-			}
-			return ok(new DefaultAzureCredential());
+		// application startup should check if appState is usable, so no checks here
+		if (credentialType === 'client-secret') {
+			// application should check if appState is set up correctly
+			return ok(
+				new ClientSecretCredential(
+					appState.azureQueue_tenantId,
+					appState.azureQueue_clientId,
+					appState.azureQueue_clientSecret
+				)
+			);
 		}
-		// else (because returns above)
+		// else SASK (because returns above)
 
-		for (const envName of saskEnv) {
-			if (!this.isValidString(process.env[envName]))
-				return err(
-					new InfrastructureErrors.EnvironmentError('Invalid environment value', {
-						env: envName,
-						credentialType: 'SASK',
-						moduleName,
-						functionName,
-					})
-				);
-		}
 		try {
 			return ok(
-				new StorageSharedKeyCredential(<string>process.env.SASK_ACCOUNT_NAME, <string>process.env.SASK_ACCOUNT_KEY)
+				new StorageSharedKeyCredential(appState.azureQueue_saskAccountName, appState.azureQueue_saskAccountKey)
 			);
 		} catch (e) {
 			const { message, ...error } = e as RestError;
@@ -111,16 +93,16 @@ export class AzureQueue {
 
 	private static getQueueClient(queueName: string): Result<QueueClient, InfrastructureErrors.EnvironmentError> {
 		const functionName = 'getQueueClient';
-		const envUri = <string>process.env.AZURE_QUEUE_ACCOUNT_URI;
+		const envUri = appState.azureQueue_queueAccountUri;
 		// 8 because it must begin with at least http:// (7 char) and have something after it
 		const accountUri = envUri.length < 8 || envUri.slice(-1) === '/' ? envUri : envUri + '/';
 		if (
 			!this.isValidString(accountUri) ||
-			(process.env.AUTH_METHOD === 'ADCC' && !this.accountUriRegExp.test(accountUri))
+			(appState.azureQueue_authMethod === 'client-secret' && !this.accountUriRegExp.test(accountUri))
 		) {
 			return err(
-				new InfrastructureErrors.EnvironmentError('Invalid environment value', {
-					env: 'AZURE_QUEUE_ACCOUNT_URI',
+				new InfrastructureErrors.EnvironmentError('Invalid account uri', {
+					authMethod: appState.azureQueue_authMethod,
 					moduleName,
 					functionName,
 				})

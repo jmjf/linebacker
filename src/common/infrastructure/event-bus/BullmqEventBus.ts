@@ -1,14 +1,13 @@
+import path from 'node:path';
 import * as bullMq from 'bullmq';
+import { ConnectionOptions, KeepJobs } from 'bullmq';
+
+import { appState } from '../../../infrastructure/app-state/appState';
 
 import { Result, ok, err } from '../../core/Result';
 import * as InfrastructureErrors from '../InfrastructureErrors';
 
-import { EventBusEvent } from './IEventBus';
-
-import { IEventBus } from './IEventBus';
-
-import { ConnectionOptions, KeepJobs } from 'bullmq';
-import path from 'node:path';
+import { EventBusEvent, IEventBus } from './IEventBus';
 
 const moduleName = path.basename(module.filename);
 type BullMq = typeof bullMq;
@@ -22,28 +21,8 @@ export class BullmqEventBus implements IEventBus {
 	constructor(bullMq: BullMq, connection: ConnectionOptions) {
 		this.bullMq = bullMq;
 		this.connection = connection;
-
-		this.removeOnComplete = undefined;
-		if (process.env.BMQ_REMOVE_ON_COMPLETE && typeof process.env.BMQ_REMOVE_ON_COMPLETE === 'string') {
-			if (process.env.BMQ_REMOVE_ON_COMPLETE.toLowerCase() === 'true') {
-				this.removeOnComplete = true;
-			} else if (process.env.BMQ_REMOVE_ON_COMPLETE[0] === '{') {
-				this.removeOnComplete = JSON.parse(process.env.BMQ_REMOVE_ON_COMPLETE);
-			} else if (!isNaN(parseInt(process.env.BMQ_REMOVE_ON_COMPLETE))) {
-				this.removeOnComplete = parseInt(process.env.BMQ_REMOVE_ON_COMPLETE);
-			}
-		}
-
-		this.removeOnFail = undefined;
-		if (typeof process.env.BMQ_REMOVE_ON_FAIL === 'string') {
-			if (process.env.BMQ_REMOVE_ON_FAIL.toLowerCase() === 'true') {
-				this.removeOnFail = true;
-			} else if (process.env.BMQ_REMOVE_ON_FAIL[0] === '{') {
-				this.removeOnFail = JSON.parse(process.env.BMQ_REMOVE_ON_FAIL);
-			} else if (!isNaN(parseInt(process.env.BMQ_REMOVE_ON_FAIL))) {
-				this.removeOnFail = parseInt(process.env.BMQ_REMOVE_ON_FAIL);
-			}
-		}
+		this.removeOnComplete = appState.eventBus_bmqRemoveOnComplete;
+		this.removeOnFail = appState.eventBus_bmqRemoveOnFail;
 	}
 
 	// exists(requestId: string): Promise<Result<boolean, InfrastructureErrors.EventBusError>>;
