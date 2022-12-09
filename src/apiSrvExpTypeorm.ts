@@ -12,7 +12,7 @@ import { publishApplicationResilienceReady } from './infrastructure/resilience/p
 import { delay } from './common/utils/utils';
 
 const moduleName = path.basename(module.filename);
-const serviceName = 'queue-watcher';
+const serviceName = 'api';
 const featureName = 'store';
 
 const startServer = async () => {

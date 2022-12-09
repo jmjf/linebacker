@@ -8,8 +8,8 @@ import { MemoryEventBus } from './MemoryEventBus';
 export const eventBusType = (appState.eventBus_type || 'memory').toLowerCase();
 
 export const bullMqConnection = {
-	host: 'localhost',
-	port: 6379,
+	host: appState.bullmq_redisHost,
+	port: appState.bullmq_redisPort,
 };
 
 export const eventBus = eventBusType === 'bullmq' ? new BullmqEventBus(bullMq, bullMqConnection) : new MemoryEventBus();

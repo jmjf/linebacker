@@ -1,8 +1,7 @@
 node_modules
-env
 dist
-**/*.env
-!./env/SAMPLE.env
+env/*
+!env/SAMPLE.env
 
 docker-compose/*.db
 docker-compose/kafka

@@ -150,7 +150,7 @@ export class AzureQueue {
 		const queueClientOptions = {
 			retryOptions: {
 				maxTries: 1,
-				tryTimeoutInMs: 15 * 1000,
+				tryTimeoutInMs: appState.azureQueue_connectTimeoutMs,
 			},
 		};
 
@@ -255,8 +255,8 @@ export class AzureQueue {
 		try {
 			const receiveRes = await queueClient.receiveMessages({
 				numberOfMessages: messageCount,
-				timeout: 15 * 1000,
-				visibilityTimeout: 60,
+				timeout: appState.azureQueue_connectTimeoutMs,
+				visibilityTimeout: appState.azureQueue_visibilityTimeoutSec,
 			});
 			const messageItems = receiveRes.receivedMessageItems.map((item) => {
 				return { ...item, messageText: useBase64 ? fromBase64(item.messageText) : item.messageText };

@@ -10,8 +10,10 @@ import { isTest } from '../../common/utils/utils';
 
 const moduleName = path.basename(module.filename);
 
-const strToNumOrDefault = (str: string | undefined, def: number) => {
-	return str && !isNaN(parseInt(str)) ? parseInt(str) : def;
+const envAsNumOrDefault = (u: unknown, def: number) => {
+	if (typeof u === 'string') return !isNaN(parseInt(u)) ? parseInt(u) : def;
+	if (typeof u === 'number') return u as number;
+	return def;
 };
 
 const strToArray = (str: string | undefined, delimiter: string) => {
@@ -45,7 +47,7 @@ if (!appEnv) {
 	dotenv.config({ path: `./env/${appEnv}.env` });
 }
 
-const linebackerApiPort = strToNumOrDefault(process.env.LINEBACKER_API_PORT, 3000);
+const linebackerApiPort = envAsNumOrDefault(process.env.LINEBACKER_API_PORT, 3000);
 
 export const appState = {
 	pm2_processId: process.env.pm_id || null,
@@ -56,17 +58,17 @@ export const appState = {
 
 	linebackerApi_port: linebackerApiPort,
 
-	brQueueWatcher_port: strToNumOrDefault(process.env.BRQW_ZPAGES_PORT, linebackerApiPort + 1),
-	brQueueWatcher_startDelayMs: strToNumOrDefault(process.env.BRQW_START_WATCH_DELAY, 5000),
+	brQueueWatcher_port: envAsNumOrDefault(process.env.BRQW_ZPAGES_PORT, linebackerApiPort + 1),
+	brQueueWatcher_startDelayMs: envAsNumOrDefault(process.env.BRQW_START_WATCH_DELAY, 5000),
 
 	postgres_host: process.env.POSTGRES_HOST || '',
-	postgres_port: strToNumOrDefault(process.env.POSTGRES_PORT, 5432),
+	postgres_port: envAsNumOrDefault(process.env.POSTGRES_PORT, 5432),
 	postgres_user: process.env.POSTGRES_USER || '',
 	postgres_password: process.env.POSTGRES_PASSWORD || '',
 	postgres_dbName: process.env.POSTGRES_DB || '',
 
-	mssql_host: process.env.SQLSERVER_URL || '',
-	mssql_port: strToNumOrDefault(process.env.SQLSERVER_PORT, 1433),
+	mssql_host: process.env.SQLSERVER_HOST || '',
+	mssql_port: envAsNumOrDefault(process.env.SQLSERVER_PORT, 1433),
 	mssql_user: process.env.SQLSERVER_USER || '',
 	mssql_password: process.env.SQLSERVER_PASSWORD || '',
 	mssql_dbName: process.env.SQLSERVER_DB || '',
@@ -76,25 +78,30 @@ export const appState = {
 	auth_audience: process.env.AUTH_AUDIENCE || '',
 	auth_kid: process.env.AUTH_KID || '',
 
-	azureQueue_authMethod: process.env.AUTH_METHOD || '',
-	azureQueue_queueAccountUri: process.env.AZURE_QUEUE_ACCOUNT_URI || '',
+	azureQueue_connectTimeoutMs: envAsNumOrDefault(process.env.AZUREQUEUE_CONNECT_TIMEOUT_MS, 15000),
+	azureQueue_visibilityTimeoutSec: envAsNumOrDefault(process.env.AZUREQUEUE_VISIBILITY_TIMEOUT_SEC, 15000),
+	azureQueue_authMethod: process.env.AZUREQUEUE_AUTH_METHOD || '',
+	azureQueue_queueAccountUri: process.env.AZUREQUEUE_QUEUE_ACCOUNT_URI || '',
 	// for storage account shared key credential
-	azureQueue_saskAccountName: process.env.SASK_ACCOUNT_NAME || '',
-	azureQueue_saskAccountKey: process.env.SASK_ACCOUNT_KEY || '',
+	azureQueue_saskAccountName: process.env.AZUREQUEUE_SASK_ACCOUNT_NAME || '',
+	azureQueue_saskAccountKey: process.env.AZUREQUEUE_SASK_ACCOUNT_KEY || '',
 	// for app registration client secret credential
-	azureQueue_arcsTenantId: process.env.ADCC_TENANT_ID || '',
-	azureQueue_arcsClientId: process.env.ADCC_CLIENT_ID || '',
-	azureQueue_arcsClientSecret: process.env.ADCC_CLIENT_SECRET || '',
+	azureQueue_arcsTenantId: process.env.AZUREQUEUE_ARCS_TENANT_ID || '',
+	azureQueue_arcsClientId: process.env.AZUREQUEUE_ARCS_CLIENT_ID || '',
+	azureQueue_arcsClientSecret: process.env.AZUREQUEUE_ARCS_CLIENT_SECRET || '',
 
 	splunk_host: process.env.SPLUNK_HOST || '',
-	splunk_port: strToNumOrDefault(process.env.SPLUNK_HEC_PORT, 8078),
+	splunk_port: envAsNumOrDefault(process.env.SPLUNK_HEC_PORT, 8078),
 	splunk_token: process.env.SPLUNK_HEC_TOKEN || '',
 
-	eventBus_type: process.env.EVENT_BUS_TYPE || 'memory',
-	eventBus_bmqRetryDelayStartMs: strToNumOrDefault(process.env.BMQ_RETRY_DELAY_START_MS, 1000),
-	eventBus_bmqRetryDelayMaxMs: strToNumOrDefault(process.env.BMQ_RETRY_DELAY_MAX_MS, 60000),
-	eventBus_bmqRemoveOnFail: strToBmqRemoveOn(process.env.BMQ_REMOVE_ON_FAIL),
-	eventBus_bmqRemoveOnComplete: strToBmqRemoveOn(process.env.BMQ_REMOVE_ON_COMPLETE),
+	eventBus_type: process.env.EVENTBUS_TYPE || 'memory',
+	eventBus_bmqRetryDelayStartMs: envAsNumOrDefault(process.env.EVENTBUS_BMQ_RETRY_DELAY_START_MS, 1000),
+	eventBus_bmqRetryDelayMaxMs: envAsNumOrDefault(process.env.EVENTBUS_BMQ_RETRY_DELAY_MAX_MS, 60000),
+	eventBus_bmqRemoveOnFail: strToBmqRemoveOn(process.env.EVENTBUS_BMQ_REMOVE_ON_FAIL),
+	eventBus_bmqRemoveOnComplete: strToBmqRemoveOn(process.env.EVENTBUS_BMQ_REMOVE_ON_COMPLETE),
+
+	bullmq_redisHost: process.env.BULLMQ_REDIS_HOST || '',
+	bullmq_redisPort: envAsNumOrDefault(process.env.BULLMQ_REDIS_PORT, 6379),
 
 	/** Not supported yet
 	 *
