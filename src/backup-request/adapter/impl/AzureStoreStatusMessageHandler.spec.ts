@@ -9,6 +9,7 @@ import { ReceivedMessageItem } from '@azure/storage-queue';
 
 import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
 import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
+import { delay } from '../../../common/utils/utils';
 
 import { StoreStatusMessage } from '../../domain/StoreStatusReceived.common';
 import { AzureBackupInterfaceStoreAdapter } from './AzureBackupInterfaceStoreAdapter';
@@ -16,7 +17,7 @@ import { AzureBackupInterfaceStoreAdapter } from './AzureBackupInterfaceStoreAda
 import { AzureStoreStatusMessageHandler } from './AzureStoreStatusMessageHandler';
 
 import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
-import { delay } from '../../../common/utils/utils';
+import { setAppStateForAzureQueue, useSask } from '../../../test-helpers/AzureQueueTestHelpers';
 
 const now = new Date();
 const offsetMs = 15 * 60 * 1000;
@@ -32,18 +33,15 @@ describe('AzureStoreStatusMessageHandler', () => {
 		abortController = new AbortController();
 		// dbCircuitBreaker = getLenientCircuitBreaker('TypeORM', abortController.signal);
 		azureQueueCircuitBreaker = getLenientCircuitBreaker('AzureQueue', abortController.signal);
+
+		setAppStateForAzureQueue();
+		useSask();
 	});
 
 	afterEach(() => {
 		abortController.abort();
 		delay(250);
 	});
-
-	// env for AzureQueue
-	process.env.AUTH_METHOD = 'SASK';
-	process.env.SASK_ACCOUNT_NAME = 'accountName';
-	process.env.SASK_ACCOUNT_KEY = 'accountKey';
-	process.env.AZURE_QUEUE_ACCOUNT_URI = 'test-uri'; // not checked for SASK because SASK is local only
 
 	const msgObject: StoreStatusMessage = {
 		apiVersion: '2022-08-15',
@@ -113,6 +111,9 @@ describe('AzureBackupInterfaceStoreAdapter', () => {
 		abortController = new AbortController();
 		// dbCircuitBreaker = getLenientCircuitBreaker('TypeORM', abortController.signal);
 		azureQueueCircuitBreaker = getLenientCircuitBreaker('AzureQueue', abortController.signal);
+
+		setAppStateForAzureQueue();
+		useSask();
 	});
 
 	afterEach(() => {
@@ -152,13 +153,6 @@ describe('AzureBackupInterfaceStoreAdapter', () => {
 
 	test('when receiveMessage fails, it returns an err (InterfaceAdapterError)', async () => {
 		// Arrange
-
-		// env for AzureQueue
-		process.env.AUTH_METHOD = 'SASK';
-		process.env.SASK_ACCOUNT_NAME = 'accountName';
-		process.env.SASK_ACCOUNT_KEY = 'accountKey';
-		process.env.AZURE_QUEUE_ACCOUNT_URI = 'test-uri'; // not checked for SASK because SASK is local only
-
 		mockQueueSDK.QueueClient.prototype.receiveMessages = jest
 			.fn()
 			.mockRejectedValueOnce(new Error('simulated SDK Promise.reject()'));
@@ -179,13 +173,6 @@ describe('AzureBackupInterfaceStoreAdapter', () => {
 
 	test('when receiveMessage returns messages, it returns ok with messages', async () => {
 		// Arrange
-
-		// env for AzureQueue
-		process.env.AUTH_METHOD = 'SASK';
-		process.env.SASK_ACCOUNT_NAME = 'accountName';
-		process.env.SASK_ACCOUNT_KEY = 'accountKey';
-		process.env.AZURE_QUEUE_ACCOUNT_URI = 'test-uri'; // not checked for SASK because SASK is local only
-
 		const rcvItems = [
 			{ ...okMsgItem, messageText: 'message1' },
 			{ ...okMsgItem, messageText: 'message2' },
@@ -214,12 +201,6 @@ describe('AzureBackupInterfaceStoreAdapter', () => {
 
 	test('when receiveMessage returns no messages, it returns ok with no messages', async () => {
 		// Arrange
-
-		// env for AzureQueue
-		process.env.AUTH_METHOD = 'SASK';
-		process.env.SASK_ACCOUNT_NAME = 'accountName';
-		process.env.SASK_ACCOUNT_KEY = 'accountKey';
-		process.env.AZURE_QUEUE_ACCOUNT_URI = 'test-uri'; // not checked for SASK because SASK is local only
 
 		// mockRcvOk has empty receivedMessageItems array
 		mockQueueSDK.QueueClient.prototype.receiveMessages = jest.fn().mockResolvedValueOnce({ ...mockRcvOk });

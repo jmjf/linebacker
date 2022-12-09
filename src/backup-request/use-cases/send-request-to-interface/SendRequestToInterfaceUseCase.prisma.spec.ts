@@ -2,16 +2,7 @@
 jest.mock('@azure/storage-queue');
 import * as mockQueueSDK from '@azure/storage-queue';
 
-import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
-import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
-
-import { AzureBackupInterfaceStoreAdapter } from '../../adapter/impl/AzureBackupInterfaceStoreAdapter';
-
-import { SendRequestToInterfaceUseCase } from './SendRequestToInterfaceUseCase';
-import { SendRequestToInterfaceDTO } from './SendRequestToInterfaceDTO';
-
 import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
-import { ok } from '../../../common/core/Result';
 
 import {
 	MockPrismaContext,
@@ -19,9 +10,20 @@ import {
 	createMockPrismaContext,
 } from '../../../infrastructure/prisma/prismaContext';
 import { PrismaBackupRequest } from '@prisma/client';
+
+import { ok } from '../../../common/core/Result';
+import { delay } from '../../../common/utils/utils';
+
+import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
+import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
+import { AzureBackupInterfaceStoreAdapter } from '../../adapter/impl/AzureBackupInterfaceStoreAdapter';
 import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
-import { delay, Dictionary } from '../../../common/utils/utils';
+
+import { SendRequestToInterfaceUseCase } from './SendRequestToInterfaceUseCase';
+import { SendRequestToInterfaceDTO } from './SendRequestToInterfaceDTO';
+
 import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
+import { setAppStateForAzureQueue, useSask } from '../../../test-helpers/AzureQueueTestHelpers';
 
 describe('SendRequestToInterfaceUseCase - Prisma', () => {
 	let mockPrismaCtx: MockPrismaContext;
@@ -41,6 +43,9 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		abortController = new AbortController();
 		dbCircuitBreaker = getLenientCircuitBreaker('Prisma', abortController.signal);
 		azureQueueCircuitBreaker = getLenientCircuitBreaker('AzureQueue', abortController.signal);
+
+		setAppStateForAzureQueue();
+		useSask();
 	});
 
 	afterEach(() => {
@@ -104,25 +109,19 @@ describe('SendRequestToInterfaceUseCase - Prisma', () => {
 		},
 	};
 
-	// mock environment -- use SASK because it's easier; other parts of queue framework covered in AzureQueue.spec.ts
-	process.env.AUTH_METHOD = 'SASK';
-	process.env.SASK_ACCOUNT_NAME = 'accountName';
-	process.env.SASK_ACCOUNT_KEY = 'accountKey';
-	process.env.AZURE_QUEUE_ACCOUNT_URI = 'uri';
-
 	test.each([
 		{ status: BackupRequestStatusTypeValues.Sent, timestampName: 'sentToInterfaceTimestamp' },
 		{ status: BackupRequestStatusTypeValues.Failed, timestampName: 'replyTimestamp' },
 		{ status: BackupRequestStatusTypeValues.Succeeded, timestampName: 'replyTimestamp' },
 	])('when request is $status, it returns err (BackupRequestStatusError)', async ({ status, timestampName }) => {
 		// Arrange
-		const resultBackupRequest: Dictionary = {
+		const expectedTimestamp = new Date();
+		const resultBackupRequest = {
 			...dbBackupRequest,
 			backupJobId: 'request is sent job id',
 			statusTypeCode: status,
 		};
-		resultBackupRequest[timestampName] = new Date();
-		const expectedTimestamp = new Date(resultBackupRequest[timestampName]); // ensure we have a separate instance
+		(resultBackupRequest as Record<string, unknown>)[timestampName] = new Date(expectedTimestamp);
 
 		// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 		mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue(resultBackupRequest as PrismaBackupRequest);

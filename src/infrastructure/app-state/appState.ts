@@ -1,7 +1,10 @@
 import dotenv from 'dotenv';
 import path from 'node:path';
-import os from 'node:os';
+
 import { logger } from '../logging/pinoLogger';
+
+import { isTest } from '../../common/utils/utils';
+
 // import { Logger } from 'pino';
 // // cannot use logger because it requires appState to be valid
 
@@ -49,7 +52,7 @@ export const appState = {
 	pm2_instanceId: process.env.PM2_INSTANCE_ID || null,
 
 	// logger must define log level before appState is ready, so default there and use logger value here
-	logger_logLevel: logger.level,
+	logger_logLevel: isTest() ? 'fatal' : process.env.LOG_LEVEL || 'info',
 
 	linebackerApi_port: linebackerApiPort,
 
@@ -75,13 +78,13 @@ export const appState = {
 
 	azureQueue_authMethod: process.env.AUTH_METHOD || '',
 	azureQueue_queueAccountUri: process.env.AZURE_QUEUE_ACCOUNT_URI || '',
-	// for storage account key
+	// for storage account shared key credential
 	azureQueue_saskAccountName: process.env.SASK_ACCOUNT_NAME || '',
 	azureQueue_saskAccountKey: process.env.SASK_ACCOUNT_KEY || '',
-	// for App Registration
-	azureQueue_tenantId: process.env.ADCC_TENANT_ID || '',
-	azureQueue_clientId: process.env.ADCC_CLIENT_ID || '',
-	azureQueue_clientSecret: process.env.ADCC_CLIENT_SECRET || '',
+	// for app registration client secret credential
+	azureQueue_arcsTenantId: process.env.ADCC_TENANT_ID || '',
+	azureQueue_arcsClientId: process.env.ADCC_CLIENT_ID || '',
+	azureQueue_arcsClientSecret: process.env.ADCC_CLIENT_SECRET || '',
 
 	splunk_host: process.env.SPLUNK_HOST || '',
 	splunk_port: strToNumOrDefault(process.env.SPLUNK_HEC_PORT, 8078),
@@ -102,10 +105,24 @@ export const appState = {
 	 */
 };
 
+// set initial log level, now that we know it
+logger.level = appState.logger_logLevel;
+
 export function isAppStateUsable(requiredMembers: string[]): boolean {
 	const logContext = { moduleName, functionName: 'isAppStateUseable' };
 
-	const missingNames = requiredMembers.filter((envName) => {
+	const missingNames = getMissingAppStateMembers(requiredMembers);
+
+	if (missingNames.length > 0) {
+		logger.error({ ...logContext, missingNames }, 'Missing required state values');
+		return false;
+	}
+
+	return true;
+}
+
+export function getMissingAppStateMembers(requiredMembers: string[]): string[] {
+	return requiredMembers.filter((envName) => {
 		const envValue = (appState as Record<string, unknown>)[envName];
 		// filter for undefined, null, '', [], isNaN
 		return (
@@ -119,11 +136,4 @@ export function isAppStateUsable(requiredMembers: string[]): boolean {
 				isNaN(envValue as number))
 		);
 	});
-
-	if (missingNames.length > 0) {
-		logger.error({ ...logContext, missingNames }, 'Missing required state values');
-		return false;
-	}
-
-	return true;
 }

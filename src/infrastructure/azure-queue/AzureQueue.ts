@@ -12,7 +12,7 @@ import { fromBase64, toBase64 } from '../../common/utils/utils';
 import { err, ok, Result } from '../../common/core/Result';
 import * as InfrastructureErrors from '../../common/infrastructure/InfrastructureErrors';
 
-import { appState } from '../app-state/appState';
+import { appState, getMissingAppStateMembers, isAppStateUsable } from '../app-state/appState';
 
 export interface AQSendResponse extends QueueSendMessageResponse {
 	isSent: boolean;
@@ -55,10 +55,18 @@ export class AzureQueue {
 		InfrastructureErrors.EnvironmentError | Error
 	> {
 		const functionName = 'getCredential';
-		const saskEnv = ['SASK_ACCOUNT_NAME', 'SASK_ACCOUNT_KEY'];
+
+		if (!isAppStateUsable(['azureQueue_authMethod']))
+			return err(
+				new InfrastructureErrors.EnvironmentError('Unusable auth method', {
+					authMethod: appState.azureQueue_authMethod,
+					moduleName,
+					functionName,
+				})
+			);
 
 		const credentialType = appState.azureQueue_authMethod.toLowerCase();
-		if (credentialType !== 'client-secret' && credentialType !== 'sask')
+		if (credentialType !== 'arcs' && credentialType !== 'sask')
 			return err(
 				new InfrastructureErrors.EnvironmentError('Invalid auth method', {
 					authMethod: appState.azureQueue_authMethod,
@@ -68,19 +76,43 @@ export class AzureQueue {
 			);
 
 		// application startup should check if appState is usable, so no checks here
-		if (credentialType === 'client-secret') {
+		if (credentialType === 'arcs') {
+			const missingMembers = getMissingAppStateMembers([
+				'azureQueue_arcsTenantId',
+				'azureQueue_arcsClientId',
+				'azureQueue_arcsClientSecret',
+			]);
+			if (missingMembers.length > 0)
+				return err(
+					new InfrastructureErrors.EnvironmentError('Invalid appState (ARCS)', {
+						missingMembers,
+						moduleName,
+						functionName,
+					})
+				);
 			// application should check if appState is set up correctly
 			return ok(
 				new ClientSecretCredential(
-					appState.azureQueue_tenantId,
-					appState.azureQueue_clientId,
-					appState.azureQueue_clientSecret
+					appState.azureQueue_arcsTenantId,
+					appState.azureQueue_arcsClientId,
+					appState.azureQueue_arcsClientSecret
 				)
 			);
 		}
-		// else SASK (because returns above)
+		// else SASK (because returns above ensure it isn't ARCS)
 
 		try {
+			const missingMembers = getMissingAppStateMembers(['azureQueue_saskAccountName', 'azureQueue_saskAccountKey']);
+			if (missingMembers.length > 0)
+				return err(
+					new InfrastructureErrors.EnvironmentError('Invalid appState (SASK)', {
+						missingMembers,
+						moduleName,
+						functionName,
+					})
+				);
+
+			// else
 			return ok(
 				new StorageSharedKeyCredential(appState.azureQueue_saskAccountName, appState.azureQueue_saskAccountKey)
 			);
@@ -93,16 +125,17 @@ export class AzureQueue {
 
 	private static getQueueClient(queueName: string): Result<QueueClient, InfrastructureErrors.EnvironmentError> {
 		const functionName = 'getQueueClient';
+
 		const envUri = appState.azureQueue_queueAccountUri;
 		// 8 because it must begin with at least http:// (7 char) and have something after it
 		const accountUri = envUri.length < 8 || envUri.slice(-1) === '/' ? envUri : envUri + '/';
 		if (
 			!this.isValidString(accountUri) ||
-			(appState.azureQueue_authMethod === 'client-secret' && !this.accountUriRegExp.test(accountUri))
+			(appState.azureQueue_authMethod.toLowerCase() === 'arcs' && !this.accountUriRegExp.test(accountUri))
 		) {
 			return err(
-				new InfrastructureErrors.EnvironmentError('Invalid account uri', {
-					authMethod: appState.azureQueue_authMethod,
+				new InfrastructureErrors.EnvironmentError('Invalid queue account uri', {
+					queueAccountUri: appState.azureQueue_queueAccountUri,
 					moduleName,
 					functionName,
 				})

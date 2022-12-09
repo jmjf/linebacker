@@ -12,7 +12,6 @@
 		"express:dev:prisma": "APP_ENV=dev ts-node src/expressServerPrisma.ts",
 		"api:exp:typeorm:dev": "APP_ENV=dev ts-node src/apiSrvExpTypeorm.ts",
 		"rcv:exp:typeorm:dev": "APP_ENV=dev ts-node src/rcvSrvExpTypeorm.ts",
-		"localQueue": "ts-node src/test-helpers/localQueue.ts",
 		"queueHelper": "APP_ENV=dev ts-node src/test-helpers/queueHelper.ts",
 		"azurite": "npx azurite --location ~/dev/azurite_data",
 		"pm2:info": "ts-node src/test-helpers/pm2Info.ts",

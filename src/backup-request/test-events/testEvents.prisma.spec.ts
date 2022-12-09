@@ -2,16 +2,23 @@
 jest.mock('@azure/storage-queue');
 import * as mockQueueSDK from '@azure/storage-queue';
 
+import { PrismaBackupRequest } from '@prisma/client';
 import { ReceivedMessageItem } from '@azure/storage-queue';
+
+import { buildCircuitBreakers } from '../../infrastructure/prisma/buildCircuitBreakers.prisma';
+import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../../infrastructure/prisma/prismaContext';
 
 import { delay } from '../../common/utils/utils';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
 
-import { RequestTransportTypeValues } from '../domain/RequestTransportType';
-import { BackupRequestStatusTypeValues } from '../domain/BackupRequestStatusType';
+import { PrismaBackupRepo } from '../../backup/adapter/impl/PrismaBackupRepo';
+import { BackupProviderTypeValues } from '../../backup-job/domain/BackupProviderType';
 
 import { BackupJob, IBackupJobProps } from '../../backup-job/domain/BackupJob';
 import { MockBackupJobServiceAdapter } from '../../backup-job/adapter/impl/MockBackupJobServiceAdapter';
+
+import { RequestTransportTypeValues } from '../domain/RequestTransportType';
+import { BackupRequestStatusTypeValues } from '../domain/BackupRequestStatusType';
 
 import { SendRequestToInterfaceUseCase } from '../use-cases/send-request-to-interface/SendRequestToInterfaceUseCase';
 import { BackupRequestAllowedSubscriber } from '../use-cases/send-request-to-interface/BackupRequestAllowedSubscriber';
@@ -24,14 +31,10 @@ import { StoreStatusReceivedSubscriber } from '../use-cases/receive-store-status
 import { ReceiveStoreStatusReplyUseCase } from '../use-cases/receive-store-status-reply/ReceiveStoreStatusReplyUseCase';
 
 import { AzureBackupInterfaceStoreAdapter } from '../adapter/impl/AzureBackupInterfaceStoreAdapter';
-
-import { MockPrismaContext, PrismaContext, createMockPrismaContext } from '../../infrastructure/prisma/prismaContext';
-import { PrismaBackupRequest } from '@prisma/client';
-import { PrismaBackupRequestRepo } from '../adapter/impl/PrismaBackupRequestRepo';
-import { PrismaBackupRepo } from '../../backup/adapter/impl/PrismaBackupRepo';
-import { BackupProviderTypeValues } from '../../backup-job/domain/BackupProviderType';
 import { AzureStoreStatusMessageHandler } from '../adapter/impl/AzureStoreStatusMessageHandler';
-import { buildCircuitBreakers } from '../../infrastructure/prisma/buildCircuitBreakers.prisma';
+import { PrismaBackupRequestRepo } from '../adapter/impl/PrismaBackupRequestRepo';
+
+import { setAppStateForAzureQueue, useSask } from '../../test-helpers/AzureQueueTestHelpers';
 
 const TEST_EVENTS = true;
 
@@ -43,6 +46,9 @@ if (TEST_EVENTS) {
 		beforeEach(() => {
 			mockPrismaCtx = createMockPrismaContext();
 			prismaCtx = mockPrismaCtx as unknown as PrismaContext;
+
+			setAppStateForAzureQueue();
+			useSask();
 		});
 
 		const dbBackupRequest: PrismaBackupRequest = {
@@ -110,12 +116,6 @@ if (TEST_EVENTS) {
 		test('when a backup request is created, events run', async () => {
 			// Arrange
 			jest.resetAllMocks();
-
-			// environment setup for queue adapter
-			process.env.AUTH_METHOD = 'SASK';
-			process.env.SASK_ACCOUNT_NAME = 'accountName';
-			process.env.SASK_ACCOUNT_KEY = 'accountKey';
-			process.env.AZURE_QUEUE_ACCOUNT_URI = 'uri';
 
 			// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 			mockPrismaCtx.prisma.prismaBackupRequest.findUnique.mockResolvedValue({ ...dbBackupRequest }); // default after responses below
@@ -187,6 +187,9 @@ if (TEST_EVENTS) {
 		beforeEach(() => {
 			mockPrismaCtx = createMockPrismaContext();
 			prismaCtx = mockPrismaCtx as unknown as PrismaContext;
+
+			setAppStateForAzureQueue();
+			useSask();
 		});
 
 		const now = new Date();
@@ -275,12 +278,6 @@ if (TEST_EVENTS) {
 			// Arrange
 
 			//** Receiver requirements **//
-
-			// env for AzureQueue
-			process.env.AUTH_METHOD = 'SASK';
-			process.env.SASK_ACCOUNT_NAME = 'accountName';
-			process.env.SASK_ACCOUNT_KEY = 'accountKey';
-			process.env.AZURE_QUEUE_ACCOUNT_URI = 'test-uri'; // not checked for SASK because SASK is local only
 
 			// mock SDK receive
 			mockQueueSDK.QueueClient.prototype.receiveMessages = jest.fn().mockResolvedValueOnce({ ...mockRcvOk });

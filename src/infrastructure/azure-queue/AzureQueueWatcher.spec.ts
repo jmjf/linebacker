@@ -12,6 +12,7 @@ import { QueueMessageHandlerResponse } from './IQueueMessageHandler';
 import { delay } from '../../common/utils/utils';
 import { logger } from '../logging/pinoLogger';
 import { ok } from '../../common/core/Result';
+import { setAppStateForAzureQueue, useSask } from '../../test-helpers/AzureQueueTestHelpers';
 
 // some tests simulate HTTP call failures with long timeouts
 jest.setTimeout(30 * 1000);
@@ -24,6 +25,9 @@ describe('AzureQueueWatcher', () => {
 		jest.resetAllMocks();
 		abortController = new AbortController();
 		circuitBreaker = getLenientCircuitBreaker('AzureQueue', abortController.signal);
+
+		setAppStateForAzureQueue();
+		useSask();
 	});
 
 	afterEach(async () => {
@@ -51,12 +55,6 @@ describe('AzureQueueWatcher', () => {
 			status: '200',
 		},
 	};
-
-	// environment for AzureQueue
-	process.env.AUTH_METHOD = 'SASK';
-	process.env.SASK_ACCOUNT_NAME = 'accountName';
-	process.env.SASK_ACCOUNT_KEY = 'accountKey';
-	process.env.AZURE_QUEUE_ACCOUNT_URI = `https://test123.queue.core.windows.net`; // not checked for SASK because SASK is local only
 
 	test('when startWatcher() is called, the queue watcher is running and starts calling receive', async () => {
 		// Arrange

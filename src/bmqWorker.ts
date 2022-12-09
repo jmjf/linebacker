@@ -128,8 +128,8 @@ const startWorker = async () => {
 	logger.setBindings({
 		serviceName,
 		featureName,
-		pm2ProcessId: process.env.pm_id,
-		pm2InstanceId: process.env.PM2_INSTANCE_ID,
+		pm2ProcessId: appState.pm2_processId,
+		pm2InstanceId: appState.pm2_instanceId,
 	});
 
 	const requiredStateMembers = [

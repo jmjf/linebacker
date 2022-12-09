@@ -115,5 +115,5 @@
 		"esm": true
 	},
 	"include": ["./src/*.ts", "./src/**/*.ts", "./src/**/*.js"],
-	"exclude": ["./node_modules", "./node_modules/@types", "./dist", "./src/**/*.spec.ts"]
+	"exclude": ["./node_modules", "./node_modules/@types", "./dist", "./src/**/*.spec.ts", "./src/test-helpers"]
 }

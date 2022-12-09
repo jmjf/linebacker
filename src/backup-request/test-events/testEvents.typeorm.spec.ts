@@ -4,10 +4,19 @@ import * as mockQueueSDK from '@azure/storage-queue';
 
 import { ReceivedMessageItem } from '@azure/storage-queue';
 
+import { CircuitBreakerWithRetry } from '../../infrastructure/resilience/CircuitBreakerWithRetry';
+import { ApplicationResilienceReady } from '../../infrastructure/resilience/ApplicationResilienceReady.event';
+import {
+	MockTypeormContext,
+	TypeormContext,
+	createMockTypeormContext,
+} from '../../infrastructure/typeorm/typeormContext';
+import { TypeormBackupRequest } from '../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
+import { TypeormBackup } from '../../infrastructure/typeorm/entity/TypeormBackup.entity';
+import { buildCircuitBreakers } from '../../infrastructure/typeorm/buildCircuitBreakers.typeorm';
+
 import { ok } from '../../common/core/Result';
-
 import { eventBus } from '../../common/infrastructure/event-bus/eventBus';
-
 import { delay } from '../../common/utils/utils';
 import { UniqueIdentifier } from '../../common/domain/UniqueIdentifier';
 
@@ -35,19 +44,11 @@ import { AzureBackupInterfaceStoreAdapter } from '../adapter/impl/AzureBackupInt
 import { ApplicationResilienceReadySubscriber } from '../use-cases/restart-stalled-requests/ApplicationResilienceReadySubscriber';
 import { RestartStalledRequestsUseCase } from '../use-cases/restart-stalled-requests/RestartStalledRequestsUseCase';
 
-import { CircuitBreakerWithRetry } from '../../infrastructure/resilience/CircuitBreakerWithRetry';
-import { ApplicationResilienceReady } from '../../infrastructure/resilience/ApplicationResilienceReady.event';
-import {
-	MockTypeormContext,
-	TypeormContext,
-	createMockTypeormContext,
-} from '../../infrastructure/typeorm/typeormContext';
 import { TypeormBackupRequestRepo } from '../adapter/impl/TypeormBackupRequestRepo';
-import { TypeormBackupRequest } from '../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
 import { TypeormBackupRepo } from '../../backup/adapter/impl/TypeormBackupRepo';
-import { TypeormBackup } from '../../infrastructure/typeorm/entity/TypeormBackup.entity';
-import { buildCircuitBreakers } from '../../infrastructure/typeorm/buildCircuitBreakers.typeorm';
+
 import { getLenientCircuitBreaker } from '../../test-helpers/circuitBreakerHelpers';
+import { setAppStateForAzureQueue, useSask } from '../../test-helpers/AzureQueueTestHelpers';
 
 const TEST_EVENTS = true;
 
@@ -59,6 +60,9 @@ if (TEST_EVENTS) {
 		beforeEach(() => {
 			mockTypeormCtx = createMockTypeormContext();
 			typeormCtx = mockTypeormCtx as unknown as TypeormContext;
+
+			setAppStateForAzureQueue();
+			useSask();
 		});
 
 		const dbBackupRequest: TypeormBackupRequest = {
@@ -127,12 +131,6 @@ if (TEST_EVENTS) {
 		test('when a backup request is created, events run', async () => {
 			// Arrange
 			jest.resetAllMocks();
-
-			// environment setup for queue adapter
-			process.env.AUTH_METHOD = 'SASK';
-			process.env.SASK_ACCOUNT_NAME = 'accountName';
-			process.env.SASK_ACCOUNT_KEY = 'accountKey';
-			process.env.AZURE_QUEUE_ACCOUNT_URI = 'uri';
 
 			// VS Code sometimes highlights the next line as an error (circular reference) -- its wrong
 			mockTypeormCtx.manager.findOne.mockResolvedValue({ ...dbBackupRequest }); // default after responses below
@@ -204,6 +202,9 @@ if (TEST_EVENTS) {
 		beforeEach(() => {
 			mockTypeormCtx = createMockTypeormContext();
 			typeormCtx = mockTypeormCtx as unknown as TypeormContext;
+
+			setAppStateForAzureQueue();
+			useSask();
 		});
 
 		const now = new Date();
@@ -294,12 +295,6 @@ if (TEST_EVENTS) {
 			// Arrange
 
 			//** Receiver requirements **//
-
-			// env for AzureQueue
-			process.env.AUTH_METHOD = 'SASK';
-			process.env.SASK_ACCOUNT_NAME = 'accountName';
-			process.env.SASK_ACCOUNT_KEY = 'accountKey';
-			process.env.AZURE_QUEUE_ACCOUNT_URI = 'test-uri'; // not checked for SASK because SASK is local only
 
 			// mock SDK receive
 			mockQueueSDK.QueueClient.prototype.receiveMessages = jest.fn().mockResolvedValueOnce({ ...mockRcvOk });

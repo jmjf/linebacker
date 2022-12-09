@@ -3,7 +3,7 @@ import { isTest } from '../../common/utils/utils';
 
 const pinoOptions = {
 	name: 'linebacker',
-	level: process.env.LOG_LEVEL || 'info',
+	level: 'info', // appState will set based on env
 	timestamp: pino.stdTimeFunctions.isoTime,
 	// formatters: {
 	// 	level(label: string, number: number) {

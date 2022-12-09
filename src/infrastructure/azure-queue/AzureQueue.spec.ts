@@ -2,48 +2,75 @@
 jest.mock('@azure/storage-queue');
 import * as mockQueueSDK from '@azure/storage-queue';
 
+import { appState } from '../app-state/appState';
+
 import { toBase64 } from '../../common/utils/utils';
 
 import { AzureQueue } from './AzureQueue';
+
+import { useArcs, useSask, setAppStateForAzureQueue } from '../../test-helpers/AzureQueueTestHelpers';
 
 // some tests simulate HTTP call failures with long timeouts
 jest.setTimeout(30 * 1000);
 
 describe('AzureQueue', () => {
-	// for ADCC tests, AZURE_QUEUE_ACCOUNT_URI must be a valid queue account URI
-	const queueAccountUri = `https://test123.queue.core.windows.net`;
-
 	const now = new Date();
 	const oneWeekMs = 7 * 24 * 60 * 1000;
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		setAppStateForAzureQueue();
 	});
 
 	describe('environment checks', () => {
+		test('when authMethod is not defined, it returns an err (EnvironmentError)', async () => {
+			// Arrange
+			appState.azureQueue_authMethod = '';
+
+			// Act
+			const result = await AzureQueue.sendMessage({ queueName: 'test-queue', messageText: 'test-message' });
+
+			// Assert
+			expect(result.isErr()).toBe(true);
+			if (result.isErr()) {
+				expect(result.error.name).toBe('EnvironmentError');
+				expect(result.error.message.toLowerCase()).toContain('unusable auth method');
+			}
+		});
+
+		test('when authMethod is invalid, it returns an err (EnvironmentError)', async () => {
+			// Arrange
+			appState.azureQueue_authMethod = 'invalid auth method';
+
+			// Act
+			const result = await AzureQueue.sendMessage({ queueName: 'test-queue', messageText: 'test-message' });
+
+			// Assert
+			expect(result.isErr()).toBe(true);
+			if (result.isErr()) {
+				expect(result.error.name).toBe('EnvironmentError');
+				expect(result.error.message.toLowerCase()).toContain('invalid auth method');
+			}
+		});
+
 		test.each([
-			{ envName: 'SASK_ACCOUNT_NAME', credType: 'SASK' },
-			{ envName: 'SASK_ACCOUNT_KEY', credType: 'SASK' },
-			{ envName: 'AZURE_TENANT_ID', credType: 'ADCC' },
-			{ envName: 'AZURE_CLIENT_ID', credType: 'ADCC' },
-			{ envName: 'AZURE_CLIENT_SECRET_ID', credType: 'ADCC' },
-			{ envName: 'AUTH_METHOD', credType: 'BadAuthMethod' },
+			{ memberName: 'azureQueue_saskAccountName', authMethod: 'SASK' },
+			{ memberName: 'azureQueue_saskAccountKey', authMethod: 'SASK' },
+			{ memberName: 'azureQueue_arcsTenantId', authMethod: 'ARCS' },
+			{ memberName: 'azureQueue_arcsClientId', authMethod: 'ARCS' },
+			{ memberName: 'azureQueue_arcsClientSecret', authMethod: 'ARCS' },
 		])(
-			'when $credType credential and $envName is invalid, it returns an err (EnvironmentError)',
-			async ({ envName, credType }) => {
+			'when $authMethod credential and $memberName is invalid, it returns an err (EnvironmentError)',
+			async ({ memberName, authMethod }) => {
 				// Arrange
-				process.env.AUTH_METHOD = credType;
-				process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri;
+				if (authMethod.toLowerCase() === 'sask') {
+					useSask();
+				} else {
+					useArcs();
+				}
+				(appState as Record<string, any>)[memberName] = '';
 
-				process.env.SASK_ACCOUNT_NAME = credType === 'SASK' && envName === 'SASK_ACCOUNT_NAME' ? '' : 'accountName';
-				process.env.SASK_ACCOUNT_KEY = credType === 'SASK' && envName === 'SASK_ACCOUNT_KEY' ? '' : 'accountKey';
-
-				process.env.AZURE_TENANT_ID = credType === 'ADCC' && envName === 'AZURE_TENANT_ID' ? '' : 'tenant';
-				process.env.AZURE_CLIENT_ID = credType === 'ADCC' && envName === 'AZURE_CLIENT_ID' ? '' : 'client';
-				process.env.AZURE_CLIENT_SECRET_ID =
-					credType === 'ADCC' && envName === 'AZURE_CLIENT_SECRET_ID' ? '' : 'secret';
-
-				const messageText = `${envName} test`;
+				const messageText = `${memberName} test`;
 				const queueName = 'queueName';
 
 				// Act
@@ -53,30 +80,25 @@ describe('AzureQueue', () => {
 				expect(result.isErr()).toBe(true);
 				if (result.isErr()) {
 					expect(result.error.name).toBe('EnvironmentError');
-					expect((result.error.errorData as any).env).toContain(envName);
+					expect((result.error.errorData as any).missingMembers).toContain(memberName);
 				}
 			}
 		);
 
 		test.each([
-			{ credType: 'ADCC', uri: '' },
-			{ credType: 'ADCC', uri: 'http://nope.nowhere.com' },
-			{ credType: 'ADCC', uri: 'https://12.queue.core.windows.net' },
-			{ credType: 'ADCC', uri: 'https://test123.queue.core.windows.netB' },
-			{ credType: 'SASK', uri: '' },
+			{ authMethod: 'ARCS', uri: '' },
+			{ authMethod: 'ARCS', uri: 'http://nope.nowhere.com' },
+			{ authMethod: 'ARCS', uri: 'https://12.queue.core.windows.net' },
+			{ authMethod: 'ARCS', uri: 'https://test123.queue.core.windows.netB' },
+			{ authMethod: 'SASK', uri: '' },
 		])(
-			'when AZURE_QUEUE_ACCOUNT_URI is invalid ($credType, $uri), it returns an err (EnvironmentError)',
-			async ({ credType, uri }) => {
+			'when account URI is invalid ($authMethod, $uri), it returns an err (EnvironmentError)',
+			async ({ authMethod, uri }) => {
 				// Arrange
-				process.env.AUTH_METHOD = credType;
-				process.env.AZURE_TENANT_ID = 'tenant';
-				process.env.AZURE_CLIENT_ID = 'client';
-				process.env.AZURE_CLIENT_SECRET_ID = 'secret';
-				process.env.SASK_ACCOUNT_NAME = 'accountName';
-				process.env.SASK_ACCOUNT_KEY = 'accountKey';
-				process.env.AZURE_QUEUE_ACCOUNT_URI = uri;
+				appState.azureQueue_authMethod = authMethod;
+				appState.azureQueue_queueAccountUri = uri;
 
-				const messageText = `AZURE_QUEUE_ACCOUNT_URI test`;
+				const messageText = `azureQueue_queueAccountUri test ${authMethod}`;
 				const queueName = 'queueName';
 
 				// Act
@@ -86,17 +108,14 @@ describe('AzureQueue', () => {
 				expect(result.isErr()).toBe(true);
 				if (result.isErr()) {
 					expect(result.error.name).toBe('EnvironmentError');
-					expect((result.error.errorData as any).env).toContain('AZURE_QUEUE_ACCOUNT_URI');
+					expect((result.error.errorData as any).queueAccountUri).toMatch(uri);
 				}
 			}
 		);
 
 		test('when queueName is invalid, it returns an err (InputError)', async () => {
 			// Arrange
-			process.env.AUTH_METHOD = 'SASK';
-			process.env.SASK_ACCOUNT_NAME = 'accountName';
-			process.env.SASK_ACCOUNT_KEY = 'accountKey';
-			process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri; // not checked for SASK because SASK it local only
+			useSask();
 
 			const messageText = `queueName test`;
 			const queueName = '';
@@ -155,10 +174,8 @@ describe('AzureQueue', () => {
 
 		test('when messageText is invalid, it returns an err (InputError)', async () => {
 			// Arrange
-			process.env.AUTH_METHOD = 'SASK';
-			process.env.SASK_ACCOUNT_NAME = 'accountName';
-			process.env.SASK_ACCOUNT_KEY = 'accountKey';
-			process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri; // not checked for SASK because SASK it local only
+			useSask();
+
 			const messageText = ``;
 			const queueName = 'queueName';
 			// Act
@@ -173,11 +190,8 @@ describe('AzureQueue', () => {
 
 		test('when queueClient throws, it returns an err (SDKError)', async () => {
 			// Arrange
-			process.env.AUTH_METHOD = 'ADCC';
-			process.env.AZURE_TENANT_ID = 'tenant';
-			process.env.AZURE_CLIENT_ID = 'client';
-			process.env.AZURE_CLIENT_SECRET_ID = 'secret';
-			process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri; // not checked for SASK because SASK is local only
+			useArcs();
+
 			const messageText = `QueueClient throws message`;
 			const queueName = 'queueName';
 			mockQueueSDK.QueueClient.prototype.sendMessage = jest.fn().mockImplementationOnce(() => {
@@ -197,11 +211,8 @@ describe('AzureQueue', () => {
 
 		test('when queueClient Promise.rejects, it returns an err (SDKError)', async () => {
 			// Arrange
-			process.env.AUTH_METHOD = 'ADCC';
-			process.env.AZURE_TENANT_ID = 'tenant';
-			process.env.AZURE_CLIENT_ID = 'client';
-			process.env.AZURE_CLIENT_SECRET_ID = 'secret';
-			process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri; // not checked for SASK because SASK is local only
+			useArcs();
+
 			const messageText = `QueueClient rejects promise`;
 			const queueName = 'queueName';
 			mockQueueSDK.QueueClient.prototype.sendMessage = jest
@@ -221,11 +232,8 @@ describe('AzureQueue', () => {
 
 		test('when queueClient Promise.resolves with status > 299, it returns an ok with isSent false', async () => {
 			// Arrange
-			process.env.AUTH_METHOD = 'ADCC';
-			process.env.AZURE_TENANT_ID = 'tenant';
-			process.env.AZURE_CLIENT_ID = 'client';
-			process.env.AZURE_CLIENT_SECRET_ID = 'secret';
-			process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri; // not checked for SASK because SASK is local only
+			useArcs();
+
 			const messageText = `QueueClient resolves promise; http status > 299`;
 			const queueName = 'queueName';
 
@@ -248,11 +256,8 @@ describe('AzureQueue', () => {
 
 		test('when queueClient Promise.resolves with status < 300, it returns an ok with isSent true (not Base64)', async () => {
 			// Arrange
-			process.env.AUTH_METHOD = 'ADCC';
-			process.env.AZURE_TENANT_ID = 'tenant';
-			process.env.AZURE_CLIENT_ID = 'client';
-			process.env.AZURE_CLIENT_SECRET_ID = 'secret';
-			process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri; // not checked for SASK because SASK is local only
+			useArcs();
+
 			const messageText = `QueueClient resolves promise; staus < 300; not Base64`;
 			const queueName = 'queueName';
 
@@ -287,11 +292,8 @@ describe('AzureQueue', () => {
 
 		test('when queueClient Promise.resolves with status < 300, it returns an ok with isSent true (Base64)', async () => {
 			// Arrange
-			process.env.AUTH_METHOD = 'ADCC';
-			process.env.AZURE_TENANT_ID = 'tenant';
-			process.env.AZURE_CLIENT_ID = 'client';
-			process.env.AZURE_CLIENT_SECRET_ID = 'secret';
-			process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri; // not checked for SASK because SASK is local only
+			useArcs();
+
 			const messageText = `QueueClient resolves promise; status < 300; Base64`;
 			const queueName = 'queueName';
 
@@ -347,11 +349,8 @@ describe('AzureQueue', () => {
 
 		test('when queueClient throws, it returns an err (SDKError)', async () => {
 			// Arrange
-			process.env.AUTH_METHOD = 'ADCC';
-			process.env.AZURE_TENANT_ID = 'tenant';
-			process.env.AZURE_CLIENT_ID = 'client';
-			process.env.AZURE_CLIENT_SECRET_ID = 'secret';
-			process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri;
+			useArcs();
+
 			const queueName = 'queueName';
 
 			mockQueueSDK.QueueClient.prototype.receiveMessages = jest.fn().mockImplementationOnce(() => {
@@ -372,11 +371,7 @@ describe('AzureQueue', () => {
 
 		test('when queueClient Promise.rejects, it returns an err (SDKError)', async () => {
 			// Arrange
-			process.env.AUTH_METHOD = 'ADCC';
-			process.env.AZURE_TENANT_ID = 'tenant';
-			process.env.AZURE_CLIENT_ID = 'client';
-			process.env.AZURE_CLIENT_SECRET_ID = 'secret';
-			process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri;
+			useArcs();
 			const queueName = 'queueName';
 
 			mockQueueSDK.QueueClient.prototype.receiveMessages = jest
@@ -397,11 +392,7 @@ describe('AzureQueue', () => {
 
 		test('when queueClient Promise.resolves with status < 300, it returns an ok with a message (not Base64)', async () => {
 			// Arrange
-			process.env.AUTH_METHOD = 'ADCC';
-			process.env.AZURE_TENANT_ID = 'tenant';
-			process.env.AZURE_CLIENT_ID = 'client';
-			process.env.AZURE_CLIENT_SECRET_ID = 'secret';
-			process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri; // not checked for SASK because SASK is local only
+			useArcs();
 			const messageText = `QueueClient resolves promise; status < 300; not Base64`;
 			const queueName = 'queueName';
 
@@ -431,11 +422,7 @@ describe('AzureQueue', () => {
 
 		test('when queueClient Promise.resolves with status < 300, it returns an ok with a message (Base64)', async () => {
 			// Arrange
-			process.env.AUTH_METHOD = 'ADCC';
-			process.env.AZURE_TENANT_ID = 'tenant';
-			process.env.AZURE_CLIENT_ID = 'client';
-			process.env.AZURE_CLIENT_SECRET_ID = 'secret';
-			process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri; // not checked for SASK because SASK is local only
+			useArcs();
 			const messageText = `QueueClient resolves promise; status < 300; Base64`;
 			const queueName = 'queueName';
 
@@ -466,11 +453,7 @@ describe('AzureQueue', () => {
 
 		test('when queueClient Promise.resolves with status < 300, it returns an ok with no message (no messages)', async () => {
 			// Arrange
-			process.env.AUTH_METHOD = 'ADCC';
-			process.env.AZURE_TENANT_ID = 'tenant';
-			process.env.AZURE_CLIENT_ID = 'client';
-			process.env.AZURE_CLIENT_SECRET_ID = 'secret';
-			process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri; // not checked for SASK because SASK is local only
+			useArcs();
 			const queueName = 'queueName';
 
 			mockQueueSDK.QueueClient.prototype.receiveMessages = jest.fn().mockImplementation(() => {
@@ -511,11 +494,7 @@ describe('AzureQueue', () => {
 
 		test('when queueClient throws, it returns an err (SDKError)', async () => {
 			// Arrange
-			process.env.AUTH_METHOD = 'ADCC';
-			process.env.AZURE_TENANT_ID = 'tenant';
-			process.env.AZURE_CLIENT_ID = 'client';
-			process.env.AZURE_CLIENT_SECRET_ID = 'secret';
-			process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri;
+			useArcs();
 			const queueName = 'queueName';
 
 			mockQueueSDK.QueueClient.prototype.deleteMessage = jest.fn().mockImplementationOnce(() => {
@@ -536,11 +515,7 @@ describe('AzureQueue', () => {
 
 		test('when queueClient Promise.rejects, it returns an err (SDKError)', async () => {
 			// Arrange
-			process.env.AUTH_METHOD = 'ADCC';
-			process.env.AZURE_TENANT_ID = 'tenant';
-			process.env.AZURE_CLIENT_ID = 'client';
-			process.env.AZURE_CLIENT_SECRET_ID = 'secret';
-			process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri;
+			useArcs();
 			const queueName = 'queueName';
 
 			mockQueueSDK.QueueClient.prototype.deleteMessage = jest
@@ -561,11 +536,7 @@ describe('AzureQueue', () => {
 
 		test('when queueClient Promise.resolves with status < 300, it returns an ok', async () => {
 			// Arrange
-			process.env.AUTH_METHOD = 'ADCC';
-			process.env.AZURE_TENANT_ID = 'tenant';
-			process.env.AZURE_CLIENT_ID = 'client';
-			process.env.AZURE_CLIENT_SECRET_ID = 'secret';
-			process.env.AZURE_QUEUE_ACCOUNT_URI = queueAccountUri; // not checked for SASK because SASK is local only
+			useArcs();
 			const queueName = 'queueName';
 
 			mockQueueSDK.QueueClient.prototype.deleteMessage = jest.fn().mockResolvedValue(mockDeleteOk);
