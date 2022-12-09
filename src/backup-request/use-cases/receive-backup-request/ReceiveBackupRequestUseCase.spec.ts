@@ -1,24 +1,26 @@
 import * as bullMq from 'bullmq';
 jest.mock('bullmq');
 
-process.env.EVENT_BUS_TYPE = 'bullmq';
+import { appState } from '../../../infrastructure/app-state/appState';
+appState.eventBus_type = 'bullmq';
 
-import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
-
-import { ok } from '../../../common/core/Result';
+import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 import {
 	createMockTypeormContext,
 	MockTypeormContext,
 	TypeormContext,
 } from '../../../infrastructure/typeorm/typeormContext';
-import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
-import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
+import { TypeormBackupRequest } from '../../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
+
+import { ok } from '../../../common/core/Result';
+import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
 
 import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
-import { ReceiveBackupRequestDTO, ReceiveBackupRequestUseCase } from './ReceiveBackupRequestUseCase';
 import { RequestTransportType } from '../../domain/RequestTransportType';
-import { TypeormBackupRequest } from '../../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
 import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
+import { ReceiveBackupRequestDTO, ReceiveBackupRequestUseCase } from './ReceiveBackupRequestUseCase';
+
+import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
 
 describe('ReceiveBackupRequestUseCase', () => {
 	let mockTypeormCtx: MockTypeormContext;

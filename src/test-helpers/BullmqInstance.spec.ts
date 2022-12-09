@@ -1,13 +1,15 @@
 jest.mock('bullmq');
 import * as bullMq from 'bullmq';
-import { EventBusEvent } from '../common/infrastructure/event-bus/IEventBus';
-import { BackupRequestAccepted } from '../backup-request/domain/BackupRequestAccepted.event';
-const mockBullMq = jest.mocked(bullMq);
 
-process.env.EVENT_BUS_TYPE = 'bullmq';
+import { appState } from '../infrastructure/app-state/appState';
+appState.eventBus_type = 'bullmq';
+
 import { eventBus } from '../common/infrastructure/event-bus/eventBus';
+import { EventBusEvent } from '../common/infrastructure/event-bus/IEventBus';
 
 describe('BmqInstance', () => {
+	const mockBullMq = jest.mocked(bullMq);
+
 	beforeEach(() => {
 		mockBullMq.Queue.mockClear();
 	});
@@ -36,5 +38,6 @@ describe('BmqInstance', () => {
 		// console.log('result', result);
 
 		expect(result.isOk()).toBe(true);
+		expect(publishSpy).toHaveBeenCalled();
 	});
 });

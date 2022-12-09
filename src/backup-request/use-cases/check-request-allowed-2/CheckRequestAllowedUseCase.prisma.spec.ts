@@ -1,8 +1,19 @@
 jest.mock('bullmq');
 import * as bullMq from 'bullmq';
 
-process.env.EVENT_BUS_TYPE = 'bullmq';
+import { appState } from '../../../infrastructure/app-state/appState';
+appState.eventBus_type = 'bullmq';
 
+import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
+import {
+	MockPrismaContext,
+	PrismaContext,
+	createMockPrismaContext,
+} from '../../../infrastructure/prisma/prismaContext';
+import { PrismaBackupRequest } from '@prisma/client';
+import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
+
+import { ok } from '../../../common/core/Result';
 import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
 import * as InfrastructureErrors from '../../../common/infrastructure/InfrastructureErrors';
@@ -15,17 +26,6 @@ import { BackupRequestStatusType, BackupRequestStatusTypeValues } from '../../do
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 
 import { CheckRequestAllowedUseCase, CheckRequestAllowedDTO } from './CheckRequestAllowedUseCase';
-
-import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
-import { ok } from '../../../common/core/Result';
-
-import {
-	MockPrismaContext,
-	PrismaContext,
-	createMockPrismaContext,
-} from '../../../infrastructure/prisma/prismaContext';
-import { PrismaBackupRequest } from '@prisma/client';
-import { PrismaBackupRequestRepo } from '../../adapter/impl/PrismaBackupRequestRepo';
 
 describe('CheckRequestAllowedUseCase - Prisma', () => {
 	let mockPrismaCtx: MockPrismaContext;

@@ -1,15 +1,13 @@
 jest.mock('bullmq');
 import * as bullMq from 'bullmq';
 
-process.env.EVENT_BUS_TYPE = 'bullmq';
-
 import request from 'supertest';
 
-import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
+// must import appState before other application imports to ensure value is set correctly for test
+import { appState } from '../../../infrastructure/app-state/appState';
+appState.eventBus_type = 'bullmq';
 
 import { buildApp } from '../../../apiAppExpTypeorm';
-
-import { ICreateBackupRequestBody } from './ExpressCreateBackupRequestController';
 
 import {
 	MockTypeormContext,
@@ -18,10 +16,15 @@ import {
 } from '../../../infrastructure/typeorm/typeormContext';
 import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 
-import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
-import { delay } from '../../../common/utils/utils';
 import { logger } from '../../../infrastructure/logging/pinoLogger';
+
+import { delay } from '../../../common/utils/utils';
 import { EventBusError } from '../../../common/infrastructure/InfrastructureErrors';
+
+import { ICreateBackupRequestBody } from './ExpressCreateBackupRequestController';
+import { BackupRequestStatusTypeValues } from '../../domain/BackupRequestStatusType';
+
+import { getLenientCircuitBreaker } from '../../../test-helpers/circuitBreakerHelpers';
 
 describe('ExpressAcceptBackupRequestController - typeorm', () => {
 	let mockTypeormCtx: MockTypeormContext;
@@ -85,7 +88,7 @@ describe('ExpressAcceptBackupRequestController - typeorm', () => {
 		expect(payload.code).toBe('InvalidApiVersion');
 	});
 
-	test('when the use case gets a database error, the controller returns 500 and a low-leak error', async () => {
+	test('when the use case fails to add to the queue, the controller returns 500 and a low-leak error', async () => {
 		// Arrange
 		// simulate a database error
 		mockBullMq.Queue.prototype.add = jest.fn().mockRejectedValueOnce(new EventBusError('simulated event bus error'));

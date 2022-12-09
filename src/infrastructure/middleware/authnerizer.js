@@ -7,7 +7,8 @@ const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 
 function buildAuthnerizer(opts) {
 	const { allowedIssuers, fastjwtVerifierOptions, buildGetPublicKey, logError, reqTraceIdKey } = opts;
-	if (!allowedIssuers || allowedIssuers.length === 0) throw Error('FATAL: Authnerizer requires opts.allowedIssuers');
+	if (!allowedIssuers || !Array.isArray(allowedIssuers) || allowedIssuers.length === 0)
+		throw Error('FATAL: Authnerizer requires opts.allowedIssuers');
 	if (typeof buildGetPublicKey !== 'function')
 		throw Error('FATAL: Authnerizer requires a function for opts.buildGetPublicKey');
 	if (typeof logError !== 'function') throw Error('FATAL: Authnerizer requires a function for opts.logError');

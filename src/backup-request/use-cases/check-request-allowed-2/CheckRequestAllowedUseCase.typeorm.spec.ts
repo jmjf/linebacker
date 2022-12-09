@@ -1,14 +1,22 @@
 jest.mock('bullmq');
 import * as bullMq from 'bullmq';
 
-process.env.EVENT_BUS_TYPE = 'bullmq';
-
-import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
-import * as InfrastructureErrors from '../../../common/infrastructure/InfrastructureErrors';
+import { appState } from '../../../infrastructure/app-state/appState';
+appState.eventBus_type = 'bullmq';
 
 import { CircuitBreakerWithRetry } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
+import {
+	MockTypeormContext,
+	TypeormContext,
+	createMockTypeormContext,
+} from '../../../infrastructure/typeorm/typeormContext';
+import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
+import { TypeormBackupRequest } from '../../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
+
 import { ok } from '../../../common/core/Result';
+import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
 import * as AdapterErrors from '../../../common/adapter/AdapterErrors';
+import * as InfrastructureErrors from '../../../common/infrastructure/InfrastructureErrors';
 
 import { IBackupJobProps } from '../../../backup-job/domain/BackupJob';
 import { BackupProviderTypeValues } from '../../../backup-job/domain/BackupProviderType';
@@ -18,14 +26,6 @@ import { BackupRequestStatusType, BackupRequestStatusTypeValues } from '../../do
 import { RequestTransportTypeValues } from '../../domain/RequestTransportType';
 
 import { CheckRequestAllowedUseCase, CheckRequestAllowedDTO } from './CheckRequestAllowedUseCase';
-
-import {
-	MockTypeormContext,
-	TypeormContext,
-	createMockTypeormContext,
-} from '../../../infrastructure/typeorm/typeormContext';
-import { TypeormBackupRequestRepo } from '../../adapter/impl/TypeormBackupRequestRepo';
-import { TypeormBackupRequest } from '../../../infrastructure/typeorm/entity/TypeormBackupRequest.entity';
 
 describe('CheckRequestAllowedUseCase - typeorm', () => {
 	let mockTypeormCtx: MockTypeormContext;

@@ -2,7 +2,8 @@
 jest.mock('bullmq');
 import * as bullMq from 'bullmq';
 
-process.env.EVENT_BUS_TYPE = 'bullmq';
+import { appState } from '../../../infrastructure/app-state/appState';
+appState.eventBus_type = 'bullmq';
 
 import { eventBus } from '../../../common/infrastructure/event-bus/eventBus';
 
