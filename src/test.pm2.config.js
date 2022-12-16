@@ -26,6 +26,12 @@ module.exports = {
 			instances: 2,
 			...baseConfig,
 		},
+		{
+			name: 'bmq-worker',
+			script: 'dist/bmqWorker.js',
+			instances: 2,
+			...baseConfig,
+		},
 		// {
 		// 	name: 'logger',
 		// 	script: 'splunkLog.sh',

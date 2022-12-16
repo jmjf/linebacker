@@ -175,6 +175,7 @@ const startWorker = async () => {
 	logger.info('Starting worker');
 	try {
 		worker.run();
+		if (process.send) process.send('ready');
 	} catch (e) {
 		logger.error({ error: e, ...logContext }, `Caught error after worker.run()`);
 		appAbortController.abort();

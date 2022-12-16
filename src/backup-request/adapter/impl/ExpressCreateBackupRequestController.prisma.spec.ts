@@ -80,7 +80,7 @@ describe('ExpressCreateBackupRequestController - prisma', () => {
 		// simulate a database error
 		const prismaCode = 'P1012';
 		mockPrismaCtx.prisma.prismaBackupRequest.upsert.mockRejectedValue(
-			new PrismaClientKnownRequestError('Key is already defined', prismaCode, '2')
+			new PrismaClientKnownRequestError('Key is already defined', { code: prismaCode, clientVersion: '2' })
 		);
 		const app = buildApp(logger, prismaCtx, { dbCircuitBreaker, azureQueueCircuitBreaker }, abortController.signal);
 
