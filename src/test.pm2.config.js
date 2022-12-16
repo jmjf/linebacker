@@ -1,3 +1,13 @@
+const baseConfig = {
+	env: {
+		APP_ENV: 'dev',
+	},
+	exec_mode: 'cluster',
+	instance_var: 'PM2_INSTANCE_ID',
+	wait_ready: true,
+	listen_timeout: 10000,
+};
+
 module.exports = {
 	apps: [
 		{
@@ -5,24 +15,16 @@ module.exports = {
 			// script: 'ts-node',
 			// args: 'src/apiSrvExpTypeorm.ts',
 			script: 'dist/apiSrvExpTypeorm.js',
-			env: {
-				APP_ENV: 'dev',
-			},
 			instances: 1,
-			exec_mode: 'fork',
-			instance_var: 'PM2_INSTANCE_ID',
+			...baseConfig,
 		},
 		{
 			name: 'store-queue-watcher',
 			// script: 'ts-node',
 			// args: 'src/rcvSrvExpTypeorm.ts',
 			script: 'dist/rcvSrvExpTypeorm.js',
-			env: {
-				APP_ENV: 'dev',
-			},
 			instances: 2,
-			exec_mode: 'cluster',
-			instance_var: 'PM2_INSTANCE_ID',
+			...baseConfig,
 		},
 		// {
 		// 	name: 'logger',

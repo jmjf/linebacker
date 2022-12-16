@@ -2,13 +2,15 @@ import path from 'node:path';
 
 import { appState, isAppStateUsable } from './infrastructure/app-state/appState';
 import { logger } from './infrastructure/logging/pinoLogger';
-
 import { typeormDataSource } from './infrastructure/typeorm/typeormDataSource';
 import { typeormCtx } from './infrastructure/typeorm/typeormContext';
 import { buildCircuitBreakers } from './infrastructure/typeorm/buildCircuitBreakers.typeorm';
 
-import { buildApp } from './rcvAppExpTypeorm';
 import { delay } from './common/utils/utils';
+
+import { buildApp } from './rcvAppExpTypeorm';
+
+import { shutdown } from './shutdown';
 
 const moduleName = path.basename(module.filename);
 const serviceName = 'queue-watcher';
@@ -76,8 +78,16 @@ const startServer = async () => {
 
 	logger.info(logContext, 'starting server');
 	try {
-		app.listen({ port: appState.brQueueWatcher_port });
+		const server = app.listen({ port: appState.brQueueWatcher_port });
 		logger.info(logContext, `Server is running on port ${appState.brQueueWatcher_port}`);
+
+		server.on('SIGINT', async () => {
+			await shutdown(appAbortController, server, typeormDataSource);
+		});
+		server.on('message', async (msg: string) => {
+			if (msg === 'shutdown') await shutdown(appAbortController, server, typeormDataSource);
+		});
+		if (process.send) process.send('ready');
 	} catch (err) {
 		logger.error(logContext, `${err}`);
 		appAbortController.abort();
