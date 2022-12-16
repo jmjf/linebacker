@@ -57,48 +57,43 @@ export function buildApp(
 	});
 	app.use(pinomor);
 
-	if (isTest()) {
-		logger.warn('Detected test environment; using fake authentication/authorization');
-		app.use(buildFakeAuthNZ());
-	} else {
-		const allowedIssuers = appState.auth_issuers;
-		const getJwks = buildGetJwks({
-			allowedDomains: allowedIssuers,
-			ttl: 600 * 1000,
-		});
+	const allowedIssuers = appState.auth_issuers;
+	const getJwks = buildGetJwks({
+		allowedDomains: allowedIssuers,
+		ttl: 600 * 1000,
+	});
 
-		const authnerizer = buildAuthnerizer({
-			allowedIssuers,
-			logError: logger.error.bind(logger),
-			reqTraceIdKey,
-			fastjwtVerifierOptions: {
-				cache: 1000,
-				cacheTTL: 600 * 1000,
-				requiredClaims: ['sub'],
-			},
-			buildGetPublicKey: (domain: string) => {
-				return async function (token: { kid: string; alg: string }) {
-					const key = await getJwks.getPublicKey({ kid: token.kid, alg: token.alg, domain });
-					return key;
-				};
-			},
-		});
-		app.use(authnerizer);
+	const authnerizer = buildAuthnerizer({
+		allowedIssuers,
+		logError: logger.error.bind(logger),
+		reqTraceIdKey,
+		fastjwtVerifierOptions: {
+			cache: 1000,
+			cacheTTL: 600 * 1000,
+			requiredClaims: ['sub'],
+		},
+		buildGetPublicKey: (domain: string) => {
+			return async function (token: { kid: string; alg: string }) {
+				const key = await getJwks.getPublicKey({ kid: token.kid, alg: token.alg, domain });
+				return key;
+			};
+		},
+	});
+	app.use(authnerizer);
 
-		const authzerizer = buildAuthzerizer({
-			cacheMax: 100,
-			ttlMs: 30 * 1000,
-			logError: logger.error.bind(logger),
-			getAuthZFromDb: async (clientId: string) => {
-				return typeormCtx.manager.findOne(TypeormClientAuthorization, {
-					where: {
-						clientIdentifier: clientId,
-					},
-				});
-			},
-		});
-		app.use(authzerizer);
-	}
+	const authzerizer = buildAuthzerizer({
+		cacheMax: 100,
+		ttlMs: 30 * 1000,
+		logError: logger.error.bind(logger),
+		getAuthZFromDb: async (clientId: string) => {
+			return typeormCtx.manager.findOne(TypeormClientAuthorization, {
+				where: {
+					clientIdentifier: clientId,
+				},
+			});
+		},
+	});
+	app.use(authzerizer);
 
 	app.use('/api/backup-requests', getBackupRequestRouter(typeormCtx, circuitBreakers, abortSignal));
 	app.use('/api/zpages', getZpagesRouter(zpageDependencies));

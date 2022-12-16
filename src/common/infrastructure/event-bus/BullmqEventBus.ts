@@ -42,6 +42,7 @@ export class BullmqEventBus implements IEventBus {
 				removeOnComplete: this.removeOnComplete,
 				removeOnFail: this.removeOnFail,
 			});
+			queue.close();
 
 			return ok(event);
 		} catch (e) {

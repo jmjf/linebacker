@@ -1,11 +1,26 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 'use strict';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { createDecoder, createVerifier } = require('fast-jwt');
+const { isTest } = require('../../common/utils/utils');
 
 const moduleName = module.filename.slice(module.filename.lastIndexOf('/') + 1);
 
 function buildAuthnerizer(opts) {
+	if (isTest()) {
+		return async function (req, res, next) {
+			const authHeader = req.get('TestAuth') || '';
+			if (authHeader.length > 0) {
+				const [sub, ...scopes] = authHeader.split('|');
+				req.jwtPayload = { sub };
+				return next();
+			}
+			const err = new Error('Unauthorized');
+			err.status = 401;
+			return next(err);
+		};
+	}
+
 	const { allowedIssuers, fastjwtVerifierOptions, buildGetPublicKey, logError, reqTraceIdKey } = opts;
 	if (!allowedIssuers || !Array.isArray(allowedIssuers) || allowedIssuers.length === 0)
 		throw Error('FATAL: Authnerizer requires opts.allowedIssuers');

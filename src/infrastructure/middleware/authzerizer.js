@@ -3,10 +3,26 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 const path = require('node:path');
 const LRUCache = require('mnemonist/lru-cache-with-delete');
+const { isTest } = require('../../common/utils/utils');
 
 const moduleName = path.basename(module.filename);
 
 function buildAuthzerizer(opts) {
+	// authN behavior for unit tests only
+	if (isTest()) {
+		return async function (req, res, next) {
+			const authHeader = req.get('TestAuth') || '';
+			if (authHeader.length > 0) {
+				const [sub, ...scopes] = authHeader.split('|');
+				req.clientScopes = scopes;
+				return next();
+			}
+			const err = new Error('Forbidden');
+			err.status = 403;
+			return next(err);
+		};
+	}
+
 	const { logError, getAuthZFromDb, reqTraceIdKey } = opts;
 	const cacheMax = opts.cacheMax ? opts.cacheMax : 1000;
 	const ttlMs = opts.ttlMs ? opts.ttlMs : 3600 * 1000;

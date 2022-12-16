@@ -29,18 +29,17 @@ export function delay(ms: number, signal?: AbortSignal): Promise<string> {
 
 export function isDev(): boolean {
 	return (
-		!process.env.APP_ENV ||
-		(!!process.env.APP_ENV && ['dev', 'development'].includes(process.env.APP_ENV.toLowerCase()))
+		process.env.APP_ENV === undefined ||
+		(typeof process.env.APP_ENV === 'string' && ['dev', 'development'].includes(process.env.APP_ENV.toLowerCase()))
 	);
 }
 
 export function isTest(): boolean {
 	return (
 		process.env.JEST_WORKER_ID !== undefined &&
-		typeof process.env.NODE_ENV === 'string' &&
-		process.env.NODE_ENV.toLowerCase().slice(0, 4) !== 'prod' &&
-		(process.env.APP_ENV === undefined ||
-			(typeof process.env.APP_ENV === 'string' && process.env.NODE_ENV.toLowerCase().slice(0, 3) !== 'prod'))
+		(isDev() ||
+			(typeof process.env.NODE_ENV === 'string' &&
+				['dev', 'development'].includes(process.env.NODE_ENV.toLowerCase())))
 	);
 }
 
