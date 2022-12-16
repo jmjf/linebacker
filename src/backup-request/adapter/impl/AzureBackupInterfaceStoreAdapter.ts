@@ -9,12 +9,17 @@ import {
 } from '../../../infrastructure/resilience/CircuitBreakerWithRetry';
 
 import { BackupRequest } from '../../domain/BackupRequest';
-import { IBackupInterfaceStoreAdapter, StoreSendResponse } from '../IBackupInterfaceStoreAdapter';
+import {
+	BackupInterfaceStoreAdapterErrors,
+	IBackupInterfaceStoreAdapter,
+	StoreSendResponse,
+} from '../IBackupInterfaceStoreAdapter';
 import {
 	AzureQueueDeleteResponse,
 	AzureQueueReceiveResponse,
 } from '../../../infrastructure/azure-queue/IAzureQueueAdapter';
 import path from 'path';
+import { Backup } from '../../../backup/domain/Backup';
 
 const moduleName = path.basename(module.filename);
 
@@ -43,7 +48,7 @@ export class AzureBackupInterfaceStoreAdapter implements IBackupInterfaceStoreAd
 
 	public async send(
 		backupRequest: BackupRequest
-	): Promise<Result<StoreSendResponse, AdapterErrors.InterfaceAdapterError>> {
+	): Promise<Result<StoreSendResponse, BackupInterfaceStoreAdapterErrors>> {
 		const functionName = 'send';
 
 		if (!this.circuitBreaker.isConnected()) {
@@ -92,7 +97,7 @@ export class AzureBackupInterfaceStoreAdapter implements IBackupInterfaceStoreAd
 
 	public async receive(
 		messageCount: number
-	): Promise<Result<AzureQueueReceiveResponse, AdapterErrors.InterfaceAdapterError>> {
+	): Promise<Result<AzureQueueReceiveResponse, BackupInterfaceStoreAdapterErrors>> {
 		const functionName = 'receive';
 
 		if (!this.circuitBreaker.isConnected()) {
@@ -132,7 +137,7 @@ export class AzureBackupInterfaceStoreAdapter implements IBackupInterfaceStoreAd
 	public async delete(
 		messageId: string,
 		popReceipt: string
-	): Promise<Result<AzureQueueDeleteResponse, AdapterErrors.InterfaceAdapterError>> {
+	): Promise<Result<AzureQueueDeleteResponse, BackupInterfaceStoreAdapterErrors>> {
 		const functionName = 'delete';
 
 		if (!this.circuitBreaker.isConnected()) {

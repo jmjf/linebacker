@@ -6,7 +6,11 @@ import { BackupRequest } from '../../domain/BackupRequest';
 
 //import { delay } from '../../../common/utils/utils';
 
-import { IBackupInterfaceStoreAdapter, StoreSendResponse } from '../IBackupInterfaceStoreAdapter';
+import {
+	BackupInterfaceStoreAdapterErrors,
+	IBackupInterfaceStoreAdapter,
+	StoreSendResponse,
+} from '../IBackupInterfaceStoreAdapter';
 import {
 	AzureQueueReceiveResponse,
 	AzureQueueDeleteResponse,
@@ -30,7 +34,7 @@ export class MockBackupInterfaceStoreAdapter implements IBackupInterfaceStoreAda
 		return 'mock';
 	}
 
-	async send(backupRequest: BackupRequest): Promise<Result<StoreSendResponse, AdapterErrors.InterfaceAdapterError>> {
+	async send(backupRequest: BackupRequest): Promise<Result<StoreSendResponse, BackupInterfaceStoreAdapterErrors>> {
 		const startTime = new Date();
 		//awaitendTime10000);
 		logger.info({
@@ -52,20 +56,18 @@ export class MockBackupInterfaceStoreAdapter implements IBackupInterfaceStoreAda
 		return err(new AdapterErrors.InterfaceAdapterError(JSON.stringify({ msg: 'no error provided' })));
 	}
 
-	async receive(
-		messageCount: number
-	): Promise<Result<AzureQueueReceiveResponse, AdapterErrors.InterfaceAdapterError>> {
+	async receive(messageCount: number): Promise<Result<AzureQueueReceiveResponse, BackupInterfaceStoreAdapterErrors>> {
 		return ok({} as AzureQueueReceiveResponse);
 	}
 
 	async delete(
 		messageId: string,
 		popReceipt: string
-	): Promise<Result<AzureQueueDeleteResponse, AdapterErrors.InterfaceAdapterError>> {
+	): Promise<Result<AzureQueueDeleteResponse, BackupInterfaceStoreAdapterErrors>> {
 		return ok({} as AzureQueueDeleteResponse);
 	}
 
-	async isReady(): Promise<Result<boolean, AdapterErrors.InterfaceAdapterError>> {
+	async isReady(): Promise<Result<boolean, BackupInterfaceStoreAdapterErrors>> {
 		return ok(true);
 	}
 }
